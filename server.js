@@ -6,6 +6,7 @@ const path = require('path');
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -22,19 +23,23 @@ async function getClient() {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+function splitCodes(raw) {
+  return (raw || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
 // ─── PENDING ORDERS ───────────────────────────────────────────────────────────
-// db: 4pl-oms | collection: pendingorders | filter: storeCode (string)
 app.get('/api/pending', async (req, res) => {
   try {
-    const { storeCode } = req.query;
-    if (!storeCode) return res.status(400).json({ error: 'storeCode required' });
+    const storeCodes = splitCodes(req.query.storeCode);
+    if (!storeCodes.length) return res.status(400).json({ error: 'storeCode required' });
 
     const c = await getClient();
+    const codeFilter = storeCodes.length === 1 ? storeCodes[0] : { $in: storeCodes };
     const docs = await c
       .db('4pl-oms')
       .collection('pendingorders')
       .find(
-        { storeCode, deleted: { $ne: true } },
+        { storeCode: codeFilter, deleted: { $ne: true } },
         { projection: { batchId: 1, orderId: 1, consignment: 1, serviceType: 1, storeCode: 1, createdAt: 1 } }
       )
       .sort({ createdAt: -1 })
@@ -48,12 +53,11 @@ app.get('/api/pending', async (req, res) => {
 });
 
 // ─── JOBS ─────────────────────────────────────────────────────────────────────
-// db: 4pl-oms | collection: autobatchingjobs | filter: storeId (ObjectId) + date range
-// storeId ObjectId ได้จาก lastmile.stores โดย lookup ด้วย code (string)
 app.get('/api/jobs', async (req, res) => {
   try {
-    const { storeCode, from, to } = req.query;
-    if (!storeCode || !from || !to) return res.status(400).json({ error: 'storeCode, from, to required' });
+    const { from, to } = req.query;
+    const storeCodes = splitCodes(req.query.storeCode);
+    if (!storeCodes.length || !from || !to) return res.status(400).json({ error: 'storeCode, from, to required' });
 
     const fromDate = new Date(from);
     const toDate = new Date(to);
@@ -61,21 +65,26 @@ app.get('/api/jobs', async (req, res) => {
 
     const c = await getClient();
 
-    const store = await c
+    const storeList = await c
       .db('lastmile')
       .collection('stores')
-      .findOne({ code: storeCode }, { projection: { _id: 1, code: 1 } });
+      .find({ code: { $in: storeCodes } }, { projection: { _id: 1, code: 1 } })
+      .toArray();
 
-    if (!store) return res.status(404).json({ error: `Store "${storeCode}" not found` });
+    if (!storeList.length) return res.status(404).json({ error: 'No stores found' });
+
+    const storeIds = storeList.map(s => s._id);
+    const storeIdToCode = {};
+    storeList.forEach(s => { storeIdToCode[safeStr(s._id)] = s.code; });
 
     const docs = await c
       .db('4pl-oms')
       .collection('autobatchingjobs')
       .find(
-        { storeId: store._id, createdAt: { $gte: fromDate, $lt: toDate } },
+        { storeId: { $in: storeIds }, createdAt: { $gte: fromDate, $lt: toDate } },
         {
           projection: {
-            jobId: 1, orderIds: 1, status: 1, createdAt: 1,
+            jobId: 1, orderIds: 1, status: 1, createdAt: 1, storeId: 1,
             'assignment.rider.id': 1, 'assignment.rider.name': 1,
             pickUpSLA: 1
           }
@@ -87,6 +96,7 @@ app.get('/api/jobs', async (req, res) => {
 
     const enriched = docs.map(d => ({
       jobId: d.jobId || null,
+      storeCode: storeIdToCode[safeStr(d.storeId)] || null,
       riderName: d.assignment?.rider?.name || null,
       riderId: d.assignment?.rider?.id ? safeStr(d.assignment.rider.id) : null,
       orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
@@ -96,7 +106,7 @@ app.get('/api/jobs', async (req, res) => {
       createdAt: d.createdAt || null
     }));
 
-    res.json({ count: enriched.length, storeObjectId: store._id, data: enriched });
+    res.json({ count: enriched.length, data: enriched });
   } catch (e) {
     console.error('[/api/jobs]', e.message);
     res.status(500).json({ error: e.message });
@@ -104,25 +114,25 @@ app.get('/api/jobs', async (req, res) => {
 });
 
 // ─── STUCK JOBS ───────────────────────────────────────────────────────────────
-// Orders ที่อยู่ใน AUTO_BATCHING แต่ยังไม่มี jobId และ orderReferenceId
-// ใช้ workflowInput.metadata.storeId ซึ่งเป็น string (storeCode) ไม่ใช่ ObjectId
 app.get('/api/stuck', async (req, res) => {
   try {
-    const { storeCode, from, to } = req.query;
-    if (!storeCode || !from || !to) return res.status(400).json({ error: 'storeCode, from, to required' });
+    const { from, to } = req.query;
+    const storeCodes = splitCodes(req.query.storeCode);
+    if (!storeCodes.length || !from || !to) return res.status(400).json({ error: 'storeCode, from, to required' });
 
     const fromDate = new Date(from);
     const toDate = new Date(to);
     if (isNaN(fromDate) || isNaN(toDate)) return res.status(400).json({ error: 'invalid date format' });
 
     const c = await getClient();
+    const codeFilter = storeCodes.length === 1 ? storeCodes[0] : { $in: storeCodes };
 
     const docs = await c
       .db('4pl-oms')
       .collection('autobatchingjobs')
       .find(
         {
-          'workflowInput.metadata.storeId': storeCode,
+          'workflowInput.metadata.storeId': codeFilter,
           orderReferenceId: { $exists: false },
           'workflowInput.fleetDispatchType': 'AUTO_BATCHING',
           'workflowInput.metadata.jobId': { $exists: false },
@@ -149,21 +159,13 @@ app.get('/api/stuck', async (req, res) => {
 });
 
 // ─── RIDERS POOL ──────────────────────────────────────────────────────────────
-// Multi-step query ported จาก script MongoDB shell:
-// 1. geographies  → clusterIds
-// 2. stores       → location + autoAssign radius
-// 3. staffs       → ONLINE staff ใน cluster
-// 4. autobatchingjobs → active jobs ของ staff
-// 5. autobatchingriderpools → queue order
 app.get('/api/riders', async (req, res) => {
   try {
-    const { storeCode } = req.query;
-    if (!storeCode) return res.status(400).json({ error: 'storeCode required' });
+    const storeCodes = splitCodes(req.query.storeCode);
+    if (!storeCodes.length) return res.status(400).json({ error: 'storeCode required' });
 
     const c = await getClient();
-    const storeCodes = [storeCode];
 
-    // STEP 1: zones → clusterIds
     const zones = await c
       .db('4pl-address-and-zoning')
       .collection('geographies')
@@ -173,7 +175,6 @@ app.get('/api/riders', async (req, res) => {
       )
       .toArray();
 
-    // STEP 2: stores → location + config
     const stores = await c
       .db('lastmile')
       .collection('stores')
@@ -191,18 +192,12 @@ app.get('/api/riders', async (req, res) => {
     const storeMap = {};
     stores.forEach(s => { storeMap[s.code] = s; });
 
-    // build clusterIds per storeCode
     const storeClusterMap = {};
     zones.forEach(z => {
       const code = z.storeCode;
       const clusters = (z.areaPath || '')
-        .split(',')
-        .map(x => x.trim())
-        .filter(x => /^[a-f0-9]{24}$/i.test(x));
-
-      if (!storeClusterMap[code]) {
-        storeClusterMap[code] = { storeCode: code, clusterIds: new Set() };
-      }
+        .split(',').map(x => x.trim()).filter(x => /^[a-f0-9]{24}$/i.test(x));
+      if (!storeClusterMap[code]) storeClusterMap[code] = { storeCode: code, clusterIds: new Set() };
       clusters.forEach(x => storeClusterMap[code].clusterIds.add(x));
     });
 
@@ -212,7 +207,6 @@ app.get('/api/riders', async (req, res) => {
       const clusterList = Array.from(item.clusterIds).map(id => new ObjectId(id));
       const store = storeMap[code] || null;
 
-      // STEP 3: online staffs in clusters
       const staffs = await c
         .db('4pl-fleet')
         .collection('staffs')
@@ -237,7 +231,6 @@ app.get('/api/riders', async (req, res) => {
 
       if (staffUserIds.length === 0) continue;
 
-      // STEP 4: active jobs for those staffs
       const jobs = await c
         .db('4pl-oms')
         .collection('autobatchingjobs')
@@ -253,12 +246,9 @@ app.get('/api/riders', async (req, res) => {
       const activeJobMap = new Map();
       jobs.forEach(j => {
         const rid = safeStr(j.assignment?.rider?.id);
-        if (rid && !activeJobMap.has(rid)) {
-          activeJobMap.set(rid, { jobId: j.jobId, status: j.status });
-        }
+        if (rid && !activeJobMap.has(rid)) activeJobMap.set(rid, { jobId: j.jobId, status: j.status });
       });
 
-      // STEP 5: pool queue
       const pools = await c
         .db('4pl-oms')
         .collection('autobatchingriderpools')
@@ -279,56 +269,38 @@ app.get('/api/riders', async (req, res) => {
       const now = new Date();
       let queueIndex = 1;
 
-      // riders IN pool
       poolOrder.forEach(uid => {
         const p = poolMap[uid];
         const staff = staffMap[uid];
         const { flags, eligible } = evalEligibility(uid, p, now, activeJobMap, staff);
         const jobInfo = activeJobMap.get(uid);
-
         finalResult.push({
-          storeCode: code,
-          queue: queueIndex++,
-          poolId: safeStr(p._id),
-          userId: uid,
-          status: p.status,
-          join_pool_at: p.createdAt || null,
+          storeCode: code, queue: queueIndex++, poolId: safeStr(p._id), userId: uid,
+          status: p.status, join_pool_at: p.createdAt || null,
           username: staff?.username || '',
           name: `${staff?.firstname || ''} ${staff?.lastname || ''}`.trim(),
-          phone: staff?.phone || '',
-          ready_for_auto_assign: eligible,
-          staff_online: flags.staff_online,
-          not_banned: flags.not_banned,
-          no_active_job: flags.no_active_job,
-          not_on_break: flags.not_on_break,
+          phone: staff?.phone || '', ready_for_auto_assign: eligible,
+          staff_online: flags.staff_online, not_banned: flags.not_banned,
+          no_active_job: flags.no_active_job, not_on_break: flags.not_on_break,
           job_on_hand_id: !flags.no_active_job && jobInfo ? jobInfo.jobId : null,
           job_on_hand_status: !flags.no_active_job && jobInfo ? jobInfo.status : null,
           mapUrl: buildMapUrl(staff, store)
         });
       });
 
-      // riders NOT in pool
       Object.keys(staffMap).forEach(uid => {
         if (poolMap[uid]) return;
         const staff = staffMap[uid];
         const { flags, eligible } = evalEligibility(uid, null, now, activeJobMap, staff);
         const jobInfo = activeJobMap.get(uid);
-
         finalResult.push({
-          storeCode: code,
-          queue: 'not_in_pool',
-          poolId: null,
-          userId: uid,
-          status: 'N/A',
-          join_pool_at: null,
+          storeCode: code, queue: 'not_in_pool', poolId: null, userId: uid,
+          status: 'N/A', join_pool_at: null,
           username: staff?.username || '',
           name: `${staff?.firstname || ''} ${staff?.lastname || ''}`.trim(),
-          phone: staff?.phone || '',
-          ready_for_auto_assign: eligible,
-          staff_online: flags.staff_online,
-          not_banned: flags.not_banned,
-          no_active_job: flags.no_active_job,
-          not_on_break: flags.not_on_break,
+          phone: staff?.phone || '', ready_for_auto_assign: eligible,
+          staff_online: flags.staff_online, not_banned: flags.not_banned,
+          no_active_job: flags.no_active_job, not_on_break: flags.not_on_break,
           job_on_hand_id: !flags.no_active_job && jobInfo ? jobInfo.jobId : null,
           job_on_hand_status: !flags.no_active_job && jobInfo ? jobInfo.status : null,
           mapUrl: buildMapUrl(staff, store)
@@ -340,6 +312,77 @@ app.get('/api/riders', async (req, res) => {
     res.json({ count: finalResult.length, readyCount, data: finalResult });
   } catch (e) {
     console.error('[/api/riders]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── ORDER QUERY ──────────────────────────────────────────────────────────────
+// type: 'consignment' | 'orderid'
+// values: comma-separated
+app.get('/api/orders', async (req, res) => {
+  try {
+    const { type, values } = req.query;
+    if (!type || !values) return res.status(400).json({ error: 'type and values required' });
+
+    const valList = values.split(',').map(v => v.trim()).filter(Boolean);
+    if (!valList.length) return res.status(400).json({ error: 'no values provided' });
+
+    const c = await getClient();
+
+    const filter = { orderReferenceId: { $exists: false } };
+    if (type === 'consignment') {
+      filter['workflowInput.metadata.consignment'] = valList.length === 1 ? valList[0] : { $in: valList };
+    } else if (type === 'orderid') {
+      filter['workflowInput.metadata.orderId'] = valList.length === 1 ? valList[0] : { $in: valList };
+    } else {
+      return res.status(400).json({ error: 'type must be consignment or orderid' });
+    }
+
+    const docs = await c
+      .db('4pl-oms')
+      .collection('orders')
+      .find(filter, {
+        projection: {
+          _id: 1, orderId: 1, currentOrderStatus: 1, createdAt: 1, updatedAt: 1,
+          'workflowInput.metadata.consignment': 1,
+          'workflowInput.metadata.orderId': 1,
+          'workflowInput.metadata.storeCode': 1,
+          'workflowInput.metadata.storeName': 1,
+          'workflowInput.metadata.jobId': 1,
+          'workflowInput.metadata.jobs': 1,
+          'workflowInput.fleetDispatchType': 1,
+          'metadata.staff.name': 1,
+          'metadata.staff.riderId': 1,
+          'metadata.staff.phone': 1,
+          'metadata.staff.workingType': 1,
+          orderStatuses: 1
+        }
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const enriched = docs.map(d => ({
+      _id: safeStr(d._id),
+      orderId: d.orderId || null,
+      internalOrderId: d.workflowInput?.metadata?.orderId || null,
+      consignment: d.workflowInput?.metadata?.consignment || null,
+      storeCode: d.workflowInput?.metadata?.storeCode || null,
+      storeName: d.workflowInput?.metadata?.storeName || null,
+      jobId: d.workflowInput?.metadata?.jobId || d.workflowInput?.metadata?.jobs?.[0] || null,
+      fleetDispatchType: d.workflowInput?.fleetDispatchType || null,
+      currentOrderStatus: d.currentOrderStatus || null,
+      riderName: d.metadata?.staff?.name || null,
+      riderId: safeStr(d.metadata?.staff?.riderId) || null,
+      riderPhone: d.metadata?.staff?.phone || null,
+      workingType: d.metadata?.staff?.workingType || null,
+      createdAt: d.createdAt || null,
+      updatedAt: d.updatedAt || null,
+      statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt }))
+    }));
+
+    res.json({ count: enriched.length, data: enriched });
+  } catch (e) {
+    console.error('[/api/orders]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -380,9 +423,7 @@ function buildMapUrl(staff, store) {
   const storeLng = store?.location?.coordinates?.[0];
   const storeLat = store?.location?.coordinates?.[1];
   const radius = store?.metadata?.config?.assignment?.autoAssign?.jobSurface?.radius || 100;
-
   if (riderLat == null || storeLat == null) return null;
-
   const circles = [
     [5, riderLat, riderLng, '#3AAA24', '#3DFF1F', 0.4],
     [radius, storeLat, storeLng, '#FF0000', '#AA0000', 0.4]

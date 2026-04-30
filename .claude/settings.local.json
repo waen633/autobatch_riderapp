@@ -8,7 +8,8 @@
       "Bash(pkill -f \"node server.js\")",
       "Read(//e/Project komet/**)",
       "Bash(curl -s -I http://localhost:3000/api/pending?storeCode=1104)",
-      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000/api/pending?storeCode=1104\" -UseBasicParsing | Select-Object StatusCode, @{N=\"CORS\";E={$_.Headers[\"Access-Control-Allow-Origin\"]}}, Content)"
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000/api/pending?storeCode=1104\" -UseBasicParsing | Select-Object StatusCode, @{N=\"CORS\";E={$_.Headers[\"Access-Control-Allow-Origin\"]}}, Content)",
+      "PowerShell(Stop-Process -Name \"node\" -Force -ErrorAction SilentlyContinue)"
     ]
   }
 }

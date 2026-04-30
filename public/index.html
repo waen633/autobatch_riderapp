@@ -7,21 +7,24 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    body { background: #f0f2f5; font-size: 13px; }
-    .navbar-brand { font-size: 1.1rem; }
-    .card { box-shadow: 0 2px 8px rgba(0,0,0,.09); border: none; border-radius: 10px; }
-    .card-header { border-radius: 10px 10px 0 0 !important; font-size: 0.9rem; }
-    .badge-count { font-size: 1rem; min-width: 2rem; }
-    .table-sm td, .table-sm th { padding: .3rem .5rem; vertical-align: middle; }
-    .flag-icon { font-size: 0.9rem; }
-    .status-badge { font-size: 0.7rem; white-space: nowrap; }
-    .queue-cell { min-width: 2.2rem; text-align: center; }
-    .scroll-table { max-height: 380px; overflow-y: auto; }
-    .sticky-header th { position: sticky; top: 0; z-index: 1; }
-    .not-in-pool-row td { opacity: 0.55; }
-    #last-updated { font-size: 0.75rem; }
-    .section-title small { font-weight: 400; opacity: 0.75; }
-    .empty-row td { color: #888; font-style: italic; }
+    body { background:#f0f2f5; font-size:13px; }
+    .card { box-shadow:0 2px 8px rgba(0,0,0,.09); border:none; border-radius:10px; }
+    .card-header { border-radius:10px 10px 0 0 !important; font-size:0.9rem; }
+    .table-sm td,.table-sm th { padding:.28rem .45rem; vertical-align:middle; }
+    .scroll-table { max-height:360px; overflow-y:auto; }
+    .sticky-header th { position:sticky; top:0; z-index:1; }
+    .not-in-pool-row td { opacity:.55; }
+    #last-updated { font-size:.75rem; }
+    .empty-row td { color:#888; font-style:italic; }
+    .sort-th { cursor:pointer; user-select:none; white-space:nowrap; }
+    .sort-th:hover { background:rgba(255,255,255,.15)!important; }
+    .idle-warn  { color:#fd7e14; font-weight:600; }
+    .idle-danger{ color:#dc3545; font-weight:700; }
+    .status-badge { font-size:.68rem; white-space:nowrap; }
+    .search-box { max-width:260px; }
+    .col-btn { font-size:.72rem; padding:.15rem .4rem; }
+    #jobs-dash { min-height:26px; }
+    .perf-card { background:#fff; border-radius:8px; padding:.5rem .8rem; box-shadow:0 1px 4px rgba(0,0,0,.08); }
   </style>
 </head>
 <body>
@@ -29,9 +32,7 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-dark py-2" style="background:#1a6b3c;">
   <div class="container-fluid">
-    <span class="navbar-brand fw-bold">
-      <i class="bi bi-speedometer2 me-2"></i>Lotus Auto-Batching Dashboard
-    </span>
+    <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2 me-2"></i>Lotus Auto-Batching Dashboard</span>
     <span class="text-white-50" id="last-updated"></span>
   </div>
 </nav>
@@ -44,7 +45,9 @@
       <div class="row g-2 align-items-end">
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold">Store Code</label>
-          <input type="text" class="form-control form-control-sm" id="storeCode" value="1104" style="width:100px">
+          <input type="text" class="form-control form-control-sm" id="storeCode" value="1104"
+                 placeholder="1104,6304,5022" style="width:160px">
+          <div class="form-text mt-0" style="font-size:.7rem;">หลายสาขาคั่นด้วย ,</div>
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold">From</label>
@@ -60,7 +63,7 @@
           </button>
         </div>
         <div class="col-auto ms-auto">
-          <small class="text-muted">* Pending & Riders ไม่ใช้ date range</small>
+          <small class="text-muted">* Pending &amp; Riders ไม่ใช้ date range</small>
         </div>
       </div>
     </div>
@@ -73,31 +76,29 @@
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center py-2">
-          <span class="section-title">
-            <i class="bi bi-box-seam me-1"></i>Pending Orders
-            <small>(รอสร้าง Job)</small>
-          </span>
-          <span class="badge bg-dark badge-count" id="count-pending">–</span>
+          <span><i class="bi bi-box-seam me-1"></i>Pending Orders <small class="fw-normal opacity-75">(รอสร้าง Job)</small></span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-dark col-btn" onclick="openColModal('pending')" title="เลือก Column">
+              <i class="bi bi-layout-three-columns"></i>
+            </button>
+            <span class="badge bg-dark" id="count-pending">–</span>
+          </div>
         </div>
         <div class="card-body p-2">
-          <button class="btn btn-warning btn-sm mb-2" onclick="fetchPending()">
-            <i class="bi bi-arrow-clockwise me-1"></i>Get Pending Orders
-          </button>
+          <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
+            <button class="btn btn-warning btn-sm" onclick="fetchPending()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Get Pending
+            </button>
+            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
+                   oninput="state.pending.search=this.value; renderSection('pending')">
+          </div>
           <div id="loading-pending" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm text-warning"></div>
-            <span class="ms-2 text-muted">Loading…</span>
+            <div class="spinner-border spinner-border-sm text-warning"></div><span class="ms-2 text-muted">Loading…</span>
           </div>
           <div id="error-pending" class="alert alert-danger py-1 d-none small mb-2"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover table-striped mb-0">
-              <thead class="table-dark sticky-header">
-                <tr>
-                  <th>Order ID</th>
-                  <th>Consignment</th>
-                  <th>Service</th>
-                  <th>Created At</th>
-                </tr>
-              </thead>
+              <thead class="table-dark sticky-header" id="thead-pending"></thead>
               <tbody id="tbody-pending">
                 <tr class="empty-row"><td colspan="4" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
               </tbody>
@@ -111,37 +112,33 @@
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#0077b6;">
-          <span class="section-title">
-            <i class="bi bi-person-badge me-1"></i>Rider Pool
-            <small>Ready: <span id="ready-count" class="fw-bold text-warning">–</span></small>
+          <span><i class="bi bi-person-badge me-1"></i>Rider Pool
+            <small class="fw-normal opacity-75">Ready: <span id="ready-count" class="fw-bold text-warning">–</span></small>
           </span>
-          <span class="badge bg-dark badge-count" id="count-riders">–</span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-light col-btn" onclick="openColModal('riders')" title="เลือก Column">
+              <i class="bi bi-layout-three-columns"></i>
+            </button>
+            <span class="badge bg-dark" id="count-riders">–</span>
+          </div>
         </div>
         <div class="card-body p-2">
-          <button class="btn btn-sm text-white mb-2" style="background:#0077b6;" onclick="fetchRiders()">
-            <i class="bi bi-arrow-clockwise me-1"></i>Get Riders
-          </button>
+          <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
+            <button class="btn btn-sm text-white" style="background:#0077b6;" onclick="fetchRiders()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Get Riders
+            </button>
+            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
+                   oninput="state.riders.search=this.value; renderSection('riders')">
+          </div>
           <div id="loading-riders" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm" style="color:#0077b6;"></div>
-            <span class="ms-2 text-muted">Loading…</span>
+            <div class="spinner-border spinner-border-sm" style="color:#0077b6;"></div><span class="ms-2 text-muted">Loading…</span>
           </div>
           <div id="error-riders" class="alert alert-danger py-1 d-none small mb-2"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover mb-0">
-              <thead class="table-dark sticky-header">
-                <tr>
-                  <th class="queue-cell">#</th>
-                  <th>Name / Phone</th>
-                  <th>User ID</th>
-                  <th>Joined Pool</th>
-                  <th class="text-center">Ready</th>
-                  <th>Flags</th>
-                  <th>Job on hand</th>
-                  <th></th>
-                </tr>
-              </thead>
+              <thead class="table-dark sticky-header" id="thead-riders"></thead>
               <tbody id="tbody-riders">
-                <tr class="empty-row"><td colspan="8" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
+                <tr class="empty-row"><td colspan="9" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
               </tbody>
             </table>
           </div>
@@ -153,36 +150,45 @@
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
-          <span class="section-title">
-            <i class="bi bi-clipboard-data me-1"></i>Jobs
-            <small>(ตามช่วงเวลา)</small>
-          </span>
-          <span class="badge bg-dark badge-count" id="count-jobs">–</span>
+          <span><i class="bi bi-clipboard-data me-1"></i>Jobs <small class="fw-normal opacity-75">(ตามช่วงเวลา)</small></span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-light col-btn" onclick="openColModal('jobs')" title="เลือก Column">
+              <i class="bi bi-layout-three-columns"></i>
+            </button>
+            <span class="badge bg-dark" id="count-jobs">–</span>
+          </div>
         </div>
         <div class="card-body p-2">
-          <button class="btn btn-primary btn-sm mb-2" onclick="fetchJobs()">
-            <i class="bi bi-arrow-clockwise me-1"></i>Get Jobs
-          </button>
+          <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
+            <button class="btn btn-primary btn-sm" onclick="fetchJobs()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Get Jobs
+            </button>
+            <select id="jobs-status-filter" class="form-select form-select-sm" style="width:160px"
+                    onchange="state.jobs.statusFilter=this.value; renderSection('jobs')">
+              <option value="">All Status</option>
+              <option value="job_accepted">job_accepted</option>
+              <option value="job_assigned">job_assigned</option>
+              <option value="job_picking_up">job_picking_up</option>
+              <option value="job_picked_up">job_picked_up</option>
+              <option value="job_delivering">job_delivering</option>
+              <option value="job_delivered">job_delivered</option>
+              <option value="completed">completed</option>
+              <option value="job_cancelled">job_cancelled</option>
+            </select>
+            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
+                   oninput="state.jobs.search=this.value; renderSection('jobs')">
+          </div>
           <div id="loading-jobs" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm text-primary"></div>
-            <span class="ms-2 text-muted">Loading…</span>
+            <div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted">Loading…</span>
           </div>
           <div id="error-jobs" class="alert alert-danger py-1 d-none small mb-2"></div>
+          <!-- Jobs Status Dashboard -->
+          <div id="jobs-dash" class="mb-2 d-flex flex-wrap gap-1"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover table-striped mb-0">
-              <thead class="table-dark sticky-header">
-                <tr>
-                  <th>Job ID</th>
-                  <th>Rider</th>
-                  <th class="text-center">#</th>
-                  <th>Order IDs</th>
-                  <th>PickUp SLA</th>
-                  <th>Status</th>
-                  <th>Created At</th>
-                </tr>
-              </thead>
+              <thead class="table-dark sticky-header" id="thead-jobs"></thead>
               <tbody id="tbody-jobs">
-                <tr class="empty-row"><td colspan="7" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
+                <tr class="empty-row"><td colspan="8" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
               </tbody>
             </table>
           </div>
@@ -194,30 +200,29 @@
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
-          <span class="section-title">
-            <i class="bi bi-exclamation-triangle me-1"></i>Stuck Jobs
-            <small>(Job ค้าง / ไม่มี jobId)</small>
-          </span>
-          <span class="badge bg-dark badge-count" id="count-stuck">–</span>
+          <span><i class="bi bi-exclamation-triangle me-1"></i>Stuck Jobs <small class="fw-normal opacity-75">(Job ค้าง)</small></span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-light col-btn" onclick="openColModal('stuck')" title="เลือก Column">
+              <i class="bi bi-layout-three-columns"></i>
+            </button>
+            <span class="badge bg-dark" id="count-stuck">–</span>
+          </div>
         </div>
         <div class="card-body p-2">
-          <button class="btn btn-danger btn-sm mb-2" onclick="fetchStuck()">
-            <i class="bi bi-arrow-clockwise me-1"></i>Get Stuck Jobs
-          </button>
+          <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
+            <button class="btn btn-danger btn-sm" onclick="fetchStuck()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Get Stuck
+            </button>
+            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
+                   oninput="state.stuck.search=this.value; renderSection('stuck')">
+          </div>
           <div id="loading-stuck" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm text-danger"></div>
-            <span class="ms-2 text-muted">Loading…</span>
+            <div class="spinner-border spinner-border-sm text-danger"></div><span class="ms-2 text-muted">Loading…</span>
           </div>
           <div id="error-stuck" class="alert alert-danger py-1 d-none small mb-2"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover table-striped mb-0">
-              <thead class="table-dark sticky-header">
-                <tr>
-                  <th>Order ID</th>
-                  <th>Current Status</th>
-                  <th>Created At</th>
-                </tr>
-              </thead>
+              <thead class="table-dark sticky-header" id="thead-stuck"></thead>
               <tbody id="tbody-stuck">
                 <tr class="empty-row"><td colspan="3" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
               </tbody>
@@ -227,29 +232,261 @@
       </div>
     </div>
 
+    <!-- ── SECTION 5: ORDER QUERY ── -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#5c4a8a;">
+          <span><i class="bi bi-search me-1"></i>Order Query
+            <small class="fw-normal opacity-75">(ค้นหา Order ด้วย Consignment / Order ID)</small>
+          </span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-light col-btn" onclick="openColModal('orders')" title="เลือก Column">
+              <i class="bi bi-layout-three-columns"></i>
+            </button>
+            <span class="badge bg-dark" id="count-orders">–</span>
+          </div>
+        </div>
+        <div class="card-body p-2">
+          <div class="row g-2 mb-2 align-items-end">
+            <div class="col-auto">
+              <label class="form-label mb-1 fw-semibold small">Query Type</label>
+              <div class="d-flex gap-3">
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="radio" name="orderType" id="typeConsignment" value="consignment" checked>
+                  <label class="form-check-label" for="typeConsignment">Consignment</label>
+                </div>
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="radio" name="orderType" id="typeOrderId" value="orderid">
+                  <label class="form-check-label" for="typeOrderId">Order ID</label>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <label class="form-label mb-1 fw-semibold small">Values <span class="fw-normal text-muted">(คั่นด้วย , สำหรับหลายค่า)</span></label>
+              <input type="text" class="form-control form-control-sm font-monospace" id="orderValues"
+                     placeholder="CPTH9015794727,CPTH7014296703 หรือ 26LOTUS-ZJ179082441">
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-sm text-white" style="background:#5c4a8a;" onclick="fetchOrders()">
+                <i class="bi bi-search me-1"></i>Query
+              </button>
+            </div>
+            <div class="col-auto">
+              <input type="search" class="form-control form-control-sm search-box" placeholder="Filter results…"
+                     oninput="state.orders.search=this.value; renderSection('orders')">
+            </div>
+          </div>
+
+          <div id="loading-orders" class="d-none text-center py-2">
+            <div class="spinner-border spinner-border-sm" style="color:#5c4a8a;"></div><span class="ms-2 text-muted">Loading…</span>
+          </div>
+          <div id="error-orders" class="alert alert-danger py-1 d-none small mb-2"></div>
+
+          <div class="scroll-table" style="max-height:320px;">
+            <table class="table table-sm table-hover table-striped mb-0">
+              <thead class="table-dark sticky-header" id="thead-orders"></thead>
+              <tbody id="tbody-orders">
+                <tr class="empty-row"><td colspan="10" class="text-center py-3">กรอก Query แล้วกด Query</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Rider Performance Panel -->
+          <div id="rider-perf-panel" class="d-none mt-3">
+            <div class="fw-semibold mb-2" style="color:#5c4a8a;">
+              <i class="bi bi-bar-chart-fill me-1"></i>Rider Performance (จาก Query ด้านบน)
+            </div>
+            <div id="rider-perf-body" class="d-flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /row -->
 </div><!-- /container -->
 
+<!-- COLUMN SELECTOR MODAL -->
+<div class="modal fade" id="colModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title" id="colModalTitle">เลือก Column</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-2" id="colModalBody"></div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+        <button class="btn btn-sm btn-primary" onclick="saveColModal()">บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// ─── API BASE URL ─────────────────────────────────────────────────────────────
-// ใช้ origin เดียวกับ Express server (port 3000)
-// เปลี่ยนเป็น IP:Port ของ VM เมื่อ deploy จริง เช่น 'http://10.144.x.x:3000'
 const API_BASE = (() => {
-  const loc = window.location;
-  // ถ้าเปิดจาก localhost:3000 หรือ IP:3000 ให้ใช้ origin ตรงๆ
-  if (loc.protocol === 'http:' || loc.protocol === 'https:') return loc.origin;
-  // fallback สำหรับ preview panel หรือ file://
-  return 'http://localhost:3000';
+  const l = window.location;
+  return (l.protocol === 'http:' || l.protocol === 'https:') ? l.origin : 'http://localhost:3000';
 })();
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-function pad(n) { return String(n).padStart(2, '0'); }
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const state = {
+  pending: { data:[], search:'', sortCol:null, sortDir:'asc' },
+  riders:  { data:[], search:'', sortCol:null, sortDir:'asc' },
+  jobs:    { data:[], search:'', sortCol:null, sortDir:'asc', statusFilter:'' },
+  stuck:   { data:[], search:'', sortCol:null, sortDir:'asc' },
+  orders:  { data:[], search:'', sortCol:null, sortDir:'asc' }
+};
+let sortState = {};
+
+// ─── COLUMN DEFINITIONS ───────────────────────────────────────────────────────
+const COLS = {
+  pending: [
+    { id:'storeCode', label:'Store',       sk:'storeCode', r: d => d.storeCode||'–' },
+    { id:'orderId',   label:'Order ID',    sk:'orderId',   r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
+    { id:'consignment',label:'Consignment',sk:'consignment',r:d=>`<small class="font-monospace">${d.consignment||'–'}</small>` },
+    { id:'service',   label:'Service',     sk:'serviceType',r:d=>`<span class="badge bg-secondary status-badge">${d.serviceType||'–'}</span>` },
+    { id:'createdAt', label:'Created',     sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+  ],
+  riders: [
+    { id:'queue',        label:'#',          sk:'queue',                  r: d => queueBadge(d) },
+    { id:'storeCode',    label:'Store',       sk:'storeCode',              r: d => d.storeCode||'–' },
+    { id:'name',         label:'Name / Phone',sk:'name',                  r: d => `<div class="fw-semibold lh-sm">${d.name||d.username}</div><small class="text-muted">${d.phone}</small>` },
+    { id:'userId',       label:'User ID',     sk:'userId',                 r: d => `<small class="font-monospace text-muted">${d.userId||'–'}</small>` },
+    { id:'idle_time',    label:'Idle Time',   sk:'join_pool_at',           r: d => idleHtml(d) },
+    { id:'join_pool_at', label:'Joined Pool', sk:'join_pool_at',           r: d => `<small>${fmtDt(d.join_pool_at)}</small>` },
+    { id:'ready',        label:'Ready',       sk:'ready_for_auto_assign',  r: d => d.ready_for_auto_assign ? `<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;"></i>` : `<i class="bi bi-x-circle-fill text-danger" style="font-size:1.1rem;"></i>` },
+    { id:'flags',        label:'Flags',       sk:null,                     r: d => flagsHtml(d) },
+    { id:'job_on_hand',  label:'Job on hand', sk:'job_on_hand_id',         r: d => d.job_on_hand_id ? `<small class="font-monospace d-block">${d.job_on_hand_id}</small>${jobBadge(d.job_on_hand_status)}` : `<span class="text-muted">–</span>` },
+    { id:'map',          label:'Map',         sk:null,                     r: d => d.mapUrl ? `<a href="${d.mapUrl}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1"><i class="bi bi-geo-alt-fill"></i></a>` : '–' }
+  ],
+  jobs: [
+    { id:'jobId',      label:'Job ID',     sk:'jobId',      r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
+    { id:'storeCode',  label:'Store',      sk:'storeCode',  r: d => d.storeCode||'–' },
+    { id:'rider',      label:'Rider',      sk:'riderName',  r: d => d.riderName ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>` : '–' },
+    { id:'orderCount', label:'#',          sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
+    { id:'orderIds',   label:'Order IDs',  sk:null,         r: d => (d.orderIds||[]).map(o=>`<span class="font-monospace d-block" style="font-size:.73rem;">${o}</span>`).join('')||'–' },
+    { id:'pickUpSLA',  label:'PickUp SLA', sk:'pickUpSLA',  r: d => `<small>${fmtDt(d.pickUpSLA)}</small>` },
+    { id:'status',     label:'Status',     sk:'status',     r: d => jobBadge(d.status) },
+    { id:'createdAt',  label:'Created',    sk:'createdAt',  r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+  ],
+  stuck: [
+    { id:'orderId',       label:'Order ID',      sk:'orderId',              r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
+    { id:'currentStatus', label:'Current Status', sk:'currentOrderStatus',  r: d => `<span class="badge bg-danger status-badge">${d.currentOrderStatus||'–'}</span>` },
+    { id:'createdAt',     label:'Created',       sk:'createdAt',            r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+  ],
+  orders: [
+    { id:'consignment',      label:'Consignment',   sk:'consignment',      r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
+    { id:'internalOrderId',  label:'Order ID',      sk:'internalOrderId',  r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
+    { id:'storeCode',        label:'Store',         sk:'storeCode',        r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
+    { id:'jobId',            label:'Job ID',        sk:'jobId',            r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
+    { id:'fleetDispatchType',label:'Dispatch',      sk:'fleetDispatchType',r: d => d.fleetDispatchType ? `<span class="badge bg-info text-dark status-badge">${d.fleetDispatchType}</span>` : '–' },
+    { id:'currentOrderStatus',label:'Status',       sk:'currentOrderStatus',r:d=> orderStatusBadge(d.currentOrderStatus) },
+    { id:'riderName',        label:'Rider',         sk:'riderName',        r: d => d.riderName ? `<div>${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>` : '–' },
+    { id:'riderPhone',       label:'Phone',         sk:'riderPhone',       r: d => d.riderPhone||'–' },
+    { id:'createdAt',        label:'Created',       sk:'createdAt',        r: d => `<small>${fmtDt(d.createdAt)}</small>` },
+    { id:'updatedAt',        label:'Updated',       sk:'updatedAt',        r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
+  ]
+};
+
+const DEFAULT_COLS = {
+  pending: ['storeCode','orderId','consignment','service','createdAt'],
+  riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
+  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','pickUpSLA','status','createdAt'],
+  stuck:   ['orderId','currentStatus','createdAt'],
+  orders:  ['consignment','internalOrderId','storeCode','jobId','fleetDispatchType','currentOrderStatus','riderName','createdAt','updatedAt']
+};
+
+function getActiveCols(tbl) {
+  try {
+    const s = localStorage.getItem(`cols_${tbl}`);
+    return s ? JSON.parse(s) : DEFAULT_COLS[tbl];
+  } catch { return DEFAULT_COLS[tbl]; }
+}
+function saveActiveCols(tbl, cols) {
+  localStorage.setItem(`cols_${tbl}`, JSON.stringify(cols));
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function fmtDt(d) {
+  if (!d) return '–';
+  const dt = new Date(d);
+  if (isNaN(dt)) return '–';
+  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+}
+
+function idleHtml(d) {
+  // Only show for riders in pool with no active job
+  if (!d.join_pool_at || !d.no_active_job || d.queue === 'not_in_pool') return '–';
+  const mins = (Date.now() - new Date(d.join_pool_at).getTime()) / 60000;
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  const text = h > 0 ? `${h}h ${m}m` : `${Math.round(mins)}m`;
+  let cls = '';
+  if (mins >= 180) cls = 'idle-danger';
+  else if (mins >= 60) cls = 'idle-warn';
+  return `<span class="${cls}">${text}</span>`;
+}
+
+function queueBadge(d) {
+  if (d.queue === 'not_in_pool') return `<span class="badge bg-secondary">–</span>`;
+  if (d.ready_for_auto_assign)   return `<span class="badge bg-success" style="min-width:2rem;">${d.queue}</span>`;
+  return `<span class="badge bg-primary">${d.queue}</span>`;
+}
+
+function flagsHtml(d) {
+  const defs = [
+    { k:'staff_online',  icon:'wifi',        label:'Online' },
+    { k:'not_banned',    icon:'shield-check', label:'Not Banned' },
+    { k:'no_active_job', icon:'briefcase',    label:'No Active Job' },
+    { k:'not_on_break',  icon:'cup-hot',      label:'Not On Break' }
+  ];
+  return defs.map(f => {
+    const ok = d[f.k];
+    return `<i class="bi bi-${f.icon}${ok?'-fill':''} ${ok?'text-success':'text-danger'} me-1" title="${f.label}"></i>`;
+  }).join('');
+}
+
+function jobBadge(s) {
+  const map = {
+    job_accepted:'primary', job_assigned:'info text-dark',
+    job_picking_up:'warning text-dark', job_picked_up:'success',
+    job_delivering:'success', job_delivered:'secondary',
+    job_cancelled:'danger', completed:'secondary'
+  };
+  return s ? `<span class="badge bg-${map[s]||'secondary'} status-badge">${s}</span>` : '–';
+}
+
+function orderStatusBadge(s) {
+  if (!s) return '–';
+  const map = {
+    DELIVERED:'success', ORDER_CANCELLED:'danger',
+    ACCEPT_TRIP:'primary', DISPATCHING:'warning text-dark',
+    ORDER_CREATED:'secondary'
+  };
+  const cls = map[s] || 'secondary';
+  return `<span class="badge bg-${cls} status-badge">${s}</span>`;
+}
+
+function markUpdated() {
+  document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString('th-TH')}`;
+}
+
+function setLoading(sec, on) {
+  document.getElementById(`loading-${sec}`).classList.toggle('d-none', !on);
+  if (on) document.getElementById(`error-${sec}`).classList.add('d-none');
+}
+function setError(sec, msg) {
+  const el = document.getElementById(`error-${sec}`);
+  el.textContent = `⚠ ${msg}`;
+  el.classList.remove('d-none');
+}
 
 function toInputLocal(d) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-
 function resetDates() {
   const now = new Date();
   const start = new Date(now); start.setHours(0,0,0,0);
@@ -258,48 +495,143 @@ function resetDates() {
 }
 resetDates();
 
-// ─── SHARED HELPERS ───────────────────────────────────────────────────────────
 function getInputs() {
   const sc   = document.getElementById('storeCode').value.trim();
   const from = new Date(document.getElementById('fromDate').value).toISOString();
   const to   = new Date(document.getElementById('toDate').value).toISOString();
-  return { storeCode: sc, from, to };
+  return { storeCode:sc, from, to };
 }
 
-function setLoading(sec, on) {
-  document.getElementById(`loading-${sec}`).classList.toggle('d-none', !on);
-  if (on) document.getElementById(`error-${sec}`).classList.add('d-none');
+// ─── SORT & FILTER ────────────────────────────────────────────────────────────
+function sortBy(tbl, sk) {
+  const s = state[tbl];
+  if (s.sortCol === sk) s.sortDir = s.sortDir === 'asc' ? 'desc' : 'asc';
+  else { s.sortCol = sk; s.sortDir = 'asc'; }
+  renderSection(tbl);
 }
 
-function setError(sec, msg) {
-  const el = document.getElementById(`error-${sec}`);
-  el.textContent = `⚠ ${msg}`;
-  el.classList.remove('d-none');
+function applyFilters(tbl) {
+  let data = [...state[tbl].data];
+  const q = state[tbl].search?.trim().toLowerCase();
+  if (q) data = data.filter(row => JSON.stringify(row).toLowerCase().includes(q));
+  if (tbl === 'jobs' && state.jobs.statusFilter)
+    data = data.filter(d => d.status === state.jobs.statusFilter);
+  const { sortCol, sortDir } = state[tbl];
+  if (sortCol) {
+    data.sort((a,b) => {
+      const av = a[sortCol] ?? '';
+      const bv = b[sortCol] ?? '';
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv), 'th');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }
+  return data;
 }
 
-function fmtDt(d) {
-  if (!d) return '–';
-  const dt = new Date(d);
-  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+// ─── RENDER ENGINE ────────────────────────────────────────────────────────────
+function renderSection(tbl) {
+  const active = getActiveCols(tbl);
+  const colDefs = COLS[tbl].filter(c => active.includes(c.id));
+  const data = applyFilters(tbl);
+  const { sortCol, sortDir } = state[tbl];
+
+  // render thead
+  const thead = document.getElementById(`thead-${tbl}`);
+  if (thead) {
+    thead.innerHTML = '<tr>' + colDefs.map(c => {
+      const sortable = c.sk != null;
+      const arrow = !sortable ? '' : sortCol === c.sk ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' <span style="opacity:.4">⇅</span>';
+      const cls = sortable ? 'sort-th' : '';
+      const click = sortable ? `onclick="sortBy('${tbl}','${c.sk}')"` : '';
+      return `<th class="${cls}" ${click}>${c.label}${arrow}</th>`;
+    }).join('') + '</tr>';
+  }
+
+  // render tbody
+  const tbody = document.getElementById(`tbody-${tbl}`);
+  if (!data.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="${colDefs.length}" class="text-center py-3">ไม่พบข้อมูล</td></tr>`;
+    return;
+  }
+
+  // special row classes
+  tbody.innerHTML = data.map(row => {
+    let rowCls = '';
+    if (tbl === 'riders') {
+      rowCls = row.queue === 'not_in_pool' ? 'not-in-pool-row'
+             : row.ready_for_auto_assign   ? 'table-success'
+             : '';
+    } else if (tbl === 'stuck') rowCls = 'table-danger';
+
+    const cells = colDefs.map(c => `<td>${c.r(row)}</td>`).join('');
+    return `<tr class="${rowCls}">${cells}</tr>`;
+  }).join('');
 }
 
-function jobBadge(s) {
-  const map = {
-    job_accepted: 'primary', job_assigned: 'info',
-    job_picking_up: 'warning text-dark', job_picked_up: 'success',
-    job_delivering: 'success', job_delivered: 'secondary',
-    job_cancelled: 'danger', completed: 'secondary'
-  };
-  const cls = map[s] || 'secondary';
-  return s ? `<span class="badge bg-${cls} status-badge">${s}</span>` : '–';
+// ─── JOBS STATUS DASHBOARD ────────────────────────────────────────────────────
+function renderJobsDash() {
+  const counts = {};
+  state.jobs.data.forEach(d => { counts[d.status||'unknown'] = (counts[d.status||'unknown']||0)+1; });
+  const dash = document.getElementById('jobs-dash');
+  if (!Object.keys(counts).length) { dash.innerHTML = ''; return; }
+  dash.innerHTML = Object.entries(counts)
+    .sort((a,b) => b[1]-a[1])
+    .map(([s,n]) => `${jobBadge(s)} <span class="badge bg-dark me-2">${n}</span>`)
+    .join('');
 }
 
-function markUpdated() {
-  document.getElementById('last-updated').textContent =
-    `Last updated: ${new Date().toLocaleTimeString('th-TH')}`;
+// ─── RIDER PERFORMANCE ────────────────────────────────────────────────────────
+function renderRiderPerf() {
+  const data = state.orders.data;
+  if (!data.length) { document.getElementById('rider-perf-panel').classList.add('d-none'); return; }
+  const riderMap = {};
+  data.forEach(d => {
+    const key = d.riderId || d.riderName || '__unknown__';
+    const name = d.riderName || d.riderId || 'Unknown';
+    if (!riderMap[key]) riderMap[key] = { name, riderId: d.riderId, count: 0 };
+    riderMap[key].count++;
+  });
+  const sorted = Object.values(riderMap).sort((a,b) => b.count - a.count);
+  const html = sorted.map(r => `
+    <div class="perf-card d-flex align-items-center gap-2">
+      <i class="bi bi-person-circle text-secondary"></i>
+      <div>
+        <div class="fw-semibold lh-sm">${r.name}</div>
+        <small class="text-muted font-monospace">${r.riderId||'–'}</small>
+      </div>
+      <span class="badge rounded-pill ms-2" style="background:#5c4a8a;font-size:.9rem;">${r.count} orders</span>
+    </div>`).join('');
+  document.getElementById('rider-perf-body').innerHTML = html;
+  document.getElementById('rider-perf-panel').classList.remove('d-none');
 }
 
-// ─── PENDING ─────────────────────────────────────────────────────────────────
+// ─── COLUMN SELECTOR MODAL ────────────────────────────────────────────────────
+let _activeColTbl = null;
+
+function openColModal(tbl) {
+  _activeColTbl = tbl;
+  const active = getActiveCols(tbl);
+  document.getElementById('colModalTitle').textContent = `Columns – ${tbl}`;
+  document.getElementById('colModalBody').innerHTML = COLS[tbl].map(c => `
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="col_${c.id}" ${active.includes(c.id)?'checked':''}>
+      <label class="form-check-label" for="col_${c.id}">${c.label}</label>
+    </div>`).join('');
+  new bootstrap.Modal(document.getElementById('colModal')).show();
+}
+
+function saveColModal() {
+  const chosen = COLS[_activeColTbl]
+    .filter(c => document.getElementById(`col_${c.id}`)?.checked)
+    .map(c => c.id);
+  if (chosen.length) saveActiveCols(_activeColTbl, chosen);
+  bootstrap.Modal.getInstance(document.getElementById('colModal')).hide();
+  renderSection(_activeColTbl);
+}
+
+// ─── FETCH: PENDING ───────────────────────────────────────────────────────────
 async function fetchPending() {
   const { storeCode } = getInputs();
   setLoading('pending', true);
@@ -307,27 +639,15 @@ async function fetchPending() {
     const r = await fetch(`${API_BASE}/api/pending?storeCode=${encodeURIComponent(storeCode)}`);
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
-
     document.getElementById('count-pending').textContent = j.count;
-    const tb = document.getElementById('tbody-pending');
-
-    if (!j.data.length) {
-      tb.innerHTML = `<tr class="empty-row"><td colspan="4" class="text-center py-3">ไม่มี Pending Orders</td></tr>`;
-    } else {
-      tb.innerHTML = j.data.map(d => `
-        <tr>
-          <td><small class="font-monospace">${d.orderId || '–'}</small></td>
-          <td><small class="font-monospace">${d.consignment || '–'}</small></td>
-          <td><span class="badge bg-secondary status-badge">${d.serviceType || '–'}</span></td>
-          <td><small>${fmtDt(d.createdAt)}</small></td>
-        </tr>`).join('');
-    }
+    state.pending.data = j.data;
+    renderSection('pending');
     markUpdated();
   } catch(e) { setError('pending', e.message); }
   finally { setLoading('pending', false); }
 }
 
-// ─── RIDERS ──────────────────────────────────────────────────────────────────
+// ─── FETCH: RIDERS ────────────────────────────────────────────────────────────
 async function fetchRiders() {
   const { storeCode } = getInputs();
   setLoading('riders', true);
@@ -335,79 +655,16 @@ async function fetchRiders() {
     const r = await fetch(`${API_BASE}/api/riders?storeCode=${encodeURIComponent(storeCode)}`);
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
-
-    document.getElementById('count-riders').textContent = j.count;
-    document.getElementById('ready-count').textContent  = j.readyCount;
-    const tb = document.getElementById('tbody-riders');
-
-    if (!j.data.length) {
-      tb.innerHTML = `<tr class="empty-row"><td colspan="8" class="text-center py-3">ไม่พบ Rider</td></tr>`;
-    } else {
-      const sorted = [...j.data].sort((a, b) => {
-        if (a.queue === 'not_in_pool' && b.queue === 'not_in_pool') return 0;
-        if (a.queue === 'not_in_pool') return 1;
-        if (b.queue === 'not_in_pool') return -1;
-        return a.queue - b.queue;
-      });
-      tb.innerHTML = sorted.map(d => {
-        const qBadge = d.queue === 'not_in_pool'
-          ? `<span class="badge bg-secondary">–</span>`
-          : d.ready_for_auto_assign
-            ? `<span class="badge bg-success" style="font-size:1rem;min-width:2rem;padding:.3rem .5rem;">${d.queue}</span>`
-            : `<span class="badge bg-primary">${d.queue}</span>`;
-
-        const readyIcon = d.ready_for_auto_assign
-          ? `<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;" title="พร้อม"></i>`
-          : `<i class="bi bi-x-circle-fill text-danger"  style="font-size:1.1rem;" title="ไม่พร้อม"></i>`;
-
-        const flagDefs = [
-          { k: 'staff_online',  icon: 'wifi',         label: 'Online' },
-          { k: 'not_banned',    icon: 'shield-check',  label: 'Not Banned' },
-          { k: 'no_active_job', icon: 'briefcase',     label: 'No Active Job' },
-          { k: 'not_on_break',  icon: 'cup-hot',       label: 'Not On Break' }
-        ];
-        const flags = flagDefs.map(f => {
-          const ok = d[f.k];
-          return `<i class="bi bi-${f.icon}${ok ? '-fill' : ''} ${ok ? 'text-success' : 'text-danger'} flag-icon me-1" title="${f.label}: ${ok}"></i>`;
-        }).join('');
-
-        const jobCell = d.job_on_hand_id
-          ? `<small class="font-monospace d-block">${d.job_on_hand_id}</small>${jobBadge(d.job_on_hand_status)}`
-          : `<span class="text-muted">–</span>`;
-
-        const mapBtn = d.mapUrl
-          ? `<a href="${d.mapUrl}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1" title="แผนที่">
-               <i class="bi bi-geo-alt-fill"></i>
-             </a>`
-          : '–';
-
-        const rowCls = d.queue === 'not_in_pool'
-          ? 'not-in-pool-row'
-          : d.ready_for_auto_assign
-            ? 'table-success'
-            : '';
-        return `
-          <tr class="${rowCls}">
-            <td class="queue-cell">${qBadge}</td>
-            <td>
-              <div class="fw-semibold lh-sm">${d.name || d.username}</div>
-              <small class="text-muted">${d.phone}</small>
-            </td>
-            <td><small class="font-monospace text-muted">${d.userId || '–'}</small></td>
-            <td><small>${d.join_pool_at ? fmtDt(d.join_pool_at) : '–'}</small></td>
-            <td class="text-center">${readyIcon}</td>
-            <td style="white-space:nowrap">${flags}</td>
-            <td>${jobCell}</td>
-            <td>${mapBtn}</td>
-          </tr>`;
-      }).join('');
-    }
+    document.getElementById('count-riders').textContent  = j.count;
+    document.getElementById('ready-count').textContent   = j.readyCount;
+    state.riders.data = j.data;
+    renderSection('riders');
     markUpdated();
   } catch(e) { setError('riders', e.message); }
   finally { setLoading('riders', false); }
 }
 
-// ─── JOBS ─────────────────────────────────────────────────────────────────────
+// ─── FETCH: JOBS ──────────────────────────────────────────────────────────────
 async function fetchJobs() {
   const { storeCode, from, to } = getInputs();
   setLoading('jobs', true);
@@ -415,38 +672,16 @@ async function fetchJobs() {
     const r = await fetch(`${API_BASE}/api/jobs?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
-
     document.getElementById('count-jobs').textContent = j.count;
-    const tb = document.getElementById('tbody-jobs');
-
-    if (!j.data.length) {
-      tb.innerHTML = `<tr class="empty-row"><td colspan="7" class="text-center py-3">ไม่พบ Jobs ในช่วงเวลานี้</td></tr>`;
-    } else {
-      tb.innerHTML = j.data.map(d => {
-        const orderIdsHtml = d.orderIds && d.orderIds.length
-          ? d.orderIds.map(o => `<span class="font-monospace d-block" style="font-size:0.75rem;">${o}</span>`).join('')
-          : '–';
-        const riderHtml = d.riderName
-          ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId || ''}</small>`
-          : '–';
-        return `
-        <tr>
-          <td><small class="font-monospace">${d.jobId || '–'}</small></td>
-          <td><small>${riderHtml}</small></td>
-          <td class="text-center"><span class="badge bg-secondary">${d.orderCount}</span></td>
-          <td>${orderIdsHtml}</td>
-          <td><small>${d.pickUpSLA ? fmtDt(d.pickUpSLA) : '–'}</small></td>
-          <td>${jobBadge(d.status)}</td>
-          <td><small>${fmtDt(d.createdAt)}</small></td>
-        </tr>`;
-      }).join('');
-    }
+    state.jobs.data = j.data;
+    renderJobsDash();
+    renderSection('jobs');
     markUpdated();
   } catch(e) { setError('jobs', e.message); }
   finally { setLoading('jobs', false); }
 }
 
-// ─── STUCK ────────────────────────────────────────────────────────────────────
+// ─── FETCH: STUCK ─────────────────────────────────────────────────────────────
 async function fetchStuck() {
   const { storeCode, from, to } = getInputs();
   setLoading('stuck', true);
@@ -454,26 +689,35 @@ async function fetchStuck() {
     const r = await fetch(`${API_BASE}/api/stuck?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
-
     document.getElementById('count-stuck').textContent = j.count;
-    const tb = document.getElementById('tbody-stuck');
-
-    if (!j.data.length) {
-      tb.innerHTML = `<tr><td colspan="3" class="text-center py-3 text-success">
-        <i class="bi bi-check-circle-fill me-1"></i>ไม่พบ Stuck Jobs 🎉
-      </td></tr>`;
-    } else {
-      tb.innerHTML = j.data.map(d => `
-        <tr class="table-danger">
-          <td><small class="font-monospace">${d.orderId || '–'}</small></td>
-          <td><span class="badge bg-danger status-badge">${d.currentOrderStatus || '–'}</span></td>
-          <td><small>${fmtDt(d.createdAt)}</small></td>
-        </tr>`).join('');
-    }
+    state.stuck.data = j.data;
+    renderSection('stuck');
     markUpdated();
   } catch(e) { setError('stuck', e.message); }
   finally { setLoading('stuck', false); }
 }
+
+// ─── FETCH: ORDERS ────────────────────────────────────────────────────────────
+async function fetchOrders() {
+  const type   = document.querySelector('input[name="orderType"]:checked').value;
+  const values = document.getElementById('orderValues').value.trim();
+  if (!values) { setError('orders', 'กรุณากรอก values'); return; }
+  setLoading('orders', true);
+  try {
+    const r = await fetch(`${API_BASE}/api/orders?type=${encodeURIComponent(type)}&values=${encodeURIComponent(values)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    document.getElementById('count-orders').textContent = j.count;
+    state.orders.data = j.data;
+    renderSection('orders');
+    renderRiderPerf();
+    markUpdated();
+  } catch(e) { setError('orders', e.message); }
+  finally { setLoading('orders', false); }
+}
+
+// ─── INIT EMPTY HEADERS ──────────────────────────────────────────────────────
+['pending','riders','jobs','stuck','orders'].forEach(tbl => renderSection(tbl));
 </script>
 </body>
 </html>

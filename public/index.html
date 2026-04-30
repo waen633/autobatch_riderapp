@@ -6,43 +6,83 @@
   <title>Lotus Auto-Batching Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/material_green.css">
   <style>
-    body { background: #f0f2f5; font-size: 13px; }
-    .card { box-shadow: 0 2px 8px rgba(0,0,0,.09); border: none; border-radius: 10px; }
-    .card-header { border-radius: 10px 10px 0 0 !important; font-size: .9rem; }
-    .table-sm td, .table-sm th { padding: .28rem .45rem; vertical-align: middle; }
-    .scroll-table { max-height: 340px; overflow-y: auto; }
+    body { background: #f8fafc; font-family: 'Inter', 'Prompt', sans-serif; font-size: 13.5px; color: #1e293b; }
+    .card { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; }
+    .card-header { background: #ffffff !important; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0 !important; font-size: 1rem; font-weight: 600; padding: 0.8rem 1.25rem !important; color: #0f172a; }
+    .card-pending { border-top: 3px solid #f59e0b; }
+    .card-riders { border-top: 3px solid #0284c7; }
+    .card-jobs { border-top: 3px solid #4f46e5; }
+    .card-stuck { border-top: 3px solid #ef4444; }
+    .card-orders { border-top: 3px solid #8b5cf6; }
+    .card-batches { border-top: 3px solid #f97316; }
+    .table { color: #334155; margin-bottom: 0; }
+    .table-sm td, .table-sm th { padding: 0.5rem 0.75rem; vertical-align: middle; border-bottom: 1px solid #e2e8f0; }
+    .table-dark { background-color: #f1f5f9; color: #475569; font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .table-dark th { background-color: #f1f5f9 !important; color: #475569 !important; border-bottom: 1px solid #cbd5e1; }
+    .table-hover tbody tr:hover { background-color: #f8fafc; }
+    .table-striped>tbody>tr:nth-of-type(odd)>* { background-color: #fcfcfd; }
+    .scroll-table { max-height: 360px; overflow-y: auto; scrollbar-width: thin; }
     .sticky-header th { position: sticky; top: 0; z-index: 1; }
-    .not-in-pool-row td { opacity: .55; }
-    #last-updated { font-size: .75rem; }
-    .empty-row td { color: #888; font-style: italic; }
+    .btn { border-radius: 6px; font-weight: 500; transition: all 0.2s; }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+    .form-control, .form-select { border-radius: 6px; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; font-size: 0.85rem; box-shadow: none; background-color: #ffffff; color: #1e293b; }
+    .form-control:focus, .form-select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+    .badge { padding: 0.4em 0.6em; border-radius: 6px; font-weight: 600; }
+    .navbar-custom { background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-bottom: 1px solid #e2e8f0; }
+    .navbar-brand-text { color: #16a34a; font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px; }
+    .text-muted { color: #64748b !important; }
+    .not-in-pool-row td { color: #94a3b8; background-color: #f8fafc; }
+    .not-in-pool-row .badge, .not-in-pool-row .btn { opacity: 0.85; pointer-events: auto !important; }
+    .not-in-pool-row .badge:hover, .not-in-pool-row .btn:hover { opacity: 1; }
+    .empty-row td { color: #94a3b8; font-style: italic; }
     .sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
-    .sort-th:hover { background: rgba(255,255,255,.15) !important; }
-    .idle-warn { color: #fd7e14; font-weight: 600; }
-    .idle-danger { color: #dc3545; font-weight: 700; }
-    .status-badge { font-size: .68rem; white-space: nowrap; }
+    .sort-th:hover { background: #e2e8f0 !important; }
+    .idle-warn { color: #ea580c; font-weight: 600; }
+    .idle-danger { color: #dc2626; font-weight: 700; }
+    .status-badge { font-size: 0.7rem; white-space: nowrap; }
     .search-box { max-width: 220px; }
-    .col-btn { font-size: .72rem; padding: .15rem .4rem; }
-    .perf-card { background: #fff; border-radius: 8px; padding: .5rem .8rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-    .dash-badge { cursor: pointer; }
-    .dash-badge:hover { opacity: .8; }
-    .pagination-bar { font-size: .78rem; }
-    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #6c757d; flex-shrink: 0; margin-top: 4px; }
-    .timeline-dot.done { background: #198754; }
-    .timeline-line { width: 2px; background: #dee2e6; flex-shrink: 0; margin: 2px auto; }
+    .col-btn { font-size: 0.8rem; padding: 0.2rem 0.5rem; color: #64748b; border-color: #e2e8f0; background: #fff; }
+    .col-btn:hover { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
+    .perf-card { background: #fff; border-radius: 8px; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; color: #1e293b; }
+    .dash-badge { border-radius: 12px; cursor: pointer; }
+    .dash-badge:hover { opacity: 0.8; transform: translateY(-1px); }
+    .pagination-bar { font-size: 0.8rem; color: #64748b; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; flex-shrink: 0; margin-top: 4px; }
+    .timeline-dot.done { background: #22c55e; }
+    .timeline-line { width: 2px; background: #e2e8f0; flex-shrink: 0; margin: 2px auto; }
     .tl-row { display: flex; gap: 10px; }
     .tl-content { flex: 1; }
+    
+    .table-success { background-color: #dcfce7 !important; color: #166534 !important; }
+    .table-success td { background-color: transparent !important; color: inherit; }
+    .table-danger { background-color: #fee2e2 !important; color: #991b1b !important; }
+    .table-danger td { background-color: transparent !important; color: inherit; }
+    
+    @keyframes flash-data {
+      0% { background-color: rgba(34, 197, 94, 0.2); }
+      100% { background-color: transparent; }
+    }
+    .flash-animate tr td { animation: flash-data 0.8s ease-out; }
   </style>
 </head>
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-dark py-2" style="background:#1a6b3c;">
+<nav class="navbar navbar-custom py-2">
   <div class="container-fluid">
-    <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2 me-2"></i><span data-i18n="navTitle">Lotus Auto-Batching Dashboard</span></span>
-    <div class="d-flex align-items-center gap-2">
-      <span class="text-white-50" id="last-updated"></span>
-      <button class="btn btn-outline-light btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
+    <span class="navbar-brand navbar-brand-text"><i class="bi bi-speedometer2 me-2 text-success"></i><span data-i18n="navTitle">Lotus Auto-Batching Dashboard</span></span>
+    <div class="d-flex align-items-center gap-3">
+      <span class="text-muted fw-medium" id="last-updated" style="font-size: 0.8rem;"></span>
+      <button class="btn btn-outline-secondary btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
     </div>
   </div>
 </nav>
@@ -60,11 +100,11 @@
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="fromLabel">From</label>
-          <input type="datetime-local" class="form-control form-control-sm" id="fromDate">
+          <input type="text" class="form-control form-control-sm" id="fromDate" placeholder="Select Date...">
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="toLabel">To</label>
-          <input type="datetime-local" class="form-control form-control-sm" id="toDate">
+          <input type="text" class="form-control form-control-sm" id="toDate" placeholder="Select Date...">
         </div>
         <div class="col-auto">
           <button class="btn btn-outline-secondary btn-sm" onclick="resetDates()">
@@ -84,11 +124,11 @@
     <!-- SECTION 1: PENDING ORDERS -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
-        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center py-2">
-          <span><i class="bi bi-box-seam me-1"></i><span data-i18n="sectionPending">Pending Orders</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionPendingDesc">รอสร้าง Job</span>)</small></span>
+        <div class="card-header card-pending d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-box-seam me-2 text-warning"></i><span data-i18n="sectionPending">Pending Orders</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionPendingDesc">รอสร้าง Job</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-dark col-btn" onclick="openColModal('pending')"><i class="bi bi-layout-three-columns"></i></button>
-            <span class="badge bg-dark" id="count-pending">–</span>
+            <button class="btn col-btn" onclick="openColModal('pending')"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="badge bg-warning text-dark" id="count-pending">–</span>
           </div>
         </div>
         <div class="card-body p-2">
@@ -112,11 +152,11 @@
     <!-- SECTION 2: RIDER POOL -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
-        <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#0077b6;">
-          <span><i class="bi bi-person-badge me-1"></i><span data-i18n="sectionRiders">Rider Pool</span> <small class="fw-normal opacity-75">Ready: <span id="ready-count" class="fw-bold text-warning">–</span></small></span>
+        <div class="card-header card-riders d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-person-badge me-2 text-info"></i><span data-i18n="sectionRiders">Rider Pool</span> <small class="text-muted fw-normal ms-1">Ready: <span id="ready-count" class="fw-bold text-success">–</span></small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('riders')"><i class="bi bi-layout-three-columns"></i></button>
-            <span class="badge bg-dark" id="count-riders">–</span>
+            <button class="btn col-btn" onclick="openColModal('riders')"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="badge bg-info text-dark" id="count-riders">–</span>
           </div>
         </div>
         <div class="card-body p-2">
@@ -140,11 +180,11 @@
     <!-- SECTION 3: JOBS -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
-          <span><i class="bi bi-clipboard-data me-1"></i><span data-i18n="sectionJobs">Jobs</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionJobsDesc">ตามช่วงเวลา</span>)</small></span>
+        <div class="card-header card-jobs d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-clipboard-data me-2 text-primary"></i><span data-i18n="sectionJobs">Jobs</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionJobsDesc">ตามช่วงเวลา</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('jobs')"><i class="bi bi-layout-three-columns"></i></button>
-            <span class="badge bg-dark" id="count-jobs">–</span>
+            <button class="btn col-btn" onclick="openColModal('jobs')"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="badge bg-primary" id="count-jobs">–</span>
           </div>
         </div>
         <div class="card-body p-2">
@@ -182,11 +222,11 @@
     <!-- SECTION 4: STUCK JOBS -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
-        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
-          <span><i class="bi bi-exclamation-triangle me-1"></i><span data-i18n="sectionStuck">Stuck Jobs</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionStuckDesc">Job ค้าง</span>)</small></span>
+        <div class="card-header card-stuck d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-exclamation-triangle me-2 text-danger"></i><span data-i18n="sectionStuck">Stuck Jobs</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionStuckDesc">Job ค้าง</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('stuck')"><i class="bi bi-layout-three-columns"></i></button>
-            <span class="badge bg-dark" id="count-stuck">–</span>
+            <button class="btn col-btn" onclick="openColModal('stuck')"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="badge bg-danger" id="count-stuck">–</span>
           </div>
         </div>
         <div class="card-body p-2">
@@ -210,11 +250,11 @@
     <!-- SECTION 5: ORDER QUERY -->
     <div class="col-12">
       <div class="card">
-        <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#5c4a8a;">
-          <span><i class="bi bi-search me-1"></i><span data-i18n="sectionOrders">Order Query</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionOrdersDesc">ค้นหา Order ด้วย Consignment / Order ID</span>)</small></span>
+        <div class="card-header card-orders d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-search me-2" style="color:var(--accent-orders);"></i><span data-i18n="sectionOrders">Order Query</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionOrdersDesc">ค้นหา Order ด้วย Consignment / Order ID</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('orders')"><i class="bi bi-layout-three-columns"></i></button>
-            <span class="badge bg-dark" id="count-orders">–</span>
+            <button class="btn col-btn" onclick="openColModal('orders')"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="badge" style="background:var(--accent-orders); color:#000;" id="count-orders">–</span>
           </div>
         </div>
         <div class="card-body p-2">
@@ -253,7 +293,7 @@
           </div>
           <div id="pagination-orders" class="pagination-bar"></div>
           <div id="rider-perf-panel" class="d-none mt-3">
-            <div class="fw-semibold mb-2" style="color:#5c4a8a;"><i class="bi bi-bar-chart-fill me-1"></i><span data-i18n="riderPerf">Rider Performance</span></div>
+            <div class="fw-semibold mb-2" style="color:var(--accent-orders);"><i class="bi bi-bar-chart-fill me-1"></i><span data-i18n="riderPerf">Rider Performance</span></div>
             <div id="rider-perf-body" class="d-flex flex-wrap gap-2"></div>
           </div>
         </div>
@@ -263,11 +303,11 @@
     <!-- SECTION 6: BATCH QUERY -->
     <div class="col-12">
       <div class="card">
-        <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#6d4c41;">
-          <span><i class="bi bi-collection me-1"></i><span data-i18n="sectionBatches">Batch Query</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionBatchesDesc">ค้นหา Batch ที่มี Order ID นี้</span>)</small></span>
+        <div class="card-header card-batches d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-collection me-2 text-warning"></i><span data-i18n="sectionBatches">Batch Query</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionBatchesDesc">ค้นหา Batch ที่มี Order ID นี้</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('batches')"><i class="bi bi-layout-three-columns"></i></button>
-            <span class="badge bg-dark" id="count-batches">–</span>
+            <button class="btn col-btn" onclick="openColModal('batches')"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="badge bg-warning text-dark" id="count-batches">–</span>
           </div>
         </div>
         <div class="card-body p-2">
@@ -320,16 +360,17 @@
 <div class="modal fade" id="timelineModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header py-2" style="background:#5c4a8a;color:#fff;">
-        <h6 class="modal-title" id="timelineTitle"><i class="bi bi-clock-history me-2"></i>Status Timeline</h6>
+      <div class="modal-header py-2" style="border-bottom: 1px solid var(--border-color);">
+        <h6 class="modal-title" id="timelineTitle"><i class="bi bi-clock-history me-2 text-info"></i>Status Timeline</h6>
         <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body py-2" id="timelineBody" style="max-height:60vh;overflow-y:auto;"></div>
+      <div class="modal-body py-2" id="timelineBody" style="max-height:60vh;overflow-y:auto; background:#ffffff;"></div>
     </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 const API_BASE = (() => {
   const l = window.location;
@@ -491,7 +532,7 @@ const COLS = {
     { id:'storeCode', label:'Store', sk:'storeCode', r: d => d.storeCode||'–' },
     { id:'name', label:'Name / Phone', sk:'name', r: d => {
       const js = getRiderJobSummary(d.userId);
-      const jb = js ? `<span class="badge bg-primary ms-1" title="${js.orderIds.join('\n')}" style="cursor:help;">${js.count} jobs</span>` : '';
+      const jb = js ? `<span class="badge bg-primary ms-1" title="${js.orderIds.join('\n')}" style="cursor:pointer;" onclick="filterJobsByRider('${d.userId}')">${js.count} jobs</span>` : '';
       return `<div class="fw-semibold lh-sm">${d.name||d.username}${jb}</div><small class="text-muted">${d.phone}</small>`;
     }},
     { id:'userId', label:'User ID', sk:'userId', r: d => `<small class="font-monospace text-muted">${d.userId||'–'}</small>` },
@@ -662,8 +703,12 @@ function toInputLocal(d) {
 function resetDates() {
   const now = new Date(), start = new Date(now);
   start.setHours(0,0,0,0);
-  document.getElementById('fromDate').value = toInputLocal(start);
-  document.getElementById('toDate').value = toInputLocal(now);
+  const fromEl = document.getElementById('fromDate');
+  const toEl = document.getElementById('toDate');
+  fromEl.value = toInputLocal(start);
+  toEl.value = toInputLocal(now);
+  if (fromEl._flatpickr) fromEl._flatpickr.setDate(start);
+  if (toEl._flatpickr) toEl._flatpickr.setDate(now);
 }
 resetDates();
 
@@ -768,6 +813,11 @@ function renderSection(tbl) {
     return `<tr class="${cls}">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}</tr>`;
   }).join('');
 
+  // Trigger visual flash to indicate data update
+  tbody.classList.remove('flash-animate');
+  void tbody.offsetWidth; // Force DOM reflow to restart animation
+  tbody.classList.add('flash-animate');
+
   renderPagination(tbl, allData.length);
 }
 
@@ -777,17 +827,49 @@ function renderJobsDash() {
   state.jobs.data.forEach(d => { counts[d.status||'unknown'] = (counts[d.status||'unknown']||0)+1; });
   const dash = document.getElementById('jobs-dash');
   if (!Object.keys(counts).length) { dash.innerHTML=''; return; }
-  dash.innerHTML = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([s,n]) =>
-    `${jobBadge(s)} <span class="badge bg-dark dash-badge me-2" onclick="filterJobsByStatus('${s}')">${n}</span>`
-  ).join('');
+  
+  let html = `<span class="badge bg-light text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2 border" onclick="filterJobsByStatus('')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">All Status <span class="badge bg-secondary rounded-pill">${state.jobs.data.length}</span></span>`;
+  
+  html += Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([s,n]) => {
+    const map = {
+      job_accepted:'primary', job_assigned:'info text-dark',
+      job_picking_up:'warning text-dark', job_picked_up:'success',
+      job_delivering:'success', job_delivered:'secondary',
+      job_completed:'success', completed:'secondary',
+      job_cancelled:'danger', job_failed:'danger'
+    };
+    const cls = map[s]||'secondary';
+    return `<span class="badge bg-${cls} dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" onclick="filterJobsByStatus('${s}')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${s} <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${n}</span></span>`;
+  }).join('');
+  
+  dash.innerHTML = html;
 }
 
 function filterJobsByStatus(s) {
   state.jobs.statusFilter = state.jobs.statusFilter === s ? '' : s;
   state.jobs.page = 1;
+  
+  // Clear the search box (Rider/Text filter) when clicking status
+  state.jobs.search = '';
+  const searchInput = document.querySelector('.card-jobs .search-box');
+  if (searchInput) searchInput.value = '';
+  
   const sel = document.getElementById('jobs-status-filter');
   if (sel) sel.value = state.jobs.statusFilter;
   renderSection('jobs');
+}
+
+function filterJobsByRider(userId) {
+  state.jobs.search = userId;
+  state.jobs.page = 1;
+  
+  const searchInput = document.querySelector('.card-jobs .search-box');
+  if (searchInput) searchInput.value = userId;
+  
+  renderSection('jobs');
+  
+  const el = document.querySelector('.card-jobs');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ─── RIDER PERFORMANCE ────────────────────────────────────────────────────────
@@ -941,6 +1023,8 @@ async function fetchBatches() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+flatpickr("#fromDate", { enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true });
+flatpickr("#toDate", { enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true });
 ALL_TBLS.forEach(tbl => renderSection(tbl));
 applyLang();
 </script>

@@ -7,24 +7,31 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    body { background:#f0f2f5; font-size:13px; }
-    .card { box-shadow:0 2px 8px rgba(0,0,0,.09); border:none; border-radius:10px; }
-    .card-header { border-radius:10px 10px 0 0 !important; font-size:0.9rem; }
-    .table-sm td,.table-sm th { padding:.28rem .45rem; vertical-align:middle; }
-    .scroll-table { max-height:360px; overflow-y:auto; }
-    .sticky-header th { position:sticky; top:0; z-index:1; }
-    .not-in-pool-row td { opacity:.55; }
-    #last-updated { font-size:.75rem; }
-    .empty-row td { color:#888; font-style:italic; }
-    .sort-th { cursor:pointer; user-select:none; white-space:nowrap; }
-    .sort-th:hover { background:rgba(255,255,255,.15)!important; }
-    .idle-warn  { color:#fd7e14; font-weight:600; }
-    .idle-danger{ color:#dc3545; font-weight:700; }
-    .status-badge { font-size:.68rem; white-space:nowrap; }
-    .search-box { max-width:260px; }
-    .col-btn { font-size:.72rem; padding:.15rem .4rem; }
-    #jobs-dash { min-height:26px; }
-    .perf-card { background:#fff; border-radius:8px; padding:.5rem .8rem; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    body { background: #f0f2f5; font-size: 13px; }
+    .card { box-shadow: 0 2px 8px rgba(0,0,0,.09); border: none; border-radius: 10px; }
+    .card-header { border-radius: 10px 10px 0 0 !important; font-size: .9rem; }
+    .table-sm td, .table-sm th { padding: .28rem .45rem; vertical-align: middle; }
+    .scroll-table { max-height: 340px; overflow-y: auto; }
+    .sticky-header th { position: sticky; top: 0; z-index: 1; }
+    .not-in-pool-row td { opacity: .55; }
+    #last-updated { font-size: .75rem; }
+    .empty-row td { color: #888; font-style: italic; }
+    .sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
+    .sort-th:hover { background: rgba(255,255,255,.15) !important; }
+    .idle-warn { color: #fd7e14; font-weight: 600; }
+    .idle-danger { color: #dc3545; font-weight: 700; }
+    .status-badge { font-size: .68rem; white-space: nowrap; }
+    .search-box { max-width: 220px; }
+    .col-btn { font-size: .72rem; padding: .15rem .4rem; }
+    .perf-card { background: #fff; border-radius: 8px; padding: .5rem .8rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .dash-badge { cursor: pointer; }
+    .dash-badge:hover { opacity: .8; }
+    .pagination-bar { font-size: .78rem; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #6c757d; flex-shrink: 0; margin-top: 4px; }
+    .timeline-dot.done { background: #198754; }
+    .timeline-line { width: 2px; background: #dee2e6; flex-shrink: 0; margin: 2px auto; }
+    .tl-row { display: flex; gap: 10px; }
+    .tl-content { flex: 1; }
   </style>
 </head>
 <body>
@@ -32,8 +39,11 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-dark py-2" style="background:#1a6b3c;">
   <div class="container-fluid">
-    <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2 me-2"></i>Lotus Auto-Batching Dashboard</span>
-    <span class="text-white-50" id="last-updated"></span>
+    <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2 me-2"></i><span data-i18n="navTitle">Lotus Auto-Batching Dashboard</span></span>
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-white-50" id="last-updated"></span>
+      <button class="btn btn-outline-light btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
+    </div>
   </div>
 </nav>
 
@@ -44,26 +54,25 @@
     <div class="card-body py-2">
       <div class="row g-2 align-items-end">
         <div class="col-auto">
-          <label class="form-label mb-1 fw-semibold">Store Code</label>
-          <input type="text" class="form-control form-control-sm" id="storeCode" value="1104"
-                 placeholder="1104,6304,5022" style="width:160px">
-          <div class="form-text mt-0" style="font-size:.7rem;">หลายสาขาคั่นด้วย ,</div>
+          <label class="form-label mb-1 fw-semibold" data-i18n="storeCode">Store Code</label>
+          <input type="text" class="form-control form-control-sm" id="storeCode" value="1104" placeholder="1104,6304,5022" style="width:160px">
+          <div class="form-text mt-0" style="font-size:.7rem;" data-i18n="storeCodeHint">หลายสาขาคั่นด้วย ,</div>
         </div>
         <div class="col-auto">
-          <label class="form-label mb-1 fw-semibold">From</label>
+          <label class="form-label mb-1 fw-semibold" data-i18n="fromLabel">From</label>
           <input type="datetime-local" class="form-control form-control-sm" id="fromDate">
         </div>
         <div class="col-auto">
-          <label class="form-label mb-1 fw-semibold">To</label>
+          <label class="form-label mb-1 fw-semibold" data-i18n="toLabel">To</label>
           <input type="datetime-local" class="form-control form-control-sm" id="toDate">
         </div>
         <div class="col-auto">
           <button class="btn btn-outline-secondary btn-sm" onclick="resetDates()">
-            <i class="bi bi-arrow-counterclockwise"></i> Reset
+            <i class="bi bi-arrow-counterclockwise"></i> <span data-i18n="reset">Reset</span>
           </button>
         </div>
         <div class="col-auto ms-auto">
-          <small class="text-muted">* Pending &amp; Riders ไม่ใช้ date range</small>
+          <small class="text-muted" data-i18n="pendingNote">* Pending &amp; Riders ไม่ใช้ date range</small>
         </div>
       </div>
     </div>
@@ -72,232 +81,217 @@
   <!-- 2x2 GRID -->
   <div class="row g-3">
 
-    <!-- ── SECTION 1: PENDING ORDERS ── -->
+    <!-- SECTION 1: PENDING ORDERS -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center py-2">
-          <span><i class="bi bi-box-seam me-1"></i>Pending Orders <small class="fw-normal opacity-75">(รอสร้าง Job)</small></span>
+          <span><i class="bi bi-box-seam me-1"></i><span data-i18n="sectionPending">Pending Orders</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionPendingDesc">รอสร้าง Job</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-dark col-btn" onclick="openColModal('pending')" title="เลือก Column">
-              <i class="bi bi-layout-three-columns"></i>
-            </button>
+            <button class="btn btn-dark col-btn" onclick="openColModal('pending')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-dark" id="count-pending">–</span>
           </div>
         </div>
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
-            <button class="btn btn-warning btn-sm" onclick="fetchPending()">
-              <i class="bi bi-arrow-clockwise me-1"></i>Get Pending
-            </button>
-            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
-                   oninput="state.pending.search=this.value; renderSection('pending')">
+            <button class="btn btn-warning btn-sm" onclick="fetchPending()"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getPending">Get Pending</span></button>
+            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.pending.search=this.value;state.pending.page=1;renderSection('pending')">
           </div>
-          <div id="loading-pending" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm text-warning"></div><span class="ms-2 text-muted">Loading…</span>
-          </div>
+          <div id="loading-pending" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-warning"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-pending" class="alert alert-danger py-1 d-none small mb-2"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover table-striped mb-0">
               <thead class="table-dark sticky-header" id="thead-pending"></thead>
-              <tbody id="tbody-pending">
-                <tr class="empty-row"><td colspan="4" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
-              </tbody>
+              <tbody id="tbody-pending"><tr class="empty-row"><td colspan="5" class="text-center py-3" data-i18n="pressGet">กด Get เพื่อโหลด</td></tr></tbody>
             </table>
           </div>
+          <div id="pagination-pending" class="pagination-bar"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── SECTION 2: RIDER POOL ── -->
+    <!-- SECTION 2: RIDER POOL -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#0077b6;">
-          <span><i class="bi bi-person-badge me-1"></i>Rider Pool
-            <small class="fw-normal opacity-75">Ready: <span id="ready-count" class="fw-bold text-warning">–</span></small>
-          </span>
+          <span><i class="bi bi-person-badge me-1"></i><span data-i18n="sectionRiders">Rider Pool</span> <small class="fw-normal opacity-75">Ready: <span id="ready-count" class="fw-bold text-warning">–</span></small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('riders')" title="เลือก Column">
-              <i class="bi bi-layout-three-columns"></i>
-            </button>
+            <button class="btn btn-light col-btn" onclick="openColModal('riders')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-dark" id="count-riders">–</span>
           </div>
         </div>
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
-            <button class="btn btn-sm text-white" style="background:#0077b6;" onclick="fetchRiders()">
-              <i class="bi bi-arrow-clockwise me-1"></i>Get Riders
-            </button>
-            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
-                   oninput="state.riders.search=this.value; renderSection('riders')">
+            <button class="btn btn-sm text-white" style="background:#0077b6;" onclick="fetchRiders()"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getRiders">Get Riders</span></button>
+            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.riders.search=this.value;state.riders.page=1;renderSection('riders')">
           </div>
-          <div id="loading-riders" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm" style="color:#0077b6;"></div><span class="ms-2 text-muted">Loading…</span>
-          </div>
+          <div id="loading-riders" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#0077b6;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-riders" class="alert alert-danger py-1 d-none small mb-2"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover mb-0">
               <thead class="table-dark sticky-header" id="thead-riders"></thead>
-              <tbody id="tbody-riders">
-                <tr class="empty-row"><td colspan="9" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
-              </tbody>
+              <tbody id="tbody-riders"><tr class="empty-row"><td colspan="10" class="text-center py-3" data-i18n="pressGet">กด Get เพื่อโหลด</td></tr></tbody>
             </table>
           </div>
+          <div id="pagination-riders" class="pagination-bar"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── SECTION 3: JOBS ── -->
+    <!-- SECTION 3: JOBS -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
-          <span><i class="bi bi-clipboard-data me-1"></i>Jobs <small class="fw-normal opacity-75">(ตามช่วงเวลา)</small></span>
+          <span><i class="bi bi-clipboard-data me-1"></i><span data-i18n="sectionJobs">Jobs</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionJobsDesc">ตามช่วงเวลา</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('jobs')" title="เลือก Column">
-              <i class="bi bi-layout-three-columns"></i>
-            </button>
+            <button class="btn btn-light col-btn" onclick="openColModal('jobs')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-dark" id="count-jobs">–</span>
           </div>
         </div>
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
-            <button class="btn btn-primary btn-sm" onclick="fetchJobs()">
-              <i class="bi bi-arrow-clockwise me-1"></i>Get Jobs
-            </button>
-            <select id="jobs-status-filter" class="form-select form-select-sm" style="width:160px"
-                    onchange="state.jobs.statusFilter=this.value; renderSection('jobs')">
-              <option value="">All Status</option>
+            <button class="btn btn-primary btn-sm" onclick="fetchJobs()"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getJobs">Get Jobs</span></button>
+            <select id="jobs-status-filter" class="form-select form-select-sm" style="width:150px" onchange="state.jobs.statusFilter=this.value;state.jobs.page=1;renderSection('jobs')">
+              <option value="" data-i18n="allStatus">All Status</option>
               <option value="job_accepted">job_accepted</option>
               <option value="job_assigned">job_assigned</option>
               <option value="job_picking_up">job_picking_up</option>
               <option value="job_picked_up">job_picked_up</option>
               <option value="job_delivering">job_delivering</option>
               <option value="job_delivered">job_delivered</option>
+              <option value="job_completed">job_completed</option>
               <option value="completed">completed</option>
               <option value="job_cancelled">job_cancelled</option>
+              <option value="job_failed">job_failed</option>
             </select>
-            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
-                   oninput="state.jobs.search=this.value; renderSection('jobs')">
+            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.jobs.search=this.value;state.jobs.page=1;renderSection('jobs')">
           </div>
-          <div id="loading-jobs" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted">Loading…</span>
-          </div>
+          <div id="loading-jobs" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-jobs" class="alert alert-danger py-1 d-none small mb-2"></div>
-          <!-- Jobs Status Dashboard -->
-          <div id="jobs-dash" class="mb-2 d-flex flex-wrap gap-1"></div>
+          <div id="jobs-dash" class="mb-2 d-flex flex-wrap gap-1" style="min-height:24px;"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover table-striped mb-0">
               <thead class="table-dark sticky-header" id="thead-jobs"></thead>
-              <tbody id="tbody-jobs">
-                <tr class="empty-row"><td colspan="8" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
-              </tbody>
+              <tbody id="tbody-jobs"><tr class="empty-row"><td colspan="8" class="text-center py-3" data-i18n="pressGet">กด Get เพื่อโหลด</td></tr></tbody>
             </table>
           </div>
+          <div id="pagination-jobs" class="pagination-bar"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── SECTION 4: STUCK JOBS ── -->
+    <!-- SECTION 4: STUCK JOBS -->
     <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
-          <span><i class="bi bi-exclamation-triangle me-1"></i>Stuck Jobs <small class="fw-normal opacity-75">(Job ค้าง)</small></span>
+          <span><i class="bi bi-exclamation-triangle me-1"></i><span data-i18n="sectionStuck">Stuck Jobs</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionStuckDesc">Job ค้าง</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('stuck')" title="เลือก Column">
-              <i class="bi bi-layout-three-columns"></i>
-            </button>
+            <button class="btn btn-light col-btn" onclick="openColModal('stuck')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-dark" id="count-stuck">–</span>
           </div>
         </div>
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
-            <button class="btn btn-danger btn-sm" onclick="fetchStuck()">
-              <i class="bi bi-arrow-clockwise me-1"></i>Get Stuck
-            </button>
-            <input type="search" class="form-control form-control-sm search-box" placeholder="ค้นหา…"
-                   oninput="state.stuck.search=this.value; renderSection('stuck')">
+            <button class="btn btn-danger btn-sm" onclick="fetchStuck()"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getStuck">Get Stuck</span></button>
+            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.stuck.search=this.value;state.stuck.page=1;renderSection('stuck')">
           </div>
-          <div id="loading-stuck" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm text-danger"></div><span class="ms-2 text-muted">Loading…</span>
-          </div>
+          <div id="loading-stuck" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-danger"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-stuck" class="alert alert-danger py-1 d-none small mb-2"></div>
           <div class="scroll-table">
             <table class="table table-sm table-hover table-striped mb-0">
               <thead class="table-dark sticky-header" id="thead-stuck"></thead>
-              <tbody id="tbody-stuck">
-                <tr class="empty-row"><td colspan="3" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
-              </tbody>
+              <tbody id="tbody-stuck"><tr class="empty-row"><td colspan="3" class="text-center py-3" data-i18n="pressGet">กด Get เพื่อโหลด</td></tr></tbody>
             </table>
           </div>
+          <div id="pagination-stuck" class="pagination-bar"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── SECTION 5: ORDER QUERY ── -->
+    <!-- SECTION 5: ORDER QUERY -->
     <div class="col-12">
       <div class="card">
         <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#5c4a8a;">
-          <span><i class="bi bi-search me-1"></i>Order Query
-            <small class="fw-normal opacity-75">(ค้นหา Order ด้วย Consignment / Order ID)</small>
-          </span>
+          <span><i class="bi bi-search me-1"></i><span data-i18n="sectionOrders">Order Query</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionOrdersDesc">ค้นหา Order ด้วย Consignment / Order ID</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light col-btn" onclick="openColModal('orders')" title="เลือก Column">
-              <i class="bi bi-layout-three-columns"></i>
-            </button>
+            <button class="btn btn-light col-btn" onclick="openColModal('orders')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-dark" id="count-orders">–</span>
           </div>
         </div>
         <div class="card-body p-2">
           <div class="row g-2 mb-2 align-items-end">
             <div class="col-auto">
-              <label class="form-label mb-1 fw-semibold small">Query Type</label>
+              <label class="form-label mb-1 fw-semibold small" data-i18n="queryType">Query Type</label>
               <div class="d-flex gap-3">
                 <div class="form-check mb-0">
                   <input class="form-check-input" type="radio" name="orderType" id="typeConsignment" value="consignment" checked>
-                  <label class="form-check-label" for="typeConsignment">Consignment</label>
+                  <label class="form-check-label" for="typeConsignment" data-i18n="consignment">Consignment</label>
                 </div>
                 <div class="form-check mb-0">
                   <input class="form-check-input" type="radio" name="orderType" id="typeOrderId" value="orderid">
-                  <label class="form-check-label" for="typeOrderId">Order ID</label>
+                  <label class="form-check-label" for="typeOrderId" data-i18n="orderId">Order ID</label>
                 </div>
               </div>
             </div>
             <div class="col">
-              <label class="form-label mb-1 fw-semibold small">Values <span class="fw-normal text-muted">(คั่นด้วย , สำหรับหลายค่า)</span></label>
-              <input type="text" class="form-control form-control-sm font-monospace" id="orderValues"
-                     placeholder="CPTH9015794727,CPTH7014296703 หรือ 26LOTUS-ZJ179082441">
+              <label class="form-label mb-1 fw-semibold small"><span data-i18n="values">Values</span> <span class="fw-normal text-muted">(<span data-i18n="valuesHint">คั่นด้วย , สำหรับหลายค่า</span>)</span></label>
+              <input type="text" class="form-control form-control-sm font-monospace" id="orderValues" placeholder="CPTH9015794727,CPTH7014296703">
             </div>
             <div class="col-auto">
-              <button class="btn btn-sm text-white" style="background:#5c4a8a;" onclick="fetchOrders()">
-                <i class="bi bi-search me-1"></i>Query
-              </button>
+              <button class="btn btn-sm text-white" style="background:#5c4a8a;" onclick="fetchOrders()"><i class="bi bi-search me-1"></i><span data-i18n="queryOrder">Query</span></button>
             </div>
             <div class="col-auto">
-              <input type="search" class="form-control form-control-sm search-box" placeholder="Filter results…"
-                     oninput="state.orders.search=this.value; renderSection('orders')">
+              <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="filterResult" placeholder="Filter…" oninput="state.orders.search=this.value;state.orders.page=1;renderSection('orders')">
             </div>
           </div>
-
-          <div id="loading-orders" class="d-none text-center py-2">
-            <div class="spinner-border spinner-border-sm" style="color:#5c4a8a;"></div><span class="ms-2 text-muted">Loading…</span>
-          </div>
+          <div id="loading-orders" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#5c4a8a;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-orders" class="alert alert-danger py-1 d-none small mb-2"></div>
-
           <div class="scroll-table" style="max-height:320px;">
             <table class="table table-sm table-hover table-striped mb-0">
               <thead class="table-dark sticky-header" id="thead-orders"></thead>
-              <tbody id="tbody-orders">
-                <tr class="empty-row"><td colspan="10" class="text-center py-3">กรอก Query แล้วกด Query</td></tr>
-              </tbody>
+              <tbody id="tbody-orders"><tr class="empty-row"><td colspan="10" class="text-center py-3" data-i18n="pressQuery">กรอก Query แล้วกด Query</td></tr></tbody>
             </table>
           </div>
-
-          <!-- Rider Performance Panel -->
+          <div id="pagination-orders" class="pagination-bar"></div>
           <div id="rider-perf-panel" class="d-none mt-3">
-            <div class="fw-semibold mb-2" style="color:#5c4a8a;">
-              <i class="bi bi-bar-chart-fill me-1"></i>Rider Performance (จาก Query ด้านบน)
-            </div>
+            <div class="fw-semibold mb-2" style="color:#5c4a8a;"><i class="bi bi-bar-chart-fill me-1"></i><span data-i18n="riderPerf">Rider Performance</span></div>
             <div id="rider-perf-body" class="d-flex flex-wrap gap-2"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 6: BATCH QUERY -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#6d4c41;">
+          <span><i class="bi bi-collection me-1"></i><span data-i18n="sectionBatches">Batch Query</span> <small class="fw-normal opacity-75">(<span data-i18n="sectionBatchesDesc">ค้นหา Batch ที่มี Order ID นี้</span>)</small></span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-light col-btn" onclick="openColModal('batches')"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="badge bg-dark" id="count-batches">–</span>
+          </div>
+        </div>
+        <div class="card-body p-2">
+          <div class="row g-2 mb-2 align-items-end">
+            <div class="col">
+              <label class="form-label mb-1 fw-semibold small" data-i18n="batchOrderIds">Order IDs (คั่นด้วย ,)</label>
+              <input type="text" class="form-control form-control-sm font-monospace" id="batchOrderIds" placeholder="26LOTUS-ZJ179276341,26LOTUS-ZJ179120841">
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-sm text-white" style="background:#6d4c41;" onclick="fetchBatches()"><i class="bi bi-search me-1"></i><span data-i18n="queryBatch">Query Batch</span></button>
+            </div>
+            <div class="col-auto">
+              <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="filterResult" placeholder="Filter…" oninput="state.batches.search=this.value;state.batches.page=1;renderSection('batches')">
+            </div>
+          </div>
+          <div id="loading-batches" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#6d4c41;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
+          <div id="error-batches" class="alert alert-danger py-1 d-none small mb-2"></div>
+          <div class="scroll-table" style="max-height:320px;">
+            <table class="table table-sm table-hover table-striped mb-0">
+              <thead class="table-dark sticky-header" id="thead-batches"></thead>
+              <tbody id="tbody-batches"><tr class="empty-row"><td colspan="7" class="text-center py-3" data-i18n="pressQuery">กรอก Order IDs แล้วกด Query Batch</td></tr></tbody>
+            </table>
+          </div>
+          <div id="pagination-batches" class="pagination-bar"></div>
         </div>
       </div>
     </div>
@@ -315,9 +309,22 @@
       </div>
       <div class="modal-body py-2" id="colModalBody"></div>
       <div class="modal-footer py-2">
-        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-        <button class="btn btn-sm btn-primary" onclick="saveColModal()">บันทึก</button>
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">ยกเลิก</button>
+        <button class="btn btn-sm btn-primary" onclick="saveColModal()" data-i18n="save">บันทึก</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS TIMELINE MODAL -->
+<div class="modal fade" id="timelineModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="background:#5c4a8a;color:#fff;">
+        <h6 class="modal-title" id="timelineTitle"><i class="bi bi-clock-history me-2"></i>Status Timeline</h6>
+        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-2" id="timelineBody" style="max-height:60vh;overflow-y:auto;"></div>
     </div>
   </div>
 </div>
@@ -329,63 +336,232 @@ const API_BASE = (() => {
   return (l.protocol === 'http:' || l.protocol === 'https:') ? l.origin : 'http://localhost:3000';
 })();
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-const state = {
-  pending: { data:[], search:'', sortCol:null, sortDir:'asc' },
-  riders:  { data:[], search:'', sortCol:null, sortDir:'asc' },
-  jobs:    { data:[], search:'', sortCol:null, sortDir:'asc', statusFilter:'' },
-  stuck:   { data:[], search:'', sortCol:null, sortDir:'asc' },
-  orders:  { data:[], search:'', sortCol:null, sortDir:'asc' }
+// ─── i18n ─────────────────────────────────────────────────────────────────────
+let lang = localStorage.getItem('lang') || 'th';
+const i18n = {
+  th: {
+    navTitle: 'Lotus Auto-Batching Dashboard',
+    storeCode: 'Store Code',
+    storeCodeHint: 'หลายสาขาคั่นด้วย ,',
+    fromLabel: 'From', toLabel: 'To', reset: 'Reset',
+    pendingNote: '* Pending & Riders ไม่ใช้ date range',
+    sectionPending: 'Pending Orders', sectionPendingDesc: 'รอสร้าง Job',
+    sectionRiders: 'Rider Pool', sectionJobs: 'Jobs', sectionJobsDesc: 'ตามช่วงเวลา',
+    sectionStuck: 'Stuck Jobs', sectionStuckDesc: 'Job ค้าง',
+    sectionOrders: 'Order Query', sectionOrdersDesc: 'ค้นหา Order ด้วย Consignment / Order ID',
+    sectionBatches: 'Batch Query', sectionBatchesDesc: 'ค้นหา Batch ที่มี Order ID นี้',
+    getPending: 'Get Pending', getRiders: 'Get Riders', getJobs: 'Get Jobs',
+    getStuck: 'Get Stuck', queryOrder: 'Query', queryBatch: 'Query Batch',
+    search: 'ค้นหา…', filterResult: 'Filter…', loading: 'กำลังโหลด…',
+    noData: 'ไม่พบข้อมูล', pressGet: 'กด Get เพื่อโหลด', pressQuery: 'กรอก Query แล้วกด',
+    cancel: 'ยกเลิก', save: 'บันทึก', colSelector: 'เลือก Column',
+    allStatus: 'All Status', riderPerf: 'Rider Performance',
+    queryType: 'ประเภท Query', consignment: 'Consignment', orderId: 'Order ID',
+    values: 'Values', valuesHint: 'คั่นด้วย , สำหรับหลายค่า',
+    batchOrderIds: 'Order IDs (คั่นด้วย ,)',
+    explainStatus: 'Timeline', lastUpdated: 'อัปเดตล่าสุด',
+    showPerPage: 'แสดง', of: 'จาก',
+    jobCount_label: 'Job ในช่วงเวลา'
+  },
+  en: {
+    navTitle: 'Lotus Auto-Batching Dashboard',
+    storeCode: 'Store Code', storeCodeHint: 'Multiple stores: separate by ,',
+    fromLabel: 'From', toLabel: 'To', reset: 'Reset',
+    pendingNote: '* Pending & Riders do not use date range',
+    sectionPending: 'Pending Orders', sectionPendingDesc: 'Waiting for Job',
+    sectionRiders: 'Rider Pool', sectionJobs: 'Jobs', sectionJobsDesc: 'By Time Range',
+    sectionStuck: 'Stuck Jobs', sectionStuckDesc: 'Stuck',
+    sectionOrders: 'Order Query', sectionOrdersDesc: 'Search by Consignment / Order ID',
+    sectionBatches: 'Batch Query', sectionBatchesDesc: 'Find Batch containing Order ID',
+    getPending: 'Get Pending', getRiders: 'Get Riders', getJobs: 'Get Jobs',
+    getStuck: 'Get Stuck', queryOrder: 'Query', queryBatch: 'Query Batch',
+    search: 'Search…', filterResult: 'Filter…', loading: 'Loading…',
+    noData: 'No data found', pressGet: 'Click Get to load', pressQuery: 'Fill in values then click Query',
+    cancel: 'Cancel', save: 'Save', colSelector: 'Select Columns',
+    allStatus: 'All Status', riderPerf: 'Rider Performance',
+    queryType: 'Query Type', consignment: 'Consignment', orderId: 'Order ID',
+    values: 'Values', valuesHint: 'Separate by , for multiple values',
+    batchOrderIds: 'Order IDs (separate by ,)',
+    explainStatus: 'Timeline', lastUpdated: 'Last updated',
+    showPerPage: 'Show', of: 'of',
+    jobCount_label: 'Jobs in range'
+  }
 };
-let sortState = {};
+function t(key) { return i18n[lang][key] || key; }
+function toggleLang() {
+  lang = lang === 'th' ? 'en' : 'th';
+  localStorage.setItem('lang', lang);
+  applyLang();
+}
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.getElementById('lang-btn').textContent = lang === 'th' ? 'EN' : 'TH';
+  ALL_TBLS.forEach(tbl => renderSection(tbl));
+}
+
+// ─── STATUS DESCRIPTIONS ──────────────────────────────────────────────────────
+const STATUS_DESC = {
+  th: {
+    'ORDER_CREATED': 'ออเดอร์สร้างสำเร็จ',
+    'ODM_CALCULATOR_START_TIME_PROCESS_INPROGRESS': 'ออเดอร์เริ่มประมวลผล',
+    'ODM_ORDER_DISPATCHING_INPROGRESS': 'กำลัง dispatching',
+    'ODM_AUTO_ASSIGN_GET_ORDER_COMPLETED': 'Auto assign เสร็จ',
+    'ORDER_RECEIVED': 'Courier ได้รับออเดอร์',
+    'ACCEPT_TRIP.ACCEPT_TRIP.DOING': 'ไรเดอร์รับงาน',
+    'DELIVERED': 'ส่งสำเร็จ ✓',
+    'PARTIAL_DELIVERED': 'ส่งบางส่วน',
+    'DRIVER_REJECTED': 'ไรเดอร์ปฏิเสธงาน',
+    'NO_DRIVER': 'ไม่มีไรเดอร์',
+    'ORDER_CANCELLED': 'ยกเลิกออเดอร์',
+    'ORDER_FAILED': 'ออเดอร์ล้มเหลว',
+    'ORDER_REJECTED': 'ออเดอร์ถูกปฏิเสธ',
+    'CHANGE_COURIER': 'เปลี่ยน courier',
+    'FINDING_DRIVER': 'กำลังหาไรเดอร์',
+    'FINDING_NEW_DRIVER': 'กำลังหาไรเดอร์ใหม่',
+    'COMBINE_CANCELLED': 'รวมคำสั่งยกเลิก',
+    'CHANGE_PICKUP_TIME_CREATED': 'เปลี่ยนเวลา pickup',
+    'ONDEMAND_PICKUP.SET_OFF.DOING': 'ไรเดอร์เริ่มเดินทางไปสาขา',
+    'ONDEMAND_PICKUP.CHECK_IN.DOING': 'ไรเดอร์ถึงสาขา (check-in)',
+    'ONDEMAND_PICKUP.PACKING_ITEMS.DOING': 'กำลังหยิบสินค้า',
+    'ONDEMAND_PICKUP.WAITING_CONFIRM.DOING': 'รอการยืนยันจากสาขา',
+    'ONDEMAND_PICKUP.RECEIVED_CONFIRM.DOING': 'สาขายืนยันรายการแล้ว',
+    'ONDEMAND_PICKUP.TAKE_A_PHOTO.DOING': 'ถ่ายรูปสินค้า',
+    'ONDEMAND_PICKUP.POD.DOING': 'พนักงานเซ็นรับสินค้า',
+    'ONDEMAND_PICKUP.PICKED_UP.DOING': 'รับสินค้าเรียบร้อย',
+    'ONDEMAND_DELIVERY_WITH_COD.SET_OFF.DOING': 'ไรเดอร์เริ่มเดินทางไปบ้านลูกค้า',
+    'ONDEMAND_DELIVERY_WITH_COD.CHECK_IN.DOING': 'ไรเดอร์ถึงบ้านลูกค้า',
+    'ONDEMAND_DELIVERY_WITH_COD.TAKE_A_PHOTO.DOING': 'ถ่ายรูปการส่ง',
+    'ONDEMAND_DELIVERY_WITH_COD.POD.DOING': 'ลูกค้าเซ็นรับสินค้า',
+    'ONDEMAND_DELIVERY_WITH_COD.COLLECT_CASH.DOING': 'รับเงินสดจากลูกค้า',
+    'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DOING': 'กำลังบันทึกการส่ง',
+    'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE': 'ส่งสำเร็จ ✓',
+    'ONDEMAND_DELIVERY_WITHOUT_COD.SET_OFF.DOING': 'ไรเดอร์เริ่มเดินทางไปบ้านลูกค้า',
+    'ONDEMAND_DELIVERY_WITHOUT_COD.CHECK_IN.DOING': 'ไรเดอร์ถึงบ้านลูกค้า',
+    'ONDEMAND_DELIVERY_WITHOUT_COD.TAKE_A_PHOTO.DOING': 'ถ่ายรูปการส่ง',
+    'ONDEMAND_DELIVERY_WITHOUT_COD.POD.DOING': 'ลูกค้าเซ็นรับ',
+    'ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE': 'ส่งสำเร็จ ✓'
+  },
+  en: {
+    'ORDER_CREATED': 'Order created',
+    'ODM_CALCULATOR_START_TIME_PROCESS_INPROGRESS': 'Processing order',
+    'ODM_ORDER_DISPATCHING_INPROGRESS': 'Dispatching in progress',
+    'ORDER_RECEIVED': 'Order received by courier',
+    'ACCEPT_TRIP.ACCEPT_TRIP.DOING': 'Driver accepted trip',
+    'DELIVERED': 'Delivered ✓',
+    'NO_DRIVER': 'No driver found',
+    'ORDER_CANCELLED': 'Order cancelled',
+    'ORDER_FAILED': 'Order failed',
+    'FINDING_NEW_DRIVER': 'Finding new driver',
+    'ONDEMAND_PICKUP.SET_OFF.DOING': 'Driver heading to store',
+    'ONDEMAND_PICKUP.CHECK_IN.DOING': 'Driver arrived at store',
+    'ONDEMAND_PICKUP.PACKING_ITEMS.DOING': 'Picking up items',
+    'ONDEMAND_PICKUP.PICKED_UP.DOING': 'Items picked up',
+    'ONDEMAND_DELIVERY_WITH_COD.SET_OFF.DOING': 'Driver heading to customer',
+    'ONDEMAND_DELIVERY_WITH_COD.CHECK_IN.DOING': 'Driver arrived at customer',
+    'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE': 'Delivered ✓',
+    'ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE': 'Delivered ✓'
+  }
+};
+function statusDesc(s) { return (STATUS_DESC[lang] || STATUS_DESC.th)[s] || ''; }
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const ALL_TBLS = ['pending','riders','jobs','stuck','orders','batches'];
+const mkState = (extra={}) => ({ data:[], search:'', sortCol:null, sortDir:'asc', page:1, pageSize:20, ...extra });
+const state = {
+  pending: mkState(),
+  riders:  mkState(),
+  jobs:    mkState({ statusFilter:'' }),
+  stuck:   mkState(),
+  orders:  mkState(),
+  batches: mkState()
+};
 
 // ─── COLUMN DEFINITIONS ───────────────────────────────────────────────────────
 const COLS = {
   pending: [
-    { id:'storeCode', label:'Store',       sk:'storeCode', r: d => d.storeCode||'–' },
-    { id:'orderId',   label:'Order ID',    sk:'orderId',   r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
-    { id:'consignment',label:'Consignment',sk:'consignment',r:d=>`<small class="font-monospace">${d.consignment||'–'}</small>` },
-    { id:'service',   label:'Service',     sk:'serviceType',r:d=>`<span class="badge bg-secondary status-badge">${d.serviceType||'–'}</span>` },
-    { id:'createdAt', label:'Created',     sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+    { id:'storeCode', label:'Store', sk:'storeCode', r: d => d.storeCode||'–' },
+    { id:'orderId', label:'Order ID', sk:'orderId', r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
+    { id:'consignment', label:'Consignment', sk:'consignment', r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
+    { id:'service', label:'Service', sk:'serviceType', r: d => `<span class="badge bg-secondary status-badge">${d.serviceType||'–'}</span>` },
+    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
   ],
   riders: [
-    { id:'queue',        label:'#',          sk:'queue',                  r: d => queueBadge(d) },
-    { id:'storeCode',    label:'Store',       sk:'storeCode',              r: d => d.storeCode||'–' },
-    { id:'name',         label:'Name / Phone',sk:'name',                  r: d => `<div class="fw-semibold lh-sm">${d.name||d.username}</div><small class="text-muted">${d.phone}</small>` },
-    { id:'userId',       label:'User ID',     sk:'userId',                 r: d => `<small class="font-monospace text-muted">${d.userId||'–'}</small>` },
-    { id:'idle_time',    label:'Idle Time',   sk:'join_pool_at',           r: d => idleHtml(d) },
-    { id:'join_pool_at', label:'Joined Pool', sk:'join_pool_at',           r: d => `<small>${fmtDt(d.join_pool_at)}</small>` },
-    { id:'ready',        label:'Ready',       sk:'ready_for_auto_assign',  r: d => d.ready_for_auto_assign ? `<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;"></i>` : `<i class="bi bi-x-circle-fill text-danger" style="font-size:1.1rem;"></i>` },
-    { id:'flags',        label:'Flags',       sk:null,                     r: d => flagsHtml(d) },
-    { id:'job_on_hand',  label:'Job on hand', sk:'job_on_hand_id',         r: d => d.job_on_hand_id ? `<small class="font-monospace d-block">${d.job_on_hand_id}</small>${jobBadge(d.job_on_hand_status)}` : `<span class="text-muted">–</span>` },
-    { id:'map',          label:'Map',         sk:null,                     r: d => d.mapUrl ? `<a href="${d.mapUrl}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1"><i class="bi bi-geo-alt-fill"></i></a>` : '–' }
+    { id:'queue', label:'#', sk:'queue', r: d => queueBadge(d) },
+    { id:'storeCode', label:'Store', sk:'storeCode', r: d => d.storeCode||'–' },
+    { id:'name', label:'Name / Phone', sk:'name', r: d => {
+      const js = getRiderJobSummary(d.userId);
+      const jb = js ? `<span class="badge bg-primary ms-1" title="${js.orderIds.join('\n')}" style="cursor:help;">${js.count} jobs</span>` : '';
+      return `<div class="fw-semibold lh-sm">${d.name||d.username}${jb}</div><small class="text-muted">${d.phone}</small>`;
+    }},
+    { id:'userId', label:'User ID', sk:'userId', r: d => `<small class="font-monospace text-muted">${d.userId||'–'}</small>` },
+    { id:'idle_time', label:'Idle Time', sk:'join_pool_at', r: d => idleHtml(d) },
+    { id:'join_pool_at', label:'Joined Pool', sk:'join_pool_at', r: d => `<small>${fmtDt(d.join_pool_at)}</small>` },
+    { id:'ready', label:'Ready', sk:'ready_for_auto_assign', r: d => d.ready_for_auto_assign
+        ? `<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;"></i>`
+        : `<i class="bi bi-x-circle-fill text-danger" style="font-size:1.1rem;"></i>` },
+    { id:'flags', label:'Flags', sk:null, r: d => flagsHtml(d) },
+    { id:'job_on_hand', label:'Job on hand', sk:'job_on_hand_id', r: d => d.job_on_hand_id
+        ? `<small class="font-monospace d-block">${d.job_on_hand_id}</small>${jobBadge(d.job_on_hand_status)}`
+        : `<span class="text-muted">–</span>` },
+    { id:'map', label:'Map', sk:null, r: d => d.mapUrl
+        ? `<a href="${d.mapUrl}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1"><i class="bi bi-geo-alt-fill"></i></a>`
+        : '–' }
   ],
   jobs: [
-    { id:'jobId',      label:'Job ID',     sk:'jobId',      r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
-    { id:'storeCode',  label:'Store',      sk:'storeCode',  r: d => d.storeCode||'–' },
-    { id:'rider',      label:'Rider',      sk:'riderName',  r: d => d.riderName ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>` : '–' },
-    { id:'orderCount', label:'#',          sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
-    { id:'orderIds',   label:'Order IDs',  sk:null,         r: d => (d.orderIds||[]).map(o=>`<span class="font-monospace d-block" style="font-size:.73rem;">${o}</span>`).join('')||'–' },
-    { id:'pickUpSLA',  label:'PickUp SLA', sk:'pickUpSLA',  r: d => `<small>${fmtDt(d.pickUpSLA)}</small>` },
-    { id:'status',     label:'Status',     sk:'status',     r: d => jobBadge(d.status) },
-    { id:'createdAt',  label:'Created',    sk:'createdAt',  r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+    { id:'jobId', label:'Job ID', sk:'jobId', r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
+    { id:'storeCode', label:'Store', sk:'storeCode', r: d => d.storeCode||'–' },
+    { id:'rider', label:'Rider', sk:'riderName', r: d => d.riderName
+        ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
+        : '–' },
+    { id:'orderCount', label:'#', sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
+    { id:'orderIds', label:'Order IDs', sk:null, r: d => (d.orderIds||[]).map(o=>`<span class="font-monospace d-block" style="font-size:.73rem;">${o}</span>`).join('')||'–' },
+    { id:'pickUpSLA', label:'PickUp SLA', sk:'pickUpSLA', r: d => `<small>${fmtDt(d.pickUpSLA)}</small>` },
+    { id:'status', label:'Status', sk:'status', r: d => jobBadge(d.status) },
+    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
   ],
   stuck: [
-    { id:'orderId',       label:'Order ID',      sk:'orderId',              r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
-    { id:'currentStatus', label:'Current Status', sk:'currentOrderStatus',  r: d => `<span class="badge bg-danger status-badge">${d.currentOrderStatus||'–'}</span>` },
-    { id:'createdAt',     label:'Created',       sk:'createdAt',            r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+    { id:'orderId', label:'Order ID', sk:'orderId', r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
+    { id:'currentStatus', label:'Status', sk:'currentOrderStatus', r: d => `<span class="badge bg-danger status-badge">${d.currentOrderStatus||'–'}</span>` },
+    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
   ],
   orders: [
-    { id:'consignment',      label:'Consignment',   sk:'consignment',      r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
-    { id:'internalOrderId',  label:'Order ID',      sk:'internalOrderId',  r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
-    { id:'storeCode',        label:'Store',         sk:'storeCode',        r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
-    { id:'jobId',            label:'Job ID',        sk:'jobId',            r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
-    { id:'fleetDispatchType',label:'Dispatch',      sk:'fleetDispatchType',r: d => d.fleetDispatchType ? `<span class="badge bg-info text-dark status-badge">${d.fleetDispatchType}</span>` : '–' },
-    { id:'currentOrderStatus',label:'Status',       sk:'currentOrderStatus',r:d=> orderStatusBadge(d.currentOrderStatus) },
-    { id:'riderName',        label:'Rider',         sk:'riderName',        r: d => d.riderName ? `<div>${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>` : '–' },
-    { id:'riderPhone',       label:'Phone',         sk:'riderPhone',       r: d => d.riderPhone||'–' },
-    { id:'createdAt',        label:'Created',       sk:'createdAt',        r: d => `<small>${fmtDt(d.createdAt)}</small>` },
-    { id:'updatedAt',        label:'Updated',       sk:'updatedAt',        r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
+    { id:'consignment', label:'Consignment', sk:'consignment', r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
+    { id:'internalOrderId', label:'Order ID', sk:'internalOrderId', r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
+    { id:'storeCode', label:'Store', sk:'storeCode', r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
+    { id:'jobId', label:'Job ID', sk:'jobId', r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
+    { id:'payment', label:'Payment', sk:'paymentMethod', r: d => {
+      const parts = [];
+      if (d.paymentMethod) parts.push(`<span class="badge bg-secondary status-badge">${d.paymentMethod}</span>`);
+      if (d.paymentChannel) parts.push(`<span class="badge bg-info text-dark status-badge">${d.paymentChannel}</span>`);
+      if (d.codChannel) parts.push(`<span class="badge bg-warning text-dark status-badge">COD:${d.codChannel}</span>`);
+      if (d.codAmount) parts.push(`<small class="text-danger fw-bold">฿${d.codAmount}</small>`);
+      return parts.join(' ') || '–';
+    }},
+    { id:'currentOrderStatus', label:'Status', sk:'currentOrderStatus', r: d =>
+      `${orderStatusBadge(d.currentOrderStatus)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="showTimeline('${d._id}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
+    { id:'riderName', label:'Rider', sk:'riderName', r: d => d.riderName
+        ? `<div>${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
+        : '–' },
+    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` },
+    { id:'updatedAt', label:'Updated', sk:'updatedAt', r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
+  ],
+  batches: [
+    { id:'batchId', label:'Batch ID', sk:'batchId', r: d => `<small class="font-monospace">${d.batchId||'–'}</small>` },
+    { id:'orderCount', label:'# Orders', sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
+    { id:'orderIds', label:'Order IDs', sk:null, r: d => (d.orderIds||[]).map(o=>`<span class="font-monospace d-block" style="font-size:.73rem;">${o}</span>`).join('')||'–' },
+    { id:'status', label:'Status', sk:'status', r: d => {
+      const map = { success:'success', failed:'danger', pending:'warning text-dark', processing:'info text-dark' };
+      const cls = map[d.status]||'secondary';
+      return d.status ? `<span class="badge bg-${cls} status-badge">${d.status}</span>` : '–';
+    }},
+    { id:'roStatus', label:'RO Status', sk:'roStatus', r: d => {
+      const cls = d.roStatus === 'completed' ? 'success' : d.roStatus ? 'warning text-dark' : 'secondary';
+      return d.roStatus ? `<span class="badge bg-${cls} status-badge">${d.roStatus}</span>` : '–';
+    }},
+    { id:'roStartTime', label:'RO Start', sk:'roStartTime', r: d => `<small>${fmtDt(d.roStartTime)}</small>` },
+    { id:'roEndTime', label:'RO End', sk:'roEndTime', r: d => `<small>${fmtDt(d.roEndTime)}</small>` },
+    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
   ]
 };
 
@@ -394,22 +570,18 @@ const DEFAULT_COLS = {
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
   jobs:    ['jobId','storeCode','rider','orderCount','orderIds','pickUpSLA','status','createdAt'],
   stuck:   ['orderId','currentStatus','createdAt'],
-  orders:  ['consignment','internalOrderId','storeCode','jobId','fleetDispatchType','currentOrderStatus','riderName','createdAt','updatedAt']
+  orders:  ['consignment','internalOrderId','storeCode','jobId','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
+  batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
 };
 
 function getActiveCols(tbl) {
-  try {
-    const s = localStorage.getItem(`cols_${tbl}`);
-    return s ? JSON.parse(s) : DEFAULT_COLS[tbl];
-  } catch { return DEFAULT_COLS[tbl]; }
+  try { const s=localStorage.getItem(`cols_${tbl}`); return s?JSON.parse(s):DEFAULT_COLS[tbl]; }
+  catch { return DEFAULT_COLS[tbl]; }
 }
-function saveActiveCols(tbl, cols) {
-  localStorage.setItem(`cols_${tbl}`, JSON.stringify(cols));
-}
+function saveActiveCols(tbl, cols) { localStorage.setItem(`cols_${tbl}`, JSON.stringify(cols)); }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function pad(n) { return String(n).padStart(2,'0'); }
-
 function fmtDt(d) {
   if (!d) return '–';
   const dt = new Date(d);
@@ -417,31 +589,34 @@ function fmtDt(d) {
   return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
 }
 
+function getRiderJobSummary(userId) {
+  if (!userId || !state.jobs.data.length) return null;
+  const matched = state.jobs.data.filter(j => j.riderId === userId);
+  if (!matched.length) return null;
+  return { count: matched.length, orderIds: matched.flatMap(j => j.orderIds||[]) };
+}
+
 function idleHtml(d) {
-  // Only show for riders in pool with no active job
   if (!d.join_pool_at || !d.no_active_job || d.queue === 'not_in_pool') return '–';
   const mins = (Date.now() - new Date(d.join_pool_at).getTime()) / 60000;
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  const text = h > 0 ? `${h}h ${m}m` : `${Math.round(mins)}m`;
-  let cls = '';
-  if (mins >= 180) cls = 'idle-danger';
-  else if (mins >= 60) cls = 'idle-warn';
+  const h = Math.floor(mins/60), m = Math.round(mins%60);
+  const text = h>0 ? `${h}h ${m}m` : `${Math.round(mins)}m`;
+  const cls = mins>=180?'idle-danger':mins>=60?'idle-warn':'';
   return `<span class="${cls}">${text}</span>`;
 }
 
 function queueBadge(d) {
-  if (d.queue === 'not_in_pool') return `<span class="badge bg-secondary">–</span>`;
-  if (d.ready_for_auto_assign)   return `<span class="badge bg-success" style="min-width:2rem;">${d.queue}</span>`;
+  if (d.queue==='not_in_pool') return `<span class="badge bg-secondary">–</span>`;
+  if (d.ready_for_auto_assign) return `<span class="badge bg-success" style="min-width:2rem;">${d.queue}</span>`;
   return `<span class="badge bg-primary">${d.queue}</span>`;
 }
 
 function flagsHtml(d) {
   const defs = [
-    { k:'staff_online',  icon:'wifi',        label:'Online' },
-    { k:'not_banned',    icon:'shield-check', label:'Not Banned' },
-    { k:'no_active_job', icon:'briefcase',    label:'No Active Job' },
-    { k:'not_on_break',  icon:'cup-hot',      label:'Not On Break' }
+    { k:'staff_online', icon:'wifi', label:'Online' },
+    { k:'not_banned', icon:'shield-check', label:'Not Banned' },
+    { k:'no_active_job', icon:'briefcase', label:'No Active Job' },
+    { k:'not_on_break', icon:'cup-hot', label:'Not On Break' }
   ];
   return defs.map(f => {
     const ok = d[f.k];
@@ -454,28 +629,25 @@ function jobBadge(s) {
     job_accepted:'primary', job_assigned:'info text-dark',
     job_picking_up:'warning text-dark', job_picked_up:'success',
     job_delivering:'success', job_delivered:'secondary',
-    job_cancelled:'danger', completed:'secondary'
+    job_completed:'success', completed:'secondary',
+    job_cancelled:'danger', job_failed:'danger'
   };
   return s ? `<span class="badge bg-${map[s]||'secondary'} status-badge">${s}</span>` : '–';
 }
 
 function orderStatusBadge(s) {
   if (!s) return '–';
-  const map = {
-    DELIVERED:'success', ORDER_CANCELLED:'danger',
-    ACCEPT_TRIP:'primary', DISPATCHING:'warning text-dark',
-    ORDER_CREATED:'secondary'
-  };
-  const cls = map[s] || 'secondary';
-  return `<span class="badge bg-${cls} status-badge">${s}</span>`;
+  const map = { DELIVERED:'success', ORDER_CANCELLED:'danger',
+    ACCEPT_TRIP:'primary', DISPATCHING:'warning text-dark', ORDER_CREATED:'secondary',
+    ORDER_FAILED:'danger', NO_DRIVER:'warning text-dark' };
+  return `<span class="badge bg-${map[s]||'secondary'} status-badge">${s}</span>`;
 }
 
 function markUpdated() {
-  document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString('th-TH')}`;
+  document.getElementById('last-updated').textContent = `${t('lastUpdated')}: ${new Date().toLocaleTimeString('th-TH')}`;
 }
-
 function setLoading(sec, on) {
-  document.getElementById(`loading-${sec}`).classList.toggle('d-none', !on);
+  document.getElementById(`loading-${sec}`).classList.toggle('d-none',!on);
   if (on) document.getElementById(`error-${sec}`).classList.add('d-none');
 }
 function setError(sec, msg) {
@@ -488,25 +660,26 @@ function toInputLocal(d) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function resetDates() {
-  const now = new Date();
-  const start = new Date(now); start.setHours(0,0,0,0);
+  const now = new Date(), start = new Date(now);
+  start.setHours(0,0,0,0);
   document.getElementById('fromDate').value = toInputLocal(start);
-  document.getElementById('toDate').value   = toInputLocal(now);
+  document.getElementById('toDate').value = toInputLocal(now);
 }
 resetDates();
 
 function getInputs() {
-  const sc   = document.getElementById('storeCode').value.trim();
+  const sc = document.getElementById('storeCode').value.trim();
   const from = new Date(document.getElementById('fromDate').value).toISOString();
   const to   = new Date(document.getElementById('toDate').value).toISOString();
-  return { storeCode:sc, from, to };
+  return { storeCode: sc, from, to };
 }
 
 // ─── SORT & FILTER ────────────────────────────────────────────────────────────
 function sortBy(tbl, sk) {
   const s = state[tbl];
-  if (s.sortCol === sk) s.sortDir = s.sortDir === 'asc' ? 'desc' : 'asc';
-  else { s.sortCol = sk; s.sortDir = 'asc'; }
+  if (s.sortCol===sk) s.sortDir = s.sortDir==='asc'?'desc':'asc';
+  else { s.sortCol=sk; s.sortDir='asc'; }
+  s.page = 1;
   renderSection(tbl);
 }
 
@@ -514,60 +687,88 @@ function applyFilters(tbl) {
   let data = [...state[tbl].data];
   const q = state[tbl].search?.trim().toLowerCase();
   if (q) data = data.filter(row => JSON.stringify(row).toLowerCase().includes(q));
-  if (tbl === 'jobs' && state.jobs.statusFilter)
+  if (tbl==='jobs' && state.jobs.statusFilter)
     data = data.filter(d => d.status === state.jobs.statusFilter);
   const { sortCol, sortDir } = state[tbl];
   if (sortCol) {
     data.sort((a,b) => {
-      const av = a[sortCol] ?? '';
-      const bv = b[sortCol] ?? '';
-      const cmp = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av).localeCompare(String(bv), 'th');
-      return sortDir === 'asc' ? cmp : -cmp;
+      const av = a[sortCol]??'', bv = b[sortCol]??'';
+      const cmp = typeof av==='number'&&typeof bv==='number' ? av-bv : String(av).localeCompare(String(bv),'th');
+      return sortDir==='asc'?cmp:-cmp;
     });
   }
   return data;
+}
+
+// ─── PAGINATION ───────────────────────────────────────────────────────────────
+const PAGE_SIZES = [10,20,30,100,500,1000];
+
+function renderPagination(tbl, total) {
+  const el = document.getElementById(`pagination-${tbl}`);
+  if (!el) return;
+  const s = state[tbl];
+  const totalPages = Math.max(1, Math.ceil(total/s.pageSize));
+  const from = Math.min((s.page-1)*s.pageSize+1, total);
+  const to   = Math.min(s.page*s.pageSize, total);
+  const sizes = PAGE_SIZES.map(ps => `<option value="${ps}" ${s.pageSize===ps?'selected':''}>${ps}</option>`).join('');
+  el.innerHTML = total===0 ? '' : `
+    <div class="d-flex align-items-center gap-2 flex-wrap mt-1 pagination-bar">
+      <small class="text-muted">${t('showPerPage')}: <select class="form-select form-select-sm d-inline-block" style="width:65px" onchange="setPageSize('${tbl}',+this.value)">${sizes}</select></small>
+      <small class="text-muted">${from}–${to} ${t('of')} ${total}</small>
+      <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="setPage('${tbl}',${s.page-1})" ${s.page<=1?'disabled':''}>‹</button>
+      <small>${s.page} / ${totalPages}</small>
+      <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="setPage('${tbl}',${s.page+1})" ${s.page>=totalPages?'disabled':''}>›</button>
+    </div>`;
+}
+
+function setPage(tbl, page) {
+  const data = applyFilters(tbl);
+  const totalPages = Math.max(1, Math.ceil(data.length/state[tbl].pageSize));
+  state[tbl].page = Math.max(1, Math.min(page, totalPages));
+  renderSection(tbl);
+}
+function setPageSize(tbl, size) {
+  state[tbl].pageSize = size;
+  state[tbl].page = 1;
+  renderSection(tbl);
 }
 
 // ─── RENDER ENGINE ────────────────────────────────────────────────────────────
 function renderSection(tbl) {
   const active = getActiveCols(tbl);
   const colDefs = COLS[tbl].filter(c => active.includes(c.id));
-  const data = applyFilters(tbl);
-  const { sortCol, sortDir } = state[tbl];
+  const allData = applyFilters(tbl);
+  const { sortCol, sortDir, page, pageSize } = state[tbl];
 
-  // render thead
+  // thead
   const thead = document.getElementById(`thead-${tbl}`);
   if (thead) {
     thead.innerHTML = '<tr>' + colDefs.map(c => {
       const sortable = c.sk != null;
-      const arrow = !sortable ? '' : sortCol === c.sk ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' <span style="opacity:.4">⇅</span>';
-      const cls = sortable ? 'sort-th' : '';
-      const click = sortable ? `onclick="sortBy('${tbl}','${c.sk}')"` : '';
-      return `<th class="${cls}" ${click}>${c.label}${arrow}</th>`;
+      const arrow = !sortable ? '' : sortCol===c.sk ? (sortDir==='asc'?' ▲':' ▼') : ' <span style="opacity:.4">⇅</span>';
+      return `<th class="${sortable?'sort-th':''}" ${sortable?`onclick="sortBy('${tbl}','${c.sk}')"`:''}>${c.label}${arrow}</th>`;
     }).join('') + '</tr>';
   }
 
-  // render tbody
+  // paginate
+  const pageData = allData.slice((page-1)*pageSize, page*pageSize);
+
+  // tbody
   const tbody = document.getElementById(`tbody-${tbl}`);
-  if (!data.length) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="${colDefs.length}" class="text-center py-3">ไม่พบข้อมูล</td></tr>`;
+  if (!allData.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="${colDefs.length}" class="text-center py-3">${t('noData')}</td></tr>`;
+    renderPagination(tbl, 0);
     return;
   }
 
-  // special row classes
-  tbody.innerHTML = data.map(row => {
-    let rowCls = '';
-    if (tbl === 'riders') {
-      rowCls = row.queue === 'not_in_pool' ? 'not-in-pool-row'
-             : row.ready_for_auto_assign   ? 'table-success'
-             : '';
-    } else if (tbl === 'stuck') rowCls = 'table-danger';
-
-    const cells = colDefs.map(c => `<td>${c.r(row)}</td>`).join('');
-    return `<tr class="${rowCls}">${cells}</tr>`;
+  tbody.innerHTML = pageData.map(row => {
+    let cls = '';
+    if (tbl==='riders') cls = row.queue==='not_in_pool' ? 'not-in-pool-row' : row.ready_for_auto_assign ? 'table-success' : '';
+    else if (tbl==='stuck') cls = 'table-danger';
+    return `<tr class="${cls}">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}</tr>`;
   }).join('');
+
+  renderPagination(tbl, allData.length);
 }
 
 // ─── JOBS STATUS DASHBOARD ────────────────────────────────────────────────────
@@ -575,11 +776,18 @@ function renderJobsDash() {
   const counts = {};
   state.jobs.data.forEach(d => { counts[d.status||'unknown'] = (counts[d.status||'unknown']||0)+1; });
   const dash = document.getElementById('jobs-dash');
-  if (!Object.keys(counts).length) { dash.innerHTML = ''; return; }
-  dash.innerHTML = Object.entries(counts)
-    .sort((a,b) => b[1]-a[1])
-    .map(([s,n]) => `${jobBadge(s)} <span class="badge bg-dark me-2">${n}</span>`)
-    .join('');
+  if (!Object.keys(counts).length) { dash.innerHTML=''; return; }
+  dash.innerHTML = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([s,n]) =>
+    `${jobBadge(s)} <span class="badge bg-dark dash-badge me-2" onclick="filterJobsByStatus('${s}')">${n}</span>`
+  ).join('');
+}
+
+function filterJobsByStatus(s) {
+  state.jobs.statusFilter = state.jobs.statusFilter === s ? '' : s;
+  state.jobs.page = 1;
+  const sel = document.getElementById('jobs-status-filter');
+  if (sel) sel.value = state.jobs.statusFilter;
+  renderSection('jobs');
 }
 
 // ─── RIDER PERFORMANCE ────────────────────────────────────────────────────────
@@ -588,32 +796,57 @@ function renderRiderPerf() {
   if (!data.length) { document.getElementById('rider-perf-panel').classList.add('d-none'); return; }
   const riderMap = {};
   data.forEach(d => {
-    const key = d.riderId || d.riderName || '__unknown__';
-    const name = d.riderName || d.riderId || 'Unknown';
-    if (!riderMap[key]) riderMap[key] = { name, riderId: d.riderId, count: 0 };
+    const key = d.riderId||d.riderName||'__unknown__';
+    if (!riderMap[key]) riderMap[key] = { name:d.riderName||d.riderId||'Unknown', riderId:d.riderId, count:0 };
     riderMap[key].count++;
   });
-  const sorted = Object.values(riderMap).sort((a,b) => b.count - a.count);
-  const html = sorted.map(r => `
+  const sorted = Object.values(riderMap).sort((a,b)=>b.count-a.count);
+  document.getElementById('rider-perf-body').innerHTML = sorted.map(r => `
     <div class="perf-card d-flex align-items-center gap-2">
       <i class="bi bi-person-circle text-secondary"></i>
-      <div>
-        <div class="fw-semibold lh-sm">${r.name}</div>
-        <small class="text-muted font-monospace">${r.riderId||'–'}</small>
-      </div>
+      <div><div class="fw-semibold lh-sm">${r.name}</div><small class="text-muted font-monospace">${r.riderId||'–'}</small></div>
       <span class="badge rounded-pill ms-2" style="background:#5c4a8a;font-size:.9rem;">${r.count} orders</span>
     </div>`).join('');
-  document.getElementById('rider-perf-body').innerHTML = html;
   document.getElementById('rider-perf-panel').classList.remove('d-none');
 }
 
-// ─── COLUMN SELECTOR MODAL ────────────────────────────────────────────────────
-let _activeColTbl = null;
+// ─── STATUS TIMELINE MODAL ───────────────────────────────────────────────────
+function showTimeline(oid) {
+  const d = state.orders.data.find(o => o._id === oid);
+  if (!d) return;
+  const history = d.statusHistory || [];
+  const last = history.length - 1;
+  const bodyHtml = history.length ? history.map((s, i) => {
+    const desc = statusDesc(s.status);
+    const isDone = ['DELIVERED','ORDER_CANCELLED','ORDER_FAILED','ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE','ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE'].includes(s.status);
+    return `
+      <div class="tl-row mb-1">
+        <div class="d-flex flex-column align-items-center" style="width:14px;">
+          <div class="timeline-dot ${isDone?'done':''}"></div>
+          ${i<last?`<div class="timeline-line" style="height:28px;"></div>`:''}
+        </div>
+        <div class="tl-content">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <small class="text-muted">${fmtDt(s.updatedAt)}</small>
+            <span class="badge bg-secondary status-badge">${s.status}</span>
+          </div>
+          ${desc?`<small class="text-muted">${desc}</small>`:''}
+        </div>
+      </div>`;
+  }).join('') : '<em class="text-muted">ไม่มีข้อมูล</em>';
 
+  document.getElementById('timelineTitle').innerHTML =
+    `<i class="bi bi-clock-history me-2"></i>${d.consignment||d.internalOrderId||'Timeline'} <span class="ms-2">${orderStatusBadge(d.currentOrderStatus)}</span>`;
+  document.getElementById('timelineBody').innerHTML = bodyHtml;
+  new bootstrap.Modal(document.getElementById('timelineModal')).show();
+}
+
+// ─── COLUMN SELECTOR MODAL ───────────────────────────────────────────────────
+let _activeColTbl = null;
 function openColModal(tbl) {
   _activeColTbl = tbl;
   const active = getActiveCols(tbl);
-  document.getElementById('colModalTitle').textContent = `Columns – ${tbl}`;
+  document.getElementById('colModalTitle').textContent = `${t('colSelector')} – ${tbl}`;
   document.getElementById('colModalBody').innerHTML = COLS[tbl].map(c => `
     <div class="form-check">
       <input class="form-check-input" type="checkbox" id="col_${c.id}" ${active.includes(c.id)?'checked':''}>
@@ -621,103 +854,95 @@ function openColModal(tbl) {
     </div>`).join('');
   new bootstrap.Modal(document.getElementById('colModal')).show();
 }
-
 function saveColModal() {
-  const chosen = COLS[_activeColTbl]
-    .filter(c => document.getElementById(`col_${c.id}`)?.checked)
-    .map(c => c.id);
+  const chosen = COLS[_activeColTbl].filter(c => document.getElementById(`col_${c.id}`)?.checked).map(c => c.id);
   if (chosen.length) saveActiveCols(_activeColTbl, chosen);
   bootstrap.Modal.getInstance(document.getElementById('colModal')).hide();
   renderSection(_activeColTbl);
 }
 
-// ─── FETCH: PENDING ───────────────────────────────────────────────────────────
+// ─── FETCH FUNCTIONS ──────────────────────────────────────────────────────────
 async function fetchPending() {
   const { storeCode } = getInputs();
   setLoading('pending', true);
   try {
     const r = await fetch(`${API_BASE}/api/pending?storeCode=${encodeURIComponent(storeCode)}`);
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error);
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-pending').textContent = j.count;
-    state.pending.data = j.data;
-    renderSection('pending');
-    markUpdated();
-  } catch(e) { setError('pending', e.message); }
-  finally { setLoading('pending', false); }
+    state.pending.data = j.data; state.pending.page = 1;
+    renderSection('pending'); markUpdated();
+  } catch(e) { setError('pending', e.message); } finally { setLoading('pending', false); }
 }
 
-// ─── FETCH: RIDERS ────────────────────────────────────────────────────────────
 async function fetchRiders() {
   const { storeCode } = getInputs();
   setLoading('riders', true);
   try {
     const r = await fetch(`${API_BASE}/api/riders?storeCode=${encodeURIComponent(storeCode)}`);
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error);
-    document.getElementById('count-riders').textContent  = j.count;
-    document.getElementById('ready-count').textContent   = j.readyCount;
-    state.riders.data = j.data;
-    renderSection('riders');
-    markUpdated();
-  } catch(e) { setError('riders', e.message); }
-  finally { setLoading('riders', false); }
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    document.getElementById('count-riders').textContent = j.count;
+    document.getElementById('ready-count').textContent = j.readyCount;
+    state.riders.data = j.data; state.riders.page = 1;
+    renderSection('riders'); markUpdated();
+  } catch(e) { setError('riders', e.message); } finally { setLoading('riders', false); }
 }
 
-// ─── FETCH: JOBS ──────────────────────────────────────────────────────────────
 async function fetchJobs() {
   const { storeCode, from, to } = getInputs();
   setLoading('jobs', true);
   try {
     const r = await fetch(`${API_BASE}/api/jobs?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error);
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-jobs').textContent = j.count;
-    state.jobs.data = j.data;
-    renderJobsDash();
-    renderSection('jobs');
+    state.jobs.data = j.data; state.jobs.page = 1;
+    renderJobsDash(); renderSection('jobs');
+    if (state.riders.data.length) renderSection('riders');
     markUpdated();
-  } catch(e) { setError('jobs', e.message); }
-  finally { setLoading('jobs', false); }
+  } catch(e) { setError('jobs', e.message); } finally { setLoading('jobs', false); }
 }
 
-// ─── FETCH: STUCK ─────────────────────────────────────────────────────────────
 async function fetchStuck() {
   const { storeCode, from, to } = getInputs();
   setLoading('stuck', true);
   try {
     const r = await fetch(`${API_BASE}/api/stuck?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error);
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-stuck').textContent = j.count;
-    state.stuck.data = j.data;
-    renderSection('stuck');
-    markUpdated();
-  } catch(e) { setError('stuck', e.message); }
-  finally { setLoading('stuck', false); }
+    state.stuck.data = j.data; state.stuck.page = 1;
+    renderSection('stuck'); markUpdated();
+  } catch(e) { setError('stuck', e.message); } finally { setLoading('stuck', false); }
 }
 
-// ─── FETCH: ORDERS ────────────────────────────────────────────────────────────
 async function fetchOrders() {
-  const type   = document.querySelector('input[name="orderType"]:checked').value;
+  const type = document.querySelector('input[name="orderType"]:checked').value;
   const values = document.getElementById('orderValues').value.trim();
   if (!values) { setError('orders', 'กรุณากรอก values'); return; }
   setLoading('orders', true);
   try {
     const r = await fetch(`${API_BASE}/api/orders?type=${encodeURIComponent(type)}&values=${encodeURIComponent(values)}`);
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error);
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-orders').textContent = j.count;
-    state.orders.data = j.data;
-    renderSection('orders');
-    renderRiderPerf();
-    markUpdated();
-  } catch(e) { setError('orders', e.message); }
-  finally { setLoading('orders', false); }
+    state.orders.data = j.data; state.orders.page = 1;
+    renderSection('orders'); renderRiderPerf(); markUpdated();
+  } catch(e) { setError('orders', e.message); } finally { setLoading('orders', false); }
 }
 
-// ─── INIT EMPTY HEADERS ──────────────────────────────────────────────────────
-['pending','riders','jobs','stuck','orders'].forEach(tbl => renderSection(tbl));
+async function fetchBatches() {
+  const orderIds = document.getElementById('batchOrderIds').value.trim();
+  if (!orderIds) { setError('batches', 'กรุณากรอก Order IDs'); return; }
+  setLoading('batches', true);
+  try {
+    const r = await fetch(`${API_BASE}/api/batches?orderIds=${encodeURIComponent(orderIds)}`);
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    document.getElementById('count-batches').textContent = j.count;
+    state.batches.data = j.data; state.batches.page = 1;
+    renderSection('batches'); markUpdated();
+  } catch(e) { setError('batches', e.message); } finally { setLoading('batches', false); }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+ALL_TBLS.forEach(tbl => renderSection(tbl));
+applyLang();
 </script>
 </body>
 </html>

@@ -91,7 +91,7 @@ app.get('/api/jobs', async (req, res) => {
         }
       )
       .sort({ createdAt: -1 })
-      .limit(500)
+      .limit(2000)
       .toArray();
 
     const enriched = docs.map(d => ({
@@ -317,8 +317,6 @@ app.get('/api/riders', async (req, res) => {
 });
 
 // ─── ORDER QUERY ──────────────────────────────────────────────────────────────
-// type: 'consignment' | 'orderid'
-// values: comma-separated
 app.get('/api/orders', async (req, res) => {
   try {
     const { type, values } = req.query;
@@ -351,38 +349,99 @@ app.get('/api/orders', async (req, res) => {
           'workflowInput.metadata.jobId': 1,
           'workflowInput.metadata.jobs': 1,
           'workflowInput.fleetDispatchType': 1,
+          'workflowInput.tasks.direction': 1,
+          'workflowInput.tasks.information.payment': 1,
           'metadata.staff.name': 1,
           'metadata.staff.riderId': 1,
           'metadata.staff.phone': 1,
           'metadata.staff.workingType': 1,
+          'payment.method': 1,
+          'payment.extraCOD.channel': 1,
+          'payment.extraCODAmount': 1,
           orderStatuses: 1
         }
       })
       .sort({ createdAt: -1 })
       .toArray();
 
-    const enriched = docs.map(d => ({
-      _id: safeStr(d._id),
-      orderId: d.orderId || null,
-      internalOrderId: d.workflowInput?.metadata?.orderId || null,
-      consignment: d.workflowInput?.metadata?.consignment || null,
-      storeCode: d.workflowInput?.metadata?.storeCode || null,
-      storeName: d.workflowInput?.metadata?.storeName || null,
-      jobId: d.workflowInput?.metadata?.jobId || d.workflowInput?.metadata?.jobs?.[0] || null,
-      fleetDispatchType: d.workflowInput?.fleetDispatchType || null,
-      currentOrderStatus: d.currentOrderStatus || null,
-      riderName: d.metadata?.staff?.name || null,
-      riderId: safeStr(d.metadata?.staff?.riderId) || null,
-      riderPhone: d.metadata?.staff?.phone || null,
-      workingType: d.metadata?.staff?.workingType || null,
-      createdAt: d.createdAt || null,
-      updatedAt: d.updatedAt || null,
-      statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt }))
-    }));
+    const enriched = docs.map(d => {
+      const pickupTask = (d.workflowInput?.tasks || []).find(t => t.direction === 'PICKUP');
+      return {
+        _id: safeStr(d._id),
+        orderId: d.orderId || null,
+        internalOrderId: d.workflowInput?.metadata?.orderId || null,
+        consignment: d.workflowInput?.metadata?.consignment || null,
+        storeCode: d.workflowInput?.metadata?.storeCode || null,
+        storeName: d.workflowInput?.metadata?.storeName || null,
+        jobId: d.workflowInput?.metadata?.jobId || d.workflowInput?.metadata?.jobs?.[0] || null,
+        fleetDispatchType: d.workflowInput?.fleetDispatchType || null,
+        currentOrderStatus: d.currentOrderStatus || null,
+        paymentMethod: d.payment?.method || null,
+        paymentChannel: pickupTask?.information?.payment?.channel || null,
+        codChannel: d.payment?.extraCOD?.channel || null,
+        codAmount: d.payment?.extraCODAmount || null,
+        riderName: d.metadata?.staff?.name || null,
+        riderId: safeStr(d.metadata?.staff?.riderId) || null,
+        riderPhone: d.metadata?.staff?.phone || null,
+        workingType: d.metadata?.staff?.workingType || null,
+        createdAt: d.createdAt || null,
+        updatedAt: d.updatedAt || null,
+        statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt }))
+      };
+    });
 
     res.json({ count: enriched.length, data: enriched });
   } catch (e) {
     console.error('[/api/orders]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── BATCH QUERY ─────────────────────────────────────────────────────────────
+app.get('/api/batches', async (req, res) => {
+  try {
+    const { orderIds } = req.query;
+    if (!orderIds) return res.status(400).json({ error: 'orderIds required' });
+    const idList = orderIds.split(',').map(s => s.trim()).filter(Boolean);
+    if (!idList.length) return res.status(400).json({ error: 'no orderIds provided' });
+
+    const c = await getClient();
+    const filter = idList.length === 1
+      ? { orderIds: idList[0] }
+      : { orderIds: { $in: idList } };
+
+    const docs = await c
+      .db('4pl-oms')
+      .collection('autobatchingbatches')
+      .find(filter, {
+        projection: {
+          _id: 1, orderIds: 1, storeId: 1, status: 1, createdAt: 1,
+          batchId: 1,
+          'routeOptimization.startTime': 1,
+          'routeOptimization.endTime': 1,
+          'routeOptimization.status': 1
+        }
+      })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .toArray();
+
+    const enriched = docs.map(d => ({
+      _id: safeStr(d._id),
+      batchId: d.batchId || null,
+      orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
+      orderCount: Array.isArray(d.orderIds) ? d.orderIds.length : 0,
+      storeId: safeStr(d.storeId) || null,
+      status: d.status || null,
+      roStartTime: d.routeOptimization?.startTime || null,
+      roEndTime: d.routeOptimization?.endTime || null,
+      roStatus: d.routeOptimization?.status || null,
+      createdAt: d.createdAt || null
+    }));
+
+    res.json({ count: enriched.length, data: enriched });
+  } catch (e) {
+    console.error('[/api/batches]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

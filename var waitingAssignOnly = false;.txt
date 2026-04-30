@@ -1,0 +1,362 @@
+var waitingAssignOnly = false;
+
+// ========================
+// 🔧 GLOBALS
+// ========================
+
+var storeCodes = ["1104"];
+
+function getSibling(dbName) {
+    return db.getSiblingDB(dbName);
+}
+
+// ========================
+// 🚀 MAIN
+// ========================
+
+// STEP 1: zones
+var zones = getSibling("4pl-address-and-zoning").geographies.find(
+{
+    storeCode: { $in: storeCodes },
+    deleted: { $ne: true },
+    areaPath: { $exists: true, $ne: ",," }
+},
+{
+    _id: 0,
+    storeCode: 1,
+    areaPath: 1
+}
+).toArray();
+
+// STEP 1.5: stores
+var stores = getSibling("lastmile").stores.find(
+{
+    code: { $in: storeCodes }
+},
+{
+    _id: 0,
+    code: 1,
+    location: 1,
+    "metadata.config.assignment.autoAssign.jobSurface.radius": 1
+}
+).toArray();
+
+var storeMap = {};
+stores.forEach(function(s) {
+    storeMap[s.code] = s;
+});
+
+// STEP 2: clusterIds
+var storeClusterMap = {};
+
+zones.forEach(function(z) {
+    var code = z.storeCode;
+
+    var clusters = (z.areaPath || "")
+        .split(",")
+        .map(function(c) { return c.trim(); })
+        .filter(function(c) { return /^[a-f0-9]{24}$/i.test(c); });
+
+    if (!storeClusterMap[code]) {
+        storeClusterMap[code] = {
+            storeCode: code,
+            clusterIds: new Set()
+        };
+    }
+
+    clusters.forEach(function(c) {
+        storeClusterMap[code].clusterIds.add(c);
+    });
+});
+
+var finalResult = [];
+
+Object.values(storeClusterMap).forEach(function(item) {
+
+    var storeCode = item.storeCode;
+    var clusterIds = item.clusterIds;
+
+    var clusterList = Array.from(clusterIds).map(function(id) {
+        return ObjectId(id);
+    });
+
+    // ========================
+    // STAFF
+    // ========================
+    var staffs = getSibling("4pl-fleet").staffs.find(
+    {
+        "metaData.shifts.clusterId": { $in: clusterList },
+        status: "ONLINE"
+    },
+    {
+        _id: 0,
+        userId: 1,
+        username: 1,
+        firstname: 1,
+        lastname: 1,
+        phone: 1,
+        status: 1,
+        breakAt: 1,
+        location: 1,
+        "metaData.autoBatchRejected": 1
+    }
+    ).toArray();
+
+    var staffMap = {};
+    var staffUserIds = [];
+
+    staffs.forEach(function(s) {
+        var uid = safeObjectIdToString(s.userId);
+        if (uid) {
+            staffMap[uid] = s;
+            staffUserIds.push(s.userId);
+        }
+    });
+
+    if (staffUserIds.length === 0) return;
+
+    // ========================
+    // JOBS
+    // ========================
+    var jobs = getSibling("4pl-oms").autobatchingjobs.find(
+    {
+        "assignment.rider.id": { $in: staffUserIds },
+        status: {
+            $in: [
+                "job_accepted",
+                "job_assigned",
+                "job_picking_up",
+                "job_picked_up",
+                "job_delivering"
+            ]
+        }
+    },
+    {
+        _id: 0,
+        jobId: 1,
+        status: 1,
+        "assignment.rider.id": 1
+    }
+    ).toArray();
+
+    var activeJobMap = new Map();
+
+    jobs.forEach(function(j) {
+        var rid = safeObjectIdToString(j.assignment && j.assignment.rider ? j.assignment.rider.id : null);
+        if (rid && !activeJobMap.has(rid)) {
+            activeJobMap.set(rid, {
+                jobId: j.jobId,
+                status: j.status
+            });
+        }
+    });
+
+    // ========================
+    // POOLS
+    // ========================
+    var pools = getSibling("4pl-oms").autobatchingriderpools.find(
+    {
+        userId: { $in: staffUserIds }
+    },
+    {
+        _id: 1,
+        userId: 1,
+        status: 1,
+        createdAt: 1
+    }
+    ).sort({ createdAt: 1 }).toArray();
+
+    var poolMap = {};
+    var poolOrder = [];
+
+    pools.forEach(function(p) {
+        var uid = safeObjectIdToString(p.userId);
+        if (uid) {
+            poolMap[uid] = p;
+            poolOrder.push(uid);
+        }
+    });
+
+    var now = new Date();
+    var queueIndex = 1;
+
+    var store = storeMap[storeCode];
+
+    // ========================
+    // IN POOL
+    // ========================
+    poolOrder.forEach(function(uid) {
+
+        var p = poolMap[uid];
+        var staff = staffMap[uid];
+
+        var evalResult = evaluateEligibility(p, now, activeJobMap, staff);
+        var flags = evalResult.flags;
+        var eligible = evalResult.eligible;
+
+        var jobInfo = activeJobMap.get(uid);
+        var mapUrl = buildMapUrl(staff, store);
+
+        finalResult.push({
+            storeCode: storeCode,
+            queue: queueIndex++,
+            poolId: safeObjectIdToString(p._id),
+            userId: uid,
+            status: p.status,
+            join_pool_at: p.createdAt ? p.createdAt : null,
+            username: staff && staff.username ? staff.username : "",
+            name: (staff && staff.firstname ? staff.firstname : "") + " " + (staff && staff.lastname ? staff.lastname : ""),
+            phone: staff && staff.phone ? staff.phone : "",
+
+            ready_for_auto_assign: eligible,
+
+            staff_online: flags.staff_online,
+            not_banned: flags.not_banned,
+            no_active_job: flags.no_active_job,
+            not_on_break: flags.not_on_break,
+
+            job_on_hand_id: flags.no_active_job === false && jobInfo ? jobInfo.jobId : null,
+            job_on_hand_status: flags.no_active_job === false && jobInfo ? jobInfo.status : null,
+
+            mapUrl: mapUrl
+        });
+
+    });
+
+    // ========================
+    // NOT IN POOL
+    // ========================
+    if (!waitingAssignOnly) {
+
+        Object.keys(staffMap).forEach(function(uid) {
+
+            if (poolMap[uid]) return;
+
+            var staff = staffMap[uid];
+
+            var evalResult = evaluateEligibility(null, now, activeJobMap, staff);
+            var flags = evalResult.flags;
+            var eligible = evalResult.eligible;
+
+            var jobInfo = activeJobMap.get(uid);
+            var mapUrl = buildMapUrl(staff, store);
+
+            finalResult.push({
+                storeCode: storeCode,
+                queue: "not_in_pool",
+                poolId: null,
+                userId: uid,
+                status: "N/A",
+                join_pool_at: null,
+                username: staff && staff.username ? staff.username : "",
+                name: (staff && staff.firstname ? staff.firstname : "") + " " + (staff && staff.lastname ? staff.lastname : ""),
+                phone: staff && staff.phone ? staff.phone : "",
+
+                ready_for_auto_assign: eligible,
+
+                staff_online: flags.staff_online,
+                not_banned: flags.not_banned,
+                no_active_job: flags.no_active_job,
+                not_on_break: flags.not_on_break,
+
+                job_on_hand_id: flags.no_active_job === false && jobInfo ? jobInfo.jobId : null,
+                job_on_hand_status: flags.no_active_job === false && jobInfo ? jobInfo.status : null,
+
+                mapUrl: mapUrl
+            });
+
+        });
+    }
+
+});
+
+// ========================
+// OUTPUT
+// ========================
+printjson(finalResult);
+
+// ========================
+// HELPERS
+// ========================
+
+function buildMapUrl(staff, store) {
+
+    var riderLng = null;
+    var riderLat = null;
+
+    if (staff && staff.location && staff.location.coordinates) {
+        riderLng = staff.location.coordinates[0];
+        riderLat = staff.location.coordinates[1];
+    }
+
+    var storeLng = null;
+    var storeLat = null;
+    var storeRadius = 100;
+
+    if (store && store.location && store.location.coordinates) {
+        storeLng = store.location.coordinates[0];
+        storeLat = store.location.coordinates[1];
+    }
+
+    if (
+        store &&
+        store.metadata &&
+        store.metadata.config &&
+        store.metadata.config.assignment &&
+        store.metadata.config.assignment.autoAssign &&
+        store.metadata.config.assignment.autoAssign.jobSurface &&
+        store.metadata.config.assignment.autoAssign.jobSurface.radius
+    ) {
+        storeRadius = store.metadata.config.assignment.autoAssign.jobSurface.radius;
+    }
+
+    if (riderLat === null || storeLat === null) return null;
+
+    var circles = [
+        [5, riderLat, riderLng, "#3AAA24", "#3DFF1F", 0.4],
+        [storeRadius, storeLat, storeLng, "#FF0000", "#AA0000", 0.4]
+    ];
+
+    var encoded = encodeURIComponent(JSON.stringify(circles));
+
+    return "https://www.mapdevelopers.com/draw-circle-tool.php?circles=" + encoded;
+}
+
+function evaluateEligibility(pool, now, activeJobMap, staff) {
+
+    var uid = safeObjectIdToString(pool ? pool.userId : (staff ? staff.userId : null));
+
+    var flags = {
+        staff_online: staff && staff.status === "ONLINE",
+        not_banned: checkNotBanned(staff, now),
+        no_active_job: !activeJobMap.has(uid),
+        not_on_break: checkNotOnBreak(staff)
+    };
+
+    return {
+        flags: flags,
+        eligible: Object.values(flags).every(Boolean)
+    };
+}
+
+function checkNotBanned(staff, now) {
+    if (!staff || !staff.metaData || !staff.metaData.autoBatchRejected) return true;
+    return now > new Date(staff.metaData.autoBatchRejected);
+}
+
+function checkNotOnBreak(staff) {
+    if (!staff || !staff.breakAt) return true;
+    return isNaN(new Date(staff.breakAt).getTime());
+}
+
+function safeObjectIdToString(val) {
+    try {
+        if (!val) return null;
+        if (typeof val === "object" && typeof val.toHexString === "function") {
+            return val.toHexString();
+        }
+        return val.toString();
+    } catch (e) {
+        return null;
+    }
+}

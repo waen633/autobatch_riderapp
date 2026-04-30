@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lotus Auto-Batching Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background: #f0f2f5; font-size: 13px; }
+    .navbar-brand { font-size: 1.1rem; }
+    .card { box-shadow: 0 2px 8px rgba(0,0,0,.09); border: none; border-radius: 10px; }
+    .card-header { border-radius: 10px 10px 0 0 !important; font-size: 0.9rem; }
+    .badge-count { font-size: 1rem; min-width: 2rem; }
+    .table-sm td, .table-sm th { padding: .3rem .5rem; vertical-align: middle; }
+    .flag-icon { font-size: 0.9rem; }
+    .status-badge { font-size: 0.7rem; white-space: nowrap; }
+    .queue-cell { min-width: 2.2rem; text-align: center; }
+    .scroll-table { max-height: 380px; overflow-y: auto; }
+    .sticky-header th { position: sticky; top: 0; z-index: 1; }
+    .not-in-pool-row td { opacity: 0.55; }
+    #last-updated { font-size: 0.75rem; }
+    .section-title small { font-weight: 400; opacity: 0.75; }
+    .empty-row td { color: #888; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark py-2" style="background:#1a6b3c;">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold">
+      <i class="bi bi-speedometer2 me-2"></i>Lotus Auto-Batching Dashboard
+    </span>
+    <span class="text-white-50" id="last-updated"></span>
+  </div>
+</nav>
+
+<div class="container-fluid px-3 py-3">
+
+  <!-- FILTER BAR -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label mb-1 fw-semibold">Store Code</label>
+          <input type="text" class="form-control form-control-sm" id="storeCode" value="1104" style="width:100px">
+        </div>
+        <div class="col-auto">
+          <label class="form-label mb-1 fw-semibold">From</label>
+          <input type="datetime-local" class="form-control form-control-sm" id="fromDate">
+        </div>
+        <div class="col-auto">
+          <label class="form-label mb-1 fw-semibold">To</label>
+          <input type="datetime-local" class="form-control form-control-sm" id="toDate">
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary btn-sm" onclick="resetDates()">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset
+          </button>
+        </div>
+        <div class="col-auto ms-auto">
+          <small class="text-muted">* Pending & Riders ไม่ใช้ date range</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2x2 GRID -->
+  <div class="row g-3">
+
+    <!-- ── SECTION 1: PENDING ORDERS ── -->
+    <div class="col-12 col-xl-6">
+      <div class="card h-100">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center py-2">
+          <span class="section-title">
+            <i class="bi bi-box-seam me-1"></i>Pending Orders
+            <small>(รอสร้าง Job)</small>
+          </span>
+          <span class="badge bg-dark badge-count" id="count-pending">–</span>
+        </div>
+        <div class="card-body p-2">
+          <button class="btn btn-warning btn-sm mb-2" onclick="fetchPending()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Get Pending Orders
+          </button>
+          <div id="loading-pending" class="d-none text-center py-2">
+            <div class="spinner-border spinner-border-sm text-warning"></div>
+            <span class="ms-2 text-muted">Loading…</span>
+          </div>
+          <div id="error-pending" class="alert alert-danger py-1 d-none small mb-2"></div>
+          <div class="scroll-table">
+            <table class="table table-sm table-hover table-striped mb-0">
+              <thead class="table-dark sticky-header">
+                <tr>
+                  <th>Order ID</th>
+                  <th>Consignment</th>
+                  <th>Service</th>
+                  <th>Created At</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-pending">
+                <tr class="empty-row"><td colspan="4" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2: RIDER POOL ── -->
+    <div class="col-12 col-xl-6">
+      <div class="card h-100">
+        <div class="card-header text-white d-flex justify-content-between align-items-center py-2" style="background:#0077b6;">
+          <span class="section-title">
+            <i class="bi bi-person-badge me-1"></i>Rider Pool
+            <small>Ready: <span id="ready-count" class="fw-bold text-warning">–</span></small>
+          </span>
+          <span class="badge bg-dark badge-count" id="count-riders">–</span>
+        </div>
+        <div class="card-body p-2">
+          <button class="btn btn-sm text-white mb-2" style="background:#0077b6;" onclick="fetchRiders()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Get Riders
+          </button>
+          <div id="loading-riders" class="d-none text-center py-2">
+            <div class="spinner-border spinner-border-sm" style="color:#0077b6;"></div>
+            <span class="ms-2 text-muted">Loading…</span>
+          </div>
+          <div id="error-riders" class="alert alert-danger py-1 d-none small mb-2"></div>
+          <div class="scroll-table">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-dark sticky-header">
+                <tr>
+                  <th class="queue-cell">#</th>
+                  <th>Name / Phone</th>
+                  <th>User ID</th>
+                  <th>Joined Pool</th>
+                  <th class="text-center">Ready</th>
+                  <th>Flags</th>
+                  <th>Job on hand</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-riders">
+                <tr class="empty-row"><td colspan="8" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 3: JOBS ── -->
+    <div class="col-12 col-xl-6">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+          <span class="section-title">
+            <i class="bi bi-clipboard-data me-1"></i>Jobs
+            <small>(ตามช่วงเวลา)</small>
+          </span>
+          <span class="badge bg-dark badge-count" id="count-jobs">–</span>
+        </div>
+        <div class="card-body p-2">
+          <button class="btn btn-primary btn-sm mb-2" onclick="fetchJobs()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Get Jobs
+          </button>
+          <div id="loading-jobs" class="d-none text-center py-2">
+            <div class="spinner-border spinner-border-sm text-primary"></div>
+            <span class="ms-2 text-muted">Loading…</span>
+          </div>
+          <div id="error-jobs" class="alert alert-danger py-1 d-none small mb-2"></div>
+          <div class="scroll-table">
+            <table class="table table-sm table-hover table-striped mb-0">
+              <thead class="table-dark sticky-header">
+                <tr>
+                  <th>Job ID</th>
+                  <th>Rider</th>
+                  <th class="text-center">#</th>
+                  <th>Order IDs</th>
+                  <th>PickUp SLA</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-jobs">
+                <tr class="empty-row"><td colspan="7" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4: STUCK JOBS ── -->
+    <div class="col-12 col-xl-6">
+      <div class="card h-100">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
+          <span class="section-title">
+            <i class="bi bi-exclamation-triangle me-1"></i>Stuck Jobs
+            <small>(Job ค้าง / ไม่มี jobId)</small>
+          </span>
+          <span class="badge bg-dark badge-count" id="count-stuck">–</span>
+        </div>
+        <div class="card-body p-2">
+          <button class="btn btn-danger btn-sm mb-2" onclick="fetchStuck()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Get Stuck Jobs
+          </button>
+          <div id="loading-stuck" class="d-none text-center py-2">
+            <div class="spinner-border spinner-border-sm text-danger"></div>
+            <span class="ms-2 text-muted">Loading…</span>
+          </div>
+          <div id="error-stuck" class="alert alert-danger py-1 d-none small mb-2"></div>
+          <div class="scroll-table">
+            <table class="table table-sm table-hover table-striped mb-0">
+              <thead class="table-dark sticky-header">
+                <tr>
+                  <th>Order ID</th>
+                  <th>Current Status</th>
+                  <th>Created At</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-stuck">
+                <tr class="empty-row"><td colspan="3" class="text-center py-3">กด Get เพื่อโหลด</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ─── API BASE URL ─────────────────────────────────────────────────────────────
+// ใช้ origin เดียวกับ Express server (port 3000)
+// เปลี่ยนเป็น IP:Port ของ VM เมื่อ deploy จริง เช่น 'http://10.144.x.x:3000'
+const API_BASE = (() => {
+  const loc = window.location;
+  // ถ้าเปิดจาก localhost:3000 หรือ IP:3000 ให้ใช้ origin ตรงๆ
+  if (loc.protocol === 'http:' || loc.protocol === 'https:') return loc.origin;
+  // fallback สำหรับ preview panel หรือ file://
+  return 'http://localhost:3000';
+})();
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function toInputLocal(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function resetDates() {
+  const now = new Date();
+  const start = new Date(now); start.setHours(0,0,0,0);
+  document.getElementById('fromDate').value = toInputLocal(start);
+  document.getElementById('toDate').value   = toInputLocal(now);
+}
+resetDates();
+
+// ─── SHARED HELPERS ───────────────────────────────────────────────────────────
+function getInputs() {
+  const sc   = document.getElementById('storeCode').value.trim();
+  const from = new Date(document.getElementById('fromDate').value).toISOString();
+  const to   = new Date(document.getElementById('toDate').value).toISOString();
+  return { storeCode: sc, from, to };
+}
+
+function setLoading(sec, on) {
+  document.getElementById(`loading-${sec}`).classList.toggle('d-none', !on);
+  if (on) document.getElementById(`error-${sec}`).classList.add('d-none');
+}
+
+function setError(sec, msg) {
+  const el = document.getElementById(`error-${sec}`);
+  el.textContent = `⚠ ${msg}`;
+  el.classList.remove('d-none');
+}
+
+function fmtDt(d) {
+  if (!d) return '–';
+  const dt = new Date(d);
+  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+}
+
+function jobBadge(s) {
+  const map = {
+    job_accepted: 'primary', job_assigned: 'info',
+    job_picking_up: 'warning text-dark', job_picked_up: 'success',
+    job_delivering: 'success', job_delivered: 'secondary',
+    job_cancelled: 'danger', completed: 'secondary'
+  };
+  const cls = map[s] || 'secondary';
+  return s ? `<span class="badge bg-${cls} status-badge">${s}</span>` : '–';
+}
+
+function markUpdated() {
+  document.getElementById('last-updated').textContent =
+    `Last updated: ${new Date().toLocaleTimeString('th-TH')}`;
+}
+
+// ─── PENDING ─────────────────────────────────────────────────────────────────
+async function fetchPending() {
+  const { storeCode } = getInputs();
+  setLoading('pending', true);
+  try {
+    const r = await fetch(`${API_BASE}/api/pending?storeCode=${encodeURIComponent(storeCode)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+
+    document.getElementById('count-pending').textContent = j.count;
+    const tb = document.getElementById('tbody-pending');
+
+    if (!j.data.length) {
+      tb.innerHTML = `<tr class="empty-row"><td colspan="4" class="text-center py-3">ไม่มี Pending Orders</td></tr>`;
+    } else {
+      tb.innerHTML = j.data.map(d => `
+        <tr>
+          <td><small class="font-monospace">${d.orderId || '–'}</small></td>
+          <td><small class="font-monospace">${d.consignment || '–'}</small></td>
+          <td><span class="badge bg-secondary status-badge">${d.serviceType || '–'}</span></td>
+          <td><small>${fmtDt(d.createdAt)}</small></td>
+        </tr>`).join('');
+    }
+    markUpdated();
+  } catch(e) { setError('pending', e.message); }
+  finally { setLoading('pending', false); }
+}
+
+// ─── RIDERS ──────────────────────────────────────────────────────────────────
+async function fetchRiders() {
+  const { storeCode } = getInputs();
+  setLoading('riders', true);
+  try {
+    const r = await fetch(`${API_BASE}/api/riders?storeCode=${encodeURIComponent(storeCode)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+
+    document.getElementById('count-riders').textContent = j.count;
+    document.getElementById('ready-count').textContent  = j.readyCount;
+    const tb = document.getElementById('tbody-riders');
+
+    if (!j.data.length) {
+      tb.innerHTML = `<tr class="empty-row"><td colspan="8" class="text-center py-3">ไม่พบ Rider</td></tr>`;
+    } else {
+      const sorted = [...j.data].sort((a, b) => {
+        if (a.queue === 'not_in_pool' && b.queue === 'not_in_pool') return 0;
+        if (a.queue === 'not_in_pool') return 1;
+        if (b.queue === 'not_in_pool') return -1;
+        return a.queue - b.queue;
+      });
+      tb.innerHTML = sorted.map(d => {
+        const qBadge = d.queue === 'not_in_pool'
+          ? `<span class="badge bg-secondary">–</span>`
+          : d.ready_for_auto_assign
+            ? `<span class="badge bg-success" style="font-size:1rem;min-width:2rem;padding:.3rem .5rem;">${d.queue}</span>`
+            : `<span class="badge bg-primary">${d.queue}</span>`;
+
+        const readyIcon = d.ready_for_auto_assign
+          ? `<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;" title="พร้อม"></i>`
+          : `<i class="bi bi-x-circle-fill text-danger"  style="font-size:1.1rem;" title="ไม่พร้อม"></i>`;
+
+        const flagDefs = [
+          { k: 'staff_online',  icon: 'wifi',         label: 'Online' },
+          { k: 'not_banned',    icon: 'shield-check',  label: 'Not Banned' },
+          { k: 'no_active_job', icon: 'briefcase',     label: 'No Active Job' },
+          { k: 'not_on_break',  icon: 'cup-hot',       label: 'Not On Break' }
+        ];
+        const flags = flagDefs.map(f => {
+          const ok = d[f.k];
+          return `<i class="bi bi-${f.icon}${ok ? '-fill' : ''} ${ok ? 'text-success' : 'text-danger'} flag-icon me-1" title="${f.label}: ${ok}"></i>`;
+        }).join('');
+
+        const jobCell = d.job_on_hand_id
+          ? `<small class="font-monospace d-block">${d.job_on_hand_id}</small>${jobBadge(d.job_on_hand_status)}`
+          : `<span class="text-muted">–</span>`;
+
+        const mapBtn = d.mapUrl
+          ? `<a href="${d.mapUrl}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1" title="แผนที่">
+               <i class="bi bi-geo-alt-fill"></i>
+             </a>`
+          : '–';
+
+        const rowCls = d.queue === 'not_in_pool'
+          ? 'not-in-pool-row'
+          : d.ready_for_auto_assign
+            ? 'table-success'
+            : '';
+        return `
+          <tr class="${rowCls}">
+            <td class="queue-cell">${qBadge}</td>
+            <td>
+              <div class="fw-semibold lh-sm">${d.name || d.username}</div>
+              <small class="text-muted">${d.phone}</small>
+            </td>
+            <td><small class="font-monospace text-muted">${d.userId || '–'}</small></td>
+            <td><small>${d.join_pool_at ? fmtDt(d.join_pool_at) : '–'}</small></td>
+            <td class="text-center">${readyIcon}</td>
+            <td style="white-space:nowrap">${flags}</td>
+            <td>${jobCell}</td>
+            <td>${mapBtn}</td>
+          </tr>`;
+      }).join('');
+    }
+    markUpdated();
+  } catch(e) { setError('riders', e.message); }
+  finally { setLoading('riders', false); }
+}
+
+// ─── JOBS ─────────────────────────────────────────────────────────────────────
+async function fetchJobs() {
+  const { storeCode, from, to } = getInputs();
+  setLoading('jobs', true);
+  try {
+    const r = await fetch(`${API_BASE}/api/jobs?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+
+    document.getElementById('count-jobs').textContent = j.count;
+    const tb = document.getElementById('tbody-jobs');
+
+    if (!j.data.length) {
+      tb.innerHTML = `<tr class="empty-row"><td colspan="7" class="text-center py-3">ไม่พบ Jobs ในช่วงเวลานี้</td></tr>`;
+    } else {
+      tb.innerHTML = j.data.map(d => {
+        const orderIdsHtml = d.orderIds && d.orderIds.length
+          ? d.orderIds.map(o => `<span class="font-monospace d-block" style="font-size:0.75rem;">${o}</span>`).join('')
+          : '–';
+        const riderHtml = d.riderName
+          ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId || ''}</small>`
+          : '–';
+        return `
+        <tr>
+          <td><small class="font-monospace">${d.jobId || '–'}</small></td>
+          <td><small>${riderHtml}</small></td>
+          <td class="text-center"><span class="badge bg-secondary">${d.orderCount}</span></td>
+          <td>${orderIdsHtml}</td>
+          <td><small>${d.pickUpSLA ? fmtDt(d.pickUpSLA) : '–'}</small></td>
+          <td>${jobBadge(d.status)}</td>
+          <td><small>${fmtDt(d.createdAt)}</small></td>
+        </tr>`;
+      }).join('');
+    }
+    markUpdated();
+  } catch(e) { setError('jobs', e.message); }
+  finally { setLoading('jobs', false); }
+}
+
+// ─── STUCK ────────────────────────────────────────────────────────────────────
+async function fetchStuck() {
+  const { storeCode, from, to } = getInputs();
+  setLoading('stuck', true);
+  try {
+    const r = await fetch(`${API_BASE}/api/stuck?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+
+    document.getElementById('count-stuck').textContent = j.count;
+    const tb = document.getElementById('tbody-stuck');
+
+    if (!j.data.length) {
+      tb.innerHTML = `<tr><td colspan="3" class="text-center py-3 text-success">
+        <i class="bi bi-check-circle-fill me-1"></i>ไม่พบ Stuck Jobs 🎉
+      </td></tr>`;
+    } else {
+      tb.innerHTML = j.data.map(d => `
+        <tr class="table-danger">
+          <td><small class="font-monospace">${d.orderId || '–'}</small></td>
+          <td><span class="badge bg-danger status-badge">${d.currentOrderStatus || '–'}</span></td>
+          <td><small>${fmtDt(d.createdAt)}</small></td>
+        </tr>`).join('');
+    }
+    markUpdated();
+  } catch(e) { setError('stuck', e.message); }
+  finally { setLoading('stuck', false); }
+}
+</script>
+</body>
+</html>

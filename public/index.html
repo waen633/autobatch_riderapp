@@ -72,6 +72,28 @@
       100% { background-color: transparent; }
     }
     .flash-animate tr td { animation: flash-data 0.8s ease-out; }
+    
+    .card-fullscreen {
+      position: fixed !important;
+      top: 3vh !important;
+      left: 3vw !important;
+      width: 94vw !important;
+      height: 94vh !important;
+      z-index: 1050 !important;
+      margin: 0 !important;
+      box-shadow: 0 0 0 100vw rgba(0,0,0,0.5), 0 1rem 3rem rgba(0,0,0,0.175) !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .card-fullscreen .scroll-table {
+      max-height: none !important;
+      flex: 1 1 auto;
+    }
+    .card-fullscreen .card-body {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
   </style>
 </head>
 <body>
@@ -127,6 +149,7 @@
         <div class="card-header card-pending d-flex justify-content-between align-items-center">
           <span><i class="bi bi-box-seam me-2 text-warning"></i><span data-i18n="sectionPending">Pending Orders</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionPendingDesc">รอสร้าง Job</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
+            <button class="btn col-btn" onclick="toggleFullscreen(this)" title="Expand"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" onclick="openColModal('pending')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-warning text-dark" id="count-pending">–</span>
           </div>
@@ -155,6 +178,7 @@
         <div class="card-header card-riders d-flex justify-content-between align-items-center">
           <span><i class="bi bi-person-badge me-2 text-info"></i><span data-i18n="sectionRiders">Rider Pool</span> <small class="text-muted fw-normal ms-1">Ready: <span id="ready-count" class="fw-bold text-success">–</span></small></span>
           <div class="d-flex align-items-center gap-2">
+            <button class="btn col-btn" onclick="toggleFullscreen(this)" title="Expand"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" onclick="openColModal('riders')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-info text-dark" id="count-riders">–</span>
           </div>
@@ -183,6 +207,7 @@
         <div class="card-header card-jobs d-flex justify-content-between align-items-center">
           <span><i class="bi bi-clipboard-data me-2 text-primary"></i><span data-i18n="sectionJobs">Jobs</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionJobsDesc">ตามช่วงเวลา</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
+            <button class="btn col-btn" onclick="toggleFullscreen(this)" title="Expand"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" onclick="openColModal('jobs')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-primary" id="count-jobs">–</span>
           </div>
@@ -225,6 +250,7 @@
         <div class="card-header card-stuck d-flex justify-content-between align-items-center">
           <span><i class="bi bi-exclamation-triangle me-2 text-danger"></i><span data-i18n="sectionStuck">Stuck Jobs</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionStuckDesc">Job ค้าง</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
+            <button class="btn col-btn" onclick="toggleFullscreen(this)" title="Expand"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" onclick="openColModal('stuck')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-danger" id="count-stuck">–</span>
           </div>
@@ -253,6 +279,7 @@
         <div class="card-header card-orders d-flex justify-content-between align-items-center">
           <span><i class="bi bi-search me-2" style="color:var(--accent-orders);"></i><span data-i18n="sectionOrders">Order Query</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionOrdersDesc">ค้นหา Order ด้วย Consignment / Order ID</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
+            <button class="btn col-btn" onclick="toggleFullscreen(this)" title="Expand"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" onclick="openColModal('orders')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge" style="background:var(--accent-orders); color:#000;" id="count-orders">–</span>
           </div>
@@ -306,6 +333,7 @@
         <div class="card-header card-batches d-flex justify-content-between align-items-center">
           <span><i class="bi bi-collection me-2 text-warning"></i><span data-i18n="sectionBatches">Batch Query</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionBatchesDesc">ค้นหา Batch ที่มี Order ID นี้</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
+            <button class="btn col-btn" onclick="toggleFullscreen(this)" title="Expand"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" onclick="openColModal('batches')"><i class="bi bi-layout-three-columns"></i></button>
             <span class="badge bg-warning text-dark" id="count-batches">–</span>
           </div>
@@ -439,6 +467,21 @@ function applyLang() {
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   document.getElementById('lang-btn').textContent = lang === 'th' ? 'EN' : 'TH';
   ALL_TBLS.forEach(tbl => renderSection(tbl));
+}
+
+function toggleFullscreen(btn) {
+  const card = btn.closest('.card');
+  const isFullscreen = card.classList.toggle('card-fullscreen');
+  const icon = btn.querySelector('i');
+  if (isFullscreen) {
+    icon.classList.remove('bi-arrows-fullscreen');
+    icon.classList.add('bi-fullscreen-exit');
+    document.body.style.overflow = 'hidden';
+  } else {
+    icon.classList.remove('bi-fullscreen-exit');
+    icon.classList.add('bi-arrows-fullscreen');
+    document.body.style.overflow = '';
+  }
 }
 
 // ─── STATUS DESCRIPTIONS ──────────────────────────────────────────────────────
@@ -579,6 +622,7 @@ const COLS = {
       if (d.codAmount) parts.push(`<small class="text-danger fw-bold">฿${d.codAmount}</small>`);
       return parts.join(' ') || '–';
     }},
+    { id:'itemsConfirm', label:'Items Confirm', sk:'isOrderItemsConfirmation', r: d => (d.isOrderItemsConfirmation === true || d.isOrderItemsConfirmation === 'true') ? '<span class="badge bg-success">True</span>' : ((d.isOrderItemsConfirmation === false || d.isOrderItemsConfirmation === 'false') ? '<span class="badge bg-danger">False</span>' : '–') },
     { id:'currentOrderStatus', label:'Status', sk:'currentOrderStatus', r: d =>
       `${orderStatusBadge(d.currentOrderStatus)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="showTimeline('${d._id}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
     { id:'riderName', label:'Rider', sk:'riderName', r: d => d.riderName
@@ -611,7 +655,7 @@ const DEFAULT_COLS = {
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
   jobs:    ['jobId','storeCode','rider','orderCount','orderIds','pickUpSLA','status','createdAt'],
   stuck:   ['orderId','currentStatus','createdAt'],
-  orders:  ['consignment','internalOrderId','storeCode','jobId','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
+  orders:  ['consignment','internalOrderId','storeCode','jobId','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
 };
 
@@ -806,11 +850,11 @@ function renderSection(tbl) {
     return;
   }
 
-  tbody.innerHTML = pageData.map(row => {
+  tbody.innerHTML = pageData.map((row, idx) => {
     let cls = '';
     if (tbl==='riders') cls = row.queue==='not_in_pool' ? 'not-in-pool-row' : row.ready_for_auto_assign ? 'table-success' : '';
     else if (tbl==='stuck') cls = 'table-danger';
-    return `<tr class="${cls}">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}</tr>`;
+    return `<tr class="${cls}" style="cursor:pointer;" onclick="toggleRow(this, '${tbl}', ${idx})" title="Click to expand/collapse details">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}</tr>`;
   }).join('');
 
   // Trigger visual flash to indicate data update
@@ -819,6 +863,27 @@ function renderSection(tbl) {
   tbody.classList.add('flash-animate');
 
   renderPagination(tbl, allData.length);
+}
+
+function toggleRow(tr, tbl, pageIdx) {
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('expand-row')) {
+    next.remove();
+    return;
+  }
+  const data = applyFilters(tbl);
+  const { page, pageSize } = state[tbl];
+  const absIdx = (page-1)*pageSize + pageIdx;
+  const rowData = data[absIdx];
+  if (!rowData) return;
+
+  const colCount = tr.children.length;
+  const detailHtml = `<div class="p-3 bg-light border rounded text-start" style="box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);"><div class="fw-bold mb-2 text-primary"><i class="bi bi-info-circle me-1"></i>Row Details (Raw Data)</div><pre style="font-size:0.75rem; margin:0; white-space:pre-wrap; color:#334155; word-wrap:break-word;">${JSON.stringify(rowData, null, 2)}</pre></div>`;
+
+  const newTr = document.createElement('tr');
+  newTr.className = 'expand-row';
+  newTr.innerHTML = `<td colspan="${colCount}" class="p-0 border-0">${detailHtml}</td>`;
+  tr.after(newTr);
 }
 
 // ─── JOBS STATUS DASHBOARD ────────────────────────────────────────────────────
@@ -901,18 +966,44 @@ function showTimeline(oid) {
   const bodyHtml = history.length ? history.map((s, i) => {
     const desc = statusDesc(s.status);
     const isDone = ['DELIVERED','ORDER_CANCELLED','ORDER_FAILED','ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE','ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE'].includes(s.status);
+    
+    let durationHtml = '';
+    let endTime = null;
+    if (i < last) {
+      endTime = new Date(history[i+1].updatedAt).getTime();
+    } else if (!isDone) {
+      endTime = Date.now();
+    }
+    
+    if (endTime) {
+      const startTime = new Date(s.updatedAt).getTime();
+      const diffMs = endTime - startTime;
+      if (!isNaN(diffMs) && diffMs >= 0) {
+        const diffSecs = Math.floor(diffMs / 1000);
+        const h = Math.floor(diffSecs / 3600);
+        const m = Math.floor((diffSecs % 3600) / 60);
+        const sec = diffSecs % 60;
+        let dStr = '';
+        if (h > 0) dStr += `${h}h `;
+        if (h > 0 || m > 0) dStr += `${m}m `;
+        dStr += `${sec}s`;
+        durationHtml = `<small class="text-secondary font-monospace ms-auto" title="Duration"><i class="bi bi-hourglass-split"></i> ${dStr.trim()}</small>`;
+      }
+    }
+
     return `
-      <div class="tl-row mb-1">
+      <div class="tl-row mb-1 d-flex gap-2">
         <div class="d-flex flex-column align-items-center" style="width:14px;">
           <div class="timeline-dot ${isDone?'done':''}"></div>
           ${i<last?`<div class="timeline-line" style="height:28px;"></div>`:''}
         </div>
-        <div class="tl-content">
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <small class="text-muted">${fmtDt(s.updatedAt)}</small>
+        <div class="tl-content flex-grow-1">
+          <div class="d-flex align-items-center gap-2 flex-wrap w-100">
+            <small class="text-muted" style="min-width:110px;">${fmtDt(s.updatedAt)}</small>
             <span class="badge bg-secondary status-badge">${s.status}</span>
+            ${durationHtml}
           </div>
-          ${desc?`<small class="text-muted">${desc}</small>`:''}
+          ${desc?`<small class="text-muted d-block mt-1">${desc}</small>`:''}
         </div>
       </div>`;
   }).join('') : '<em class="text-muted">ไม่มีข้อมูล</em>';

@@ -548,7 +548,8 @@ const COLS = {
     { id:'orderId', label:'Order ID', sk:'orderId', r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
     { id:'consignment', label:'Consignment', sk:'consignment', r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
     { id:'service', label:'Service', sk:'serviceType', r: d => `<span class="badge bg-secondary status-badge">${d.serviceType||'–'}</span>` },
-    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` },
+    { id:'waitDuration', label:'⏳ Waiting', sk:'createdAt', r: d => pendingWaitHtml(d) }
   ],
   riders: [
     { id:'queue', label:'#', sk:'queue', r: d => queueBadge(d) },
@@ -627,7 +628,7 @@ const COLS = {
 };
 
 const DEFAULT_COLS = {
-  pending: ['storeCode','orderId','consignment','service','createdAt'],
+  pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
   jobs:    ['jobId','storeCode','rider','orderCount','orderIds','pickUpSLA','status','createdAt'],
 
@@ -664,6 +665,32 @@ function idleHtml(d) {
   const text = h>0 ? `${h}h ${m}m` : `${Math.round(mins)}m`;
   const cls = mins>=180?'idle-danger':mins>=60?'idle-warn':'';
   return `<span class="${cls}">${text}</span>`;
+}
+
+function pendingWaitHtml(d) {
+  if (!d.createdAt) return '–';
+  const ms = Date.now() - new Date(d.createdAt).getTime();
+  if (ms < 0) return '–';
+  const totalMins = ms / 60000;
+  const h = Math.floor(totalMins / 60);
+  const m = Math.floor(totalMins % 60);
+  const s = Math.floor((ms % 60000) / 1000);
+  let text, cls, icon;
+  if (h > 0) {
+    text = `${h}h ${m}m`;
+  } else if (m > 0) {
+    text = `${m}m ${s}s`;
+  } else {
+    text = `${s}s`;
+  }
+  if (totalMins >= 60) {
+    cls = 'bg-danger'; icon = '🔴';
+  } else if (totalMins >= 30) {
+    cls = 'bg-warning text-dark'; icon = '🟡';
+  } else {
+    cls = 'bg-success'; icon = '🟢';
+  }
+  return `<span class="badge ${cls} status-badge" style="font-size:.8rem;">${icon} ${text}</span>`;
 }
 
 function queueBadge(d) {

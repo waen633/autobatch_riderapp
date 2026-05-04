@@ -1,60 +1,101 @@
-# Lotus Autobatch Dashboard
+# 🚀 Lotus Auto-Batching Dashboard
 
-A web-based dashboard and API for monitoring and managing the auto-batching process, rider assignments, and order statuses. This project connects to multiple MongoDB collections to aggregate data for logistics and operations tracking.
+> Dashboard สำหรับ monitor และจัดการกระบวนการ Auto-Batching, Rider Assignment และ Order Status แบบ Real-time
 
-## Features
+![Version](https://img.shields.io/badge/version-1.0.2-blue)
+![Node](https://img.shields.io/badge/node-%3E%3D18.x-green)
+![License](https://img.shields.io/badge/license-MIT-yellow)
 
-- **Pending Orders Monitoring**: View pending orders that have not yet been batched or assigned.
-- **Job Tracking**: Search and list auto-batching jobs within a specific time frame, including assigned riders and SLAs.
-- **Stuck Jobs Identification**: Find jobs that are stuck in the auto-batching process.
-- **Rider Pool Status**: Monitor the status of riders in specific store zones, checking their availability, active jobs, and eligibility for auto-assignment.
-- **Order & Batch Queries**: Search for specific orders by consignment or order ID, and check batching statuses.
+---
 
-## Tech Stack
+## ✨ Features
 
-- **Backend**: Node.js, Express.js
+| ส่วน | รายละเอียด |
+|------|-----------|
+| 📦 **Pending Orders** | ดู Order ที่รอสร้าง Job พร้อม Waiting Duration แบบ Real-time |
+| 🏍️ **Rider Pool** | สถานะ Rider ทุกคนในพื้นที่ พร้อม Idle Time และ Flags |
+| 📋 **Jobs** | ค้นหา Job ตามช่วงเวลา ดู Rider / SLA / Status |
+| 🔍 **Order Query** | ค้นหา Order ด้วย Consignment หรือ Order ID |
+| 📦 **Batch Query** | ดูข้อมูล Batch ที่มี Order ID นั้น |
+
+---
+
+## 🛠️ Tech Stack
+
+- **Backend**: Node.js + Express.js
 - **Database**: MongoDB
-- **Frontend**: HTML, CSS, JavaScript (served via Express static files)
+- **Frontend**: HTML / CSS / JavaScript (vanilla)
 
-## Prerequisites
+---
 
-- Node.js
-- MongoDB Connection String (URI)
+## 📥 การติดตั้ง (Quick Start)
 
-## Installation
+### 1. Clone โปรเจค
+```bash
+git clone https://github.com/waen633/autobatch_riderapp.git
+cd autobatch_riderapp
+```
 
-1. Clone the repository.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the root directory and add your MongoDB URI and port:
-   ```env
-   MONGO_URI=mongodb://your-mongodb-uri
-   PORT=3000
-   ```
+### 2. ติดตั้ง Dependencies
+```bash
+npm install
+```
 
-## Running the Application
+### 3. สร้างไฟล์ `.env`
+สร้างไฟล์ `.env` ที่ root ของโปรเจค แล้วใส่:
+```env
+MONGO_URI=mongodb+srv://your-username:your-password@your-cluster.mongodb.net/your-db
+PORT=3000
+```
 
-To start the server, run:
+> ⚠️ **สำคัญ**: ไฟล์ `.env` จะไม่ถูก push ขึ้น GitHub เพื่อความปลอดภัย ต้องสร้างเองทุกเครื่อง
+
+### 4. รัน Server
 ```bash
 npm start
 ```
-Or for development:
-```bash
-npm run dev
+
+เปิด Browser แล้วไปที่ **http://localhost:3000** 🎉
+
+---
+
+## 📁 โครงสร้างไฟล์
+
+```
+autobatch_riderapp/
+├── public/
+│   └── index.html      # Frontend ทั้งหมด
+├── server.js           # Backend API (Express)
+├── package.json
+├── .env                # ⚠️ ต้องสร้างเอง (ไม่อยู่ใน repo)
+└── README.md
 ```
 
-The application will be available at `http://localhost:3000`.
+---
 
-## API Endpoints
+## 🌐 API Endpoints
 
-- `GET /api/pending`: Get pending orders.
-- `GET /api/jobs`: Get jobs for a time frame.
-- `GET /api/stuck`: Get stuck jobs.
-- `GET /api/riders`: Get rider pool status.
-- `GET /api/orders`: Query orders by ID or consignment.
-- `GET /api/batches`: Get batch information by order IDs.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/pending` | ดึง Pending Orders |
+| GET | `/api/jobs` | ดึง Jobs ตามช่วงเวลา |
+| GET | `/api/riders` | ดึงสถานะ Rider Pool |
+| GET | `/api/orders` | ค้นหา Order |
+| GET | `/api/batches` | ค้นหา Batch |
 
-## Version
-Current version: 1.0.2
+---
+
+## 🖥️ Requirements
+
+- **Node.js** v18 หรือใหม่กว่า → [ดาวน์โหลดที่นี่](https://nodejs.org/)
+- **MongoDB** Connection URI (ติดต่อผู้ดูแลระบบ)
+
+---
+
+## 📝 Version History
+
+| Version | Changes |
+|---------|---------|
+| 1.0.2 | เพิ่ม Waiting Duration ใน Pending Orders, Export CSV, Status Timeline |
+| 1.0.1 | เพิ่ม Dual-language (TH/EN), Color-coded Timeline |
+| 1.0.0 | Initial release |

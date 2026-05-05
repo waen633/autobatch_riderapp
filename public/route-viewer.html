@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Route Viewer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    html, body { height: 100%; margin: 0; font-family: Inter, system-ui, -apple-system, sans-serif; background: #f8fafc; }
+    #app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+    .topbar { padding: 10px 12px; border-bottom: 1px solid #dbe2ea; background: #fff; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .title { font-size: 14px; font-weight: 600; color: #0f172a; margin-right: 8px; }
+    .meta { font-size: 12px; color: #64748b; margin-right: auto; }
+    .btn { border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px 10px; font-size: 12px; background: #fff; color: #0f172a; cursor: pointer; }
+    .btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+    #map { height: 100%; width: 100%; }
+    .route-pin {
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 2px 6px;
+      line-height: 1.1;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .route-pin .id-line {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 1px;
+    }
+    .route-pin.pickup { border-color: #2563eb; color: #1d4ed8; }
+    .route-pin.delivery { border-color: #dc2626; color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="title">Route Viewer</div>
+      <div class="meta" id="meta">Loading route data…</div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const metaEl = document.getElementById('meta');
+    const map = L.map('map', { zoomControl: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const colors = {
+      pickup: '#2563eb',
+      delivery: '#dc2626',
+      unknown: '#64748b'
+    };
+
+    const layers = [];
+    const markerByLatLng = new Map();
+
+    function decodePolyline(encoded, precision) {
+      let index = 0;
+      let lat = 0;
+      let lng = 0;
+      const coordinates = [];
+      const factor = Math.pow(10, precision);
+
+      while (index < encoded.length) {
+        let result = 0;
+        let shift = 0;
+        let byte;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        const deltaLat = (result & 1) ? ~(result >> 1) : (result >> 1);
+        lat += deltaLat;
+
+        result = 0;
+        shift = 0;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        const deltaLng = (result & 1) ? ~(result >> 1) : (result >> 1);
+        lng += deltaLng;
+
+        coordinates.push([lat / factor, lng / factor]);
+      }
+
+      return coordinates;
+    }
+
+    function parseRawResultsFromHash() {
+      const raw = window.location.hash ? window.location.hash.slice(1) : '';
+      if (!raw) return [];
+      const normalized = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/%0A/gi, '\n');
+      return normalized
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => decodeURIComponent(s))
+        .map(s => {
+          try { return JSON.parse(s); } catch { return null; }
+        })
+        .filter(Boolean);
+    }
+
+    function amount(obj, key) {
+      return obj && obj[key] && obj[key].amount ? String(obj[key].amount) : null;
+    }
+
+    function tooltipHtml(routeIdx, legIdx, type, visit, transition) {
+      const visitLoad = visit?.loadDemands || {};
+      const orders = amount(visitLoad, 'totalOrders') || '-';
+      const weight = amount(visitLoad, 'weightGrams') || '-';
+      const volume = amount(visitLoad, 'boxDimensionVolumes') || '-';
+      return [
+        `<b>Route ${routeIdx} / Leg ${legIdx}</b>`,
+        `Type: ${type}`,
+        `Visit Label: ${visit?.visitLabel || '-'}`,
+        `Shipment: ${visit?.shipmentLabel || '-'}`,
+        `Orders: ${orders}`,
+        `Weight(g): ${weight}`,
+        `Volume: ${volume}`
+      ].join('<br>');
+    }
+
+    function getOrderIdLabel(visit) {
+      const label = String(visit?.shipmentLabel || '').trim();
+      if (!label) return '-';
+      const m = label.match(/26LOTUS-[A-Za-z0-9-]+/);
+      return m ? m[0] : label;
+    }
+
+    function latLngKey(point) {
+      return `${point[0].toFixed(6)},${point[1].toFixed(6)}`;
+    }
+
+    function upsertMarker(point, pinClass, titleLabel, orderCount, weight, orderId, tooltip) {
+      const key = latLngKey(point);
+      const existing = markerByLatLng.get(key);
+
+      if (existing) {
+        if (!existing.orderIds.has(orderId) && orderId !== '-') {
+          existing.orderIds.add(orderId);
+        }
+        if (!existing.titleSet.has(titleLabel)) {
+          existing.titleSet.add(titleLabel);
+        }
+        const titles = Array.from(existing.titleSet).join(',');
+        const ids = Array.from(existing.orderIds);
+        const idLine = ids.length ? ids.join(' | ') : '-';
+        existing.marker.setIcon(L.divIcon({
+          className: '',
+          html: `<div class="route-pin ${existing.pinClass}">${titles} | O:${existing.orderCount} W:${existing.weight}<span class="id-line">${idLine}</span></div>`,
+          iconSize: null
+        }));
+        return;
+      }
+
+      const ids = new Set(orderId && orderId !== '-' ? [orderId] : []);
+      const titles = new Set([titleLabel]);
+      const marker = L.marker(point, {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="route-pin ${pinClass}">${titleLabel} | O:${orderCount} W:${weight}<span class="id-line">${orderId}</span></div>`,
+          iconSize: null
+        })
+      });
+      marker.bindTooltip(tooltip, { direction: 'top' });
+      markerByLatLng.set(key, { marker, pinClass, orderIds: ids, titleSet: titles, orderCount, weight });
+      layers.push({ type: 'marker', polyline: null, marker, points: [point] });
+    }
+
+    function buildLayers(rawRoutes) {
+      let routeCounter = 0;
+      rawRoutes.forEach(raw => {
+        routeCounter += 1;
+        const visits = Array.isArray(raw.visits) ? raw.visits : [];
+        const transitions = Array.isArray(raw.transitions) ? raw.transitions : [];
+        const pickupVisits = visits.filter(v => v?.isPickup === true);
+        const deliveryVisits = visits.filter(v => v?.isPickup !== true);
+        const lastPickupVisit = pickupVisits.length ? pickupVisits[pickupVisits.length - 1] : null;
+
+        const travelLegs = [];
+        for (let i = 1; i < transitions.length; i += 1) {
+          const transition = transitions[i] || {};
+          const encoded = transition.routePolyline && transition.routePolyline.points;
+          if (!encoded) continue;
+          let points = [];
+          try { points = decodePolyline(encoded, 5); } catch { points = []; }
+          if (!points.length) continue;
+          travelLegs.push({ transition, points, transitionIndex: i });
+        }
+
+        // P1: use load from last pickup visit, place at start of first delivery leg.
+        if (lastPickupVisit && travelLegs.length) {
+          const pPoints = travelLegs[0].points;
+          const pStart = pPoints[0];
+          const pOrders = amount(lastPickupVisit.loadDemands || {}, 'totalOrders') || '-';
+          const pWeight = amount(lastPickupVisit.loadDemands || {}, 'weightGrams') || '-';
+          const pOrderId = getOrderIdLabel(lastPickupVisit);
+          upsertMarker(
+            pStart,
+            'pickup',
+            'P1',
+            pOrders,
+            pWeight,
+            pOrderId,
+            tooltipHtml(routeCounter, 0, 'pickup', lastPickupVisit, null)
+          );
+        }
+
+        // D1..Dn: map by delivery sequence order, not visits[i-1].
+        travelLegs.forEach((leg, idx) => {
+          const deliverySeq = idx + 1;
+          const visit = deliveryVisits[idx] || null;
+          const polyline = L.polyline(leg.points, { color: colors.delivery, weight: 4, opacity: 0.9 });
+          polyline.bindTooltip(tooltipHtml(routeCounter, leg.transitionIndex, 'delivery', visit, leg.transition), { sticky: true });
+
+          const endPoint = leg.points[leg.points.length - 1];
+          const visitLoad = visit?.loadDemands || {};
+          const pinOrders = amount(visitLoad, 'totalOrders') || '-';
+          const pinWeight = amount(visitLoad, 'weightGrams') || '-';
+          const orderIdLabel = getOrderIdLabel(visit);
+          layers.push({ type: 'delivery', polyline, marker: null, points: leg.points });
+          upsertMarker(
+            endPoint,
+            'delivery',
+            `D${deliverySeq}`,
+            pinOrders,
+            pinWeight,
+            orderIdLabel,
+            tooltipHtml(routeCounter, leg.transitionIndex, 'delivery', visit, leg.transition)
+          );
+        });
+      });
+    }
+
+    function renderAll() {
+      layers.forEach(item => {
+        if (item.polyline) map.removeLayer(item.polyline);
+        if (item.marker) map.removeLayer(item.marker);
+      });
+
+      const bounds = [];
+
+      layers.forEach(item => {
+        if (item.polyline) item.polyline.addTo(map);
+        if (item.marker) item.marker.addTo(map);
+        bounds.push(...item.points);
+      });
+
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [24, 24] });
+      } else if (!layers.length) {
+        map.setView([13.7563, 100.5018], 11);
+      }
+
+      metaEl.textContent = `Rendered ${layers.length} legs`;
+    }
+
+    function init() {
+      const rawRoutes = parseRawResultsFromHash();
+      if (!rawRoutes.length) {
+        metaEl.textContent = 'No valid rawResult JSON in URL hash.';
+        map.setView([13.7563, 100.5018], 11);
+        return;
+      }
+
+      buildLayers(rawRoutes);
+      if (!layers.length) {
+        metaEl.textContent = 'rawResult found but no decodable transition polylines.';
+        map.setView([13.7563, 100.5018], 11);
+        return;
+      }
+
+      renderAll();
+    }
+
+    init();
+  </script>
+</body>
+</html>

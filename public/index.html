@@ -528,6 +528,7 @@ const STATUS_DESC = {
   }
 };
 function statusDesc(s) { return (STATUS_DESC[lang] || STATUS_DESC.th)[s] || ''; }
+const ROUTE_VIEWER_BASE = '/route-viewer.html#';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 const ALL_TBLS = ['pending','riders','jobs','orders','batches'];
@@ -580,7 +581,15 @@ const COLS = {
         ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
     { id:'orderCount', label:'#', sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
-    { id:'orderIds', label:'Order IDs', sk:null, r: d => (d.orderIds||[]).map(o=>`<span class="font-monospace d-block" style="font-size:.73rem;">${o}</span>`).join('')||'–' },
+    { id:'orderIds', label:'Order IDs', sk:null, r: d => {
+      if (!d.orderIds || !d.orderIds.length) return '–';
+      const ordersHtml = d.orderIds.map(o=>`<span class="font-monospace d-block order-id-val" style="font-size:.73rem;" data-oid="${o}">${o}</span>`).join('');
+      return `<div class="d-flex align-items-start justify-content-between">
+                <div>${ordersHtml}</div>
+                <button class="btn btn-sm btn-light py-0 px-1 border ms-1" onclick="event.stopPropagation(); toggleConsignment(this)" title="Toggle Consignment"><i class="bi bi-arrow-left-right"></i></button>
+              </div>`;
+    }},
+    { id:'seeRoute', label:'See Route', sk:null, r: d => renderRouteLinks(d.rawResults) },
     { id:'pickUpSLA', label:'PickUp SLA', sk:'pickUpSLA', r: d => `<small>${fmtDt(d.pickUpSLA)}</small>` },
     { id:'status', label:'Status', sk:'status', r: d => jobBadge(d.status) },
     { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
@@ -630,14 +639,21 @@ const COLS = {
 const DEFAULT_COLS = {
   pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
-  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','pickUpSLA','status','createdAt'],
+  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','status','createdAt'],
 
   orders:  ['consignment','internalOrderId','storeCode','jobId','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
 };
 
 function getActiveCols(tbl) {
-  try { const s=localStorage.getItem(`cols_${tbl}`); return s?JSON.parse(s):DEFAULT_COLS[tbl]; }
+  try {
+    const s = localStorage.getItem(`cols_${tbl}`);
+    if (!s) return DEFAULT_COLS[tbl];
+    const saved = JSON.parse(s);
+    if (!Array.isArray(saved)) return DEFAULT_COLS[tbl];
+    const missing = DEFAULT_COLS[tbl].filter(c => !saved.includes(c));
+    return [...saved, ...missing];
+  }
   catch { return DEFAULT_COLS[tbl]; }
 }
 function saveActiveCols(tbl, cols) { localStorage.setItem(`cols_${tbl}`, JSON.stringify(cols)); }
@@ -710,6 +726,17 @@ function flagsHtml(d) {
     const ok = d[f.k];
     return `<i class="bi bi-${f.icon}${ok?'-fill':''} ${ok?'text-success':'text-danger'} me-1" title="${f.label}"></i>`;
   }).join('');
+}
+
+function renderRouteLinks(rawResults) {
+  if (!Array.isArray(rawResults) || !rawResults.length) return '–';
+  const joined = rawResults
+    .map(v => encodeURIComponent(String(v).trim()))
+    .filter(Boolean)
+    .join('%0A');
+  if (!joined) return '–';
+  const href = `${ROUTE_VIEWER_BASE}${joined}`;
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="font-size:.78rem;">See Route</a>`;
 }
 
 function jobBadge(s) {
@@ -908,7 +935,7 @@ function renderSection(tbl) {
       const sortable = c.sk != null;
       const arrow = !sortable ? '' : sortCol===c.sk ? (sortDir==='asc'?' ▲':' ▼') : ' <span style="opacity:.4">⇅</span>';
       return `<th class="${sortable?'sort-th':''}" ${sortable?`onclick="sortBy('${tbl}','${c.sk}')"`:''}>${c.label}${arrow}</th>`;
-    }).join('') + '</tr>';
+    }).join('') + '<th style="width: 40px;"></th></tr>';
   }
 
   // paginate
@@ -917,7 +944,7 @@ function renderSection(tbl) {
   // tbody
   const tbody = document.getElementById(`tbody-${tbl}`);
   if (!allData.length) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="${colDefs.length}" class="text-center py-3">${t('noData')}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="${colDefs.length + 1}" class="text-center py-3">${t('noData')}</td></tr>`;
     renderPagination(tbl, 0);
     return;
   }
@@ -926,7 +953,7 @@ function renderSection(tbl) {
     let cls = '';
     if (tbl==='riders') cls = row.queue==='not_in_pool' ? 'not-in-pool-row' : row.ready_for_auto_assign ? 'table-success' : '';
     else if (tbl==='stuck') cls = 'table-danger';
-    return `<tr class="${cls}" style="cursor:pointer;" onclick="toggleRow(this, '${tbl}', ${idx})" title="Click to expand/collapse details">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}</tr>`;
+    return `<tr class="${cls}">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}<td class="text-end"><button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), '${tbl}', ${idx})" title="Raw Data"><i class="bi bi-code-square"></i></button></td></tr>`;
   }).join('');
 
   // Trigger visual flash to indicate data update
@@ -1007,6 +1034,62 @@ function filterJobsByRider(userId) {
   
   const el = document.querySelector('.card-jobs');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+const consignmentCache = {};
+async function toggleConsignment(btn) {
+  const container = btn.previousElementSibling;
+  const spans = container.querySelectorAll('.order-id-val');
+  if (!spans.length) return;
+  
+  const isShowingConsignment = btn.dataset.showing === 'consignment';
+  
+  if (isShowingConsignment) {
+    spans.forEach(span => span.textContent = span.dataset.oid);
+    btn.dataset.showing = 'orderid';
+    btn.classList.remove('btn-primary', 'text-white');
+    btn.classList.add('btn-light');
+    return;
+  }
+  
+  const toFetch = [];
+  spans.forEach(span => {
+    const oid = span.dataset.oid;
+    if (!consignmentCache[oid]) toFetch.push(oid);
+  });
+  
+  if (toFetch.length > 0) {
+    const oldIcon = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" style="width:1rem;height:1rem;" role="status" aria-hidden="true"></span>`;
+    btn.disabled = true;
+    try {
+      const r = await fetch(`${API_BASE}/api/orders?type=orderid&values=${encodeURIComponent(toFetch.join(','))}`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      if (j.data && Array.isArray(j.data)) {
+        j.data.forEach(order => {
+          if (order.internalOrderId && order.consignment) {
+            consignmentCache[order.internalOrderId] = order.consignment;
+          }
+        });
+      }
+      toFetch.forEach(oid => { if (!consignmentCache[oid]) consignmentCache[oid] = oid; });
+    } catch (e) {
+      console.error('Failed to fetch consignments', e);
+      alert('Error fetching consignments: ' + e.message);
+    } finally {
+      btn.innerHTML = oldIcon;
+      btn.disabled = false;
+    }
+  }
+  
+  spans.forEach(span => {
+    const oid = span.dataset.oid;
+    span.textContent = consignmentCache[oid] || oid;
+  });
+  btn.dataset.showing = 'consignment';
+  btn.classList.remove('btn-light');
+  btn.classList.add('btn-primary', 'text-white');
 }
 
 // ─── RIDER PERFORMANCE ────────────────────────────────────────────────────────

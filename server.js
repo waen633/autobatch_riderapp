@@ -86,7 +86,10 @@ app.get('/api/jobs', async (req, res) => {
           projection: {
             jobId: 1, orderIds: 1, status: 1, createdAt: 1, storeId: 1,
             'assignment.rider.id': 1, 'assignment.rider.name': 1,
-            pickUpSLA: 1
+            pickUpSLA: 1,
+            'routeOptimizationResult.orderSummary.rawResult': 1,
+            'routeOptimizationResult.rawResult': 1,
+            'routeOptimizationResult.orderSummary.routePolylinePoints': 1
           }
         }
       )
@@ -94,17 +97,45 @@ app.get('/api/jobs', async (req, res) => {
       .limit(2000)
       .toArray();
 
-    const enriched = docs.map(d => ({
-      jobId: d.jobId || null,
-      storeCode: storeIdToCode[safeStr(d.storeId)] || null,
-      riderName: d.assignment?.rider?.name || null,
-      riderId: d.assignment?.rider?.id ? safeStr(d.assignment.rider.id) : null,
-      orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
-      orderCount: Array.isArray(d.orderIds) ? d.orderIds.length : 0,
-      pickUpSLA: d.pickUpSLA || null,
-      status: d.status || null,
-      createdAt: d.createdAt || null
-    }));
+    const enriched = docs.map(d => {
+      const summary = Array.isArray(d.routeOptimizationResult?.orderSummary)
+        ? d.routeOptimizationResult.orderSummary
+        : [];
+
+      const summaryRaw = summary
+        .map(s => s?.rawResult)
+        .filter(Boolean)
+        .map(v => (typeof v === 'string' ? v : JSON.stringify(v)));
+
+      const topLevelRaw = d.routeOptimizationResult?.rawResult
+        ? [typeof d.routeOptimizationResult.rawResult === 'string'
+            ? d.routeOptimizationResult.rawResult
+            : JSON.stringify(d.routeOptimizationResult.rawResult)]
+        : [];
+
+      const polylineFallbackAsRaw = summary
+        .map(s => s?.routePolylinePoints)
+        .filter(Boolean)
+        .map(points => JSON.stringify({
+          visits: [],
+          transitions: [{ routePolyline: {} }, { routePolyline: { points } }]
+        }));
+
+      const rawResults = [...summaryRaw, ...topLevelRaw, ...polylineFallbackAsRaw];
+
+      return {
+        jobId: d.jobId || null,
+        storeCode: storeIdToCode[safeStr(d.storeId)] || null,
+        riderName: d.assignment?.rider?.name || null,
+        riderId: d.assignment?.rider?.id ? safeStr(d.assignment.rider.id) : null,
+        orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
+        orderCount: Array.isArray(d.orderIds) ? d.orderIds.length : 0,
+        pickUpSLA: d.pickUpSLA || null,
+        status: d.status || null,
+        createdAt: d.createdAt || null,
+        rawResults
+      };
+    });
 
     res.json({ count: enriched.length, data: enriched });
   } catch (e) {

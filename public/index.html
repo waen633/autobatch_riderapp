@@ -163,7 +163,7 @@
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-warning btn-sm" onclick="fetchPending(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getPending">Get Pending</span></button>
-            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.pending.search=this.value;state.pending.page=1;renderSection('pending')">
+            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="debounceSearch('pending', this.value)">
           </div>
           <div id="loading-pending" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-warning"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-pending" class="alert alert-danger py-1 d-none small mb-2"></div>
@@ -235,7 +235,7 @@
               <option value="job_cancelled">job_cancelled</option>
               <option value="job_failed">job_failed</option>
             </select>
-            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.jobs.search=this.value;state.jobs.page=1;renderSection('jobs')">
+            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="debounceSearch('jobs', this.value)">
           </div>
           <div id="loading-jobs" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-jobs" class="alert alert-danger py-1 d-none small mb-2"></div>
@@ -287,7 +287,7 @@
               <button class="btn btn-sm text-white" style="background:#5c4a8a;" onclick="fetchOrders(this)"><i class="bi bi-search me-1"></i><span data-i18n="queryOrder">Query</span></button>
             </div>
             <div class="col-auto">
-              <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="filterResult" placeholder="Filter…" oninput="state.orders.search=this.value;state.orders.page=1;renderSection('orders')">
+              <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="filterResult" placeholder="Filter…" oninput="debounceSearch('orders', this.value)">
             </div>
           </div>
           <div id="loading-orders" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#5c4a8a;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
@@ -328,7 +328,7 @@
               <button class="btn btn-sm text-white" style="background:#6d4c41;" onclick="fetchBatches(this)"><i class="bi bi-search me-1"></i><span data-i18n="queryBatch">Query Batch</span></button>
             </div>
             <div class="col-auto">
-              <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="filterResult" placeholder="Filter…" oninput="state.batches.search=this.value;state.batches.page=1;renderSection('batches')">
+              <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="filterResult" placeholder="Filter…" oninput="debounceSearch('batches', this.value)">
             </div>
           </div>
           <div id="loading-batches" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#6d4c41;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
@@ -595,9 +595,13 @@ const COLS = {
     { id:'orderIds', label:'Order IDs', sk:null, r: d => {
       if (!d.orderIds || !d.orderIds.length) return '–';
       const ordersHtml = d.orderIds.map(o=>`<span class="font-monospace d-block order-id-val" style="font-size:.73rem;" data-oid="${o}">${o}</span>`).join('');
+      const orderStr = d.orderIds.join(', ');
       return `<div class="d-flex align-items-start justify-content-between">
                 <div>${ordersHtml}</div>
-                <button class="btn btn-sm btn-light py-0 px-1 border ms-1" onclick="event.stopPropagation(); toggleConsignment(this)" title="Toggle Consignment"><i class="bi bi-arrow-left-right"></i></button>
+                <div class="d-flex gap-1 ms-1">
+                  <button class="btn btn-sm btn-light py-0 px-1 border" onclick="event.stopPropagation(); navigator.clipboard.writeText('${orderStr.replace(/'/g, "\\'")}'); this.innerHTML='<i class=\"bi bi-check\"></i>'; setTimeout(()=>this.innerHTML='<i class=\"bi bi-copy\"></i>', 2000);" title="Copy all"><i class="bi bi-copy"></i></button>
+                  <button class="btn btn-sm btn-light py-0 px-1 border" onclick="event.stopPropagation(); toggleConsignment(this)" title="Toggle Consignment"><i class="bi bi-arrow-left-right"></i></button>
+                </div>
               </div>`;
     }},
     { id:'seeRoute', label:'See Route', sk:null, r: d => renderRouteLinks(d.rawResults) },
@@ -683,6 +687,17 @@ function saveActiveCols(tbl, cols) { localStorage.setItem(`cols_${tbl}`, JSON.st
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function pad(n) { return String(n).padStart(2,'0'); }
+function debounce(fn, ms=300) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
+function setLoading(section, bool) {
+  const el = document.getElementById(`${section}-loading`);
+  if (el) el.style.display = bool ? 'flex' : 'none';
+}
 function toBkk(d) {
   if (!d) return null;
   const dt = new Date(d);
@@ -1021,11 +1036,21 @@ function toggleRow(tr, tbl, pageIdx) {
 // ─── JOBS STATUS DASHBOARD ────────────────────────────────────────────────────
 function renderJobsDash() {
   const counts = {};
-  state.jobs.data.forEach(d => { counts[d.status||'unknown'] = (counts[d.status||'unknown']||0)+1; });
+  let latePick = 0, lateDel = 0;
+  state.jobs.data.forEach(d => {
+    counts[d.status||'unknown'] = (counts[d.status||'unknown']||0)+1;
+    const statuses = d.updateStatuses || [];
+    const pickedUp = statuses.find(s => s.status === 'job_picked_up');
+    const completed = statuses.find(s => s.status === 'job_completed');
+    if (pickedUp && d.pickUpSLA && new Date(pickedUp.updatedAt) > new Date(d.pickUpSLA)) latePick++;
+    if (completed && d.deliverySLA && new Date(completed.updatedAt) > new Date(d.deliverySLA)) lateDel++;
+  });
   const dash = document.getElementById('jobs-dash');
   if (!Object.keys(counts).length) { dash.innerHTML=''; return; }
-  
+
   let html = `<span class="badge bg-light text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2 border" onclick="filterJobsByStatus('')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">All Status <span class="badge bg-secondary rounded-pill">${state.jobs.data.length}</span></span>`;
+  if (latePick > 0) html += `<span class="badge bg-warning text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Pickups <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${latePick}</span></span>`;
+  if (lateDel > 0) html += `<span class="badge bg-danger dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Deliveries <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${lateDel}</span></span>`;
   
   html += Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([s,n]) => {
     const map = {
@@ -1040,6 +1065,19 @@ function renderJobsDash() {
   }).join('');
   
   dash.innerHTML = html;
+}
+
+const debouncedSearches = {};
+function debounceSearch(section, value) {
+  if (!debouncedSearches[section]) {
+    debouncedSearches[section] = debounce(() => {
+      state[section].search = debouncedSearches[section].lastValue;
+      state[section].page = 1;
+      renderSection(section);
+    }, 300);
+  }
+  debouncedSearches[section].lastValue = value;
+  debouncedSearches[section]();
 }
 
 function filterJobsByStatus(s) {

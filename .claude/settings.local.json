@@ -22,7 +22,10 @@
       "Bash(git commit -m 'Fix toggleConsignment: correct DOM traversal to find order IDs container *)",
       "Bash(git commit -m 'Fix copy button to copy current displayed text \\(Order ID or Consignment\\) *)",
       "Bash(curl -s \"http://localhost:3000/api/orders?type=consignment&values=CPTH9015794727\")",
-      "Bash(git commit -m 'Add See Route feature for individual orders *)"
+      "Bash(git commit -m 'Add See Route feature for individual orders *)",
+      "Bash(npm start *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(git commit -m 'Simplify order route visualization to show pickup and delivery markers *)"
     ]
   }
 }

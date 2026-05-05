@@ -404,10 +404,24 @@ app.get('/api/orders', async (req, res) => {
       const deliveryTask = (d.workflowInput?.tasks || []).find(t => t.direction === 'DELIVERY');
       const routePolylines = [];
       if (pickupTask?.lat && pickupTask?.lng && deliveryTask?.lat && deliveryTask?.lng) {
+        const consignmentLabel = d.workflowInput?.metadata?.consignment || 'Order';
         const coords = [[pickupTask.lat, pickupTask.lng], [deliveryTask.lat, deliveryTask.lng]];
         const encodedPolyline = polyline.encode(coords, 5);
         routePolylines.push(JSON.stringify({
-          visits: [],
+          visits: [
+            {
+              isPickup: true,
+              visitLabel: 'Pickup',
+              shipmentLabel: consignmentLabel,
+              loadDemands: {}
+            },
+            {
+              isPickup: false,
+              visitLabel: 'Delivery',
+              shipmentLabel: consignmentLabel,
+              loadDemands: {}
+            }
+          ],
           transitions: [{ routePolyline: {} }, { routePolyline: { points: encodedPolyline } }]
         }));
       }

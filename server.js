@@ -384,8 +384,7 @@ app.get('/api/orders', async (req, res) => {
           'workflowInput.metadata.jobs': 1,
           'workflowInput.metadata.isOrderItemsConfirmation': 1,
           'workflowInput.fleetDispatchType': 1,
-          'workflowInput.tasks.direction': 1,
-          'workflowInput.tasks.information.payment': 1,
+          'workflowInput.tasks': 1,
           'metadata.staff.name': 1,
           'metadata.staff.riderId': 1,
           'metadata.staff.phone': 1,
@@ -401,6 +400,14 @@ app.get('/api/orders', async (req, res) => {
 
     const enriched = docs.map(d => {
       const pickupTask = (d.workflowInput?.tasks || []).find(t => t.direction === 'PICKUP');
+      const deliveryTask = (d.workflowInput?.tasks || []).find(t => t.direction === 'DELIVERY');
+      const routePolylines = [];
+      if (pickupTask?.lat && pickupTask?.lng && deliveryTask?.lat && deliveryTask?.lng) {
+        routePolylines.push(JSON.stringify({
+          visits: [],
+          transitions: [{ routePolyline: {} }, { routePolyline: { points: `${pickupTask.lat},${pickupTask.lng} ${deliveryTask.lat},${deliveryTask.lng}` } }]
+        }));
+      }
       return {
         _id: safeStr(d._id),
         orderId: d.orderId || null,
@@ -422,7 +429,8 @@ app.get('/api/orders', async (req, res) => {
         workingType: d.metadata?.staff?.workingType || null,
         createdAt: d.createdAt || null,
         updatedAt: d.updatedAt || null,
-        statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt }))
+        statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt })),
+        rawResults: routePolylines
       };
     });
 

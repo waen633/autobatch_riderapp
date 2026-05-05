@@ -625,6 +625,7 @@ const COLS = {
     { id:'internalOrderId', label:'Order ID', sk:'internalOrderId', r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
     { id:'storeCode', label:'Store', sk:'storeCode', r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
     { id:'jobId', label:'Job ID', sk:'jobId', r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
+    { id:'seeRoute', label:'Route', sk:null, r: d => renderRouteLinks(d.rawResults) },
     { id:'payment', label:'Payment', sk:'paymentMethod', r: d => {
       const parts = [];
       if (d.paymentMethod) parts.push(`<span class="badge bg-secondary status-badge">${d.paymentMethod}</span>`);
@@ -668,7 +669,7 @@ const DEFAULT_COLS = {
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
   jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','status','createdAt','updatedAt'],
 
-  orders:  ['consignment','internalOrderId','storeCode','jobId','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
+  orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
 };
 

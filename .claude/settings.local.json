@@ -16,7 +16,13 @@
       "mcp__Claude_in_Chrome__computer",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
       "mcp__Claude_in_Chrome__javascript_tool",
-      "mcp__Claude_in_Chrome__tabs_create_mcp"
+      "mcp__Claude_in_Chrome__tabs_create_mcp",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Fix toggle consignment icon: change bi-arrow-left-right to bi-shuffle *)",
+      "Bash(git commit -m 'Fix toggleConsignment: correct DOM traversal to find order IDs container *)",
+      "Bash(git commit -m 'Fix copy button to copy current displayed text \\(Order ID or Consignment\\) *)",
+      "Bash(curl -s \"http://localhost:3000/api/orders?type=consignment&values=CPTH9015794727\")",
+      "Bash(git commit -m 'Add See Route feature for individual orders *)"
     ]
   }
 }

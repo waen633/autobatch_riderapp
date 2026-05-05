@@ -2,7 +2,7 @@
 
 > Dashboard สำหรับ monitor และจัดการกระบวนการ Auto-Batching, Rider Assignment และ Order Status แบบ Real-time
 
-![Version](https://img.shields.io/badge/version-1.0.4-blue)
+![Version](https://img.shields.io/badge/version-1.0.5-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.x-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -99,6 +99,7 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 1.0.5 | ปรับปรุงระบบค้นหา Order: รองรับการใส่หลายรายการพร้อมกัน (สูงสุด 50), เพิ่มสถานะ "No data" สำหรับรายการที่ไม่พบ, และแยกปุ่ม "See Route" (Jobs) กับ "Location" (Order Query) |
 | 1.0.4 | ปรับปรุงระบบ Fullscreen: ปิดได้ด้วยการคลิกด้านนอก และเปลี่ยนไอคอนเป็น X เมื่อขยาย |
 | 1.0.3 | เพิ่ม Route Viewer (แผนที่), ระบบสลับ Order ID/Consignment ใน Jobs, ปรับปรุง UI ปุ่มดู Raw Data |
 | 1.0.2 | เพิ่ม Waiting Duration ใน Pending Orders, Export CSV, Status Timeline |

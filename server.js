@@ -84,7 +84,7 @@ app.get('/api/jobs', async (req, res) => {
         { storeId: { $in: storeIds }, createdAt: { $gte: fromDate, $lt: toDate } },
         {
           projection: {
-            jobId: 1, orderIds: 1, status: 1, createdAt: 1, storeId: 1,
+            jobId: 1, orderIds: 1, status: 1, createdAt: 1, updatedAt: 1, updateStatuses: 1, storeId: 1,
             'assignment.rider.id': 1, 'assignment.rider.name': 1,
             pickUpSLA: 1,
             'routeOptimizationResult.orderSummary.rawResult': 1,
@@ -133,6 +133,8 @@ app.get('/api/jobs', async (req, res) => {
         pickUpSLA: d.pickUpSLA || null,
         status: d.status || null,
         createdAt: d.createdAt || null,
+        updatedAt: d.updatedAt || null,
+        updateStatuses: Array.isArray(d.updateStatuses) ? d.updateStatuses : [],
         rawResults
       };
     });

@@ -599,7 +599,7 @@ const COLS = {
       return `<div class="d-flex align-items-start justify-content-between">
                 <div>${ordersHtml}</div>
                 <div class="d-flex gap-1 ms-1">
-                  <button class="btn btn-sm btn-light py-0 px-1 border" onclick="event.stopPropagation(); navigator.clipboard.writeText('${orderStr.replace(/'/g, "\\'")}'); this.innerHTML='<i class=\"bi bi-check\"></i>'; setTimeout(()=>this.innerHTML='<i class=\"bi bi-copy\"></i>', 2000);" title="Copy all"><i class="bi bi-copy"></i></button>
+                  <button class="btn btn-sm btn-light py-0 px-1 border copy-order-btn" data-text="${orderStr}" onclick="event.stopPropagation(); copyToClip(this)" title="Copy all"><i class="bi bi-copy"></i></button>
                   <button class="btn btn-sm btn-light py-0 px-1 border" onclick="event.stopPropagation(); toggleConsignment(this)" title="Toggle Consignment"><i class="bi bi-arrow-left-right"></i></button>
                 </div>
               </div>`;
@@ -697,6 +697,14 @@ function debounce(fn, ms=300) {
 function setLoading(section, bool) {
   const el = document.getElementById(`${section}-loading`);
   if (el) el.style.display = bool ? 'flex' : 'none';
+}
+function copyToClip(btn) {
+  const text = btn.dataset.text;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check"></i>';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
 }
 function toBkk(d) {
   if (!d) return null;
@@ -1433,7 +1441,7 @@ function exportJobsCSV() {
   const headers = [
     'Job ID', 'Store', 'Rider Name', 'Rider ID', 'Order Count', 'Order IDs', 'Status', 'Created At',
     'PickUp SLA', 'Actual Pickup', 'Pickup Delay (min)',
-    'Delivery SLA', 'Actual Delivery', 'Delivery Delay (min)'
+    'Delivery SLA', 'Actual Delivery'
   ];
 
   const rows = data.map(d => {
@@ -1453,8 +1461,7 @@ function exportJobsCSV() {
       `"${fmtDtCsv(pickedUpAt)}"`,
       delayMin(pickedUpAt, d.pickUpSLA),
       `"${fmtDtCsv(d.deliverySLA)}"`,
-      `"${fmtDtCsv(completedAt)}"`,
-      delayMin(completedAt, d.deliverySLA)
+      `"${fmtDtCsv(completedAt)}"`
     ];
   });
   

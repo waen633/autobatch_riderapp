@@ -1117,7 +1117,9 @@ function filterJobsByRider(userId) {
 
 const consignmentCache = {};
 async function toggleConsignment(btn) {
-  const container = btn.previousElementSibling;
+  const outerDiv = btn.closest('.d-flex.align-items-start.justify-content-between');
+  if (!outerDiv) return;
+  const container = outerDiv.querySelector(':scope > div:first-child');
   const spans = container.querySelectorAll('.order-id-val');
   if (!spans.length) return;
   

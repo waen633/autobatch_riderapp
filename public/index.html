@@ -208,7 +208,7 @@
     </div>
 
     <!-- SECTION 3: JOBS -->
-    <div class="col-12 col-xl-6">
+    <div class="col-12">
       <div class="card h-100">
         <div class="card-header card-jobs d-flex justify-content-between align-items-center">
           <span><i class="bi bi-clipboard-data me-2 text-primary"></i><span data-i18n="sectionJobs">Jobs</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionJobsDesc">ตามช่วงเวลา</span>)</small></span>
@@ -279,8 +279,8 @@
               </div>
             </div>
             <div class="col">
-              <label class="form-label mb-1 fw-semibold small"><span data-i18n="values">Values</span> <span class="fw-normal text-muted">(<span data-i18n="valuesHint">คั่นด้วย , สำหรับหลายค่า</span>)</span></label>
-              <input type="text" class="form-control form-control-sm font-monospace" id="orderValues" placeholder="CPTH9015794727,CPTH7014296703" list="orderValuesHistory">
+              <label class="form-label mb-1 fw-semibold small"><span data-i18n="values">Values</span> <span class="fw-normal text-muted">(<span data-i18n="valuesHint">รองรับ เว้นวรรค/ขึ้นบรรทัดใหม่ (จำกัด 50)</span>)</span></label>
+              <textarea class="form-control form-control-sm font-monospace" id="orderValues" rows="1" placeholder="CPTH9015794727, CPTH7014296703..." style="min-height:31px;"></textarea>
               <datalist id="orderValuesHistory"></datalist>
             </div>
             <div class="col-auto">
@@ -406,7 +406,7 @@ const i18n = {
     cancel: 'ยกเลิก', save: 'บันทึก', colSelector: 'เลือก Column',
     allStatus: 'All Status', riderPerf: 'Rider Performance',
     queryType: 'ประเภท Query', consignment: 'Consignment', orderId: 'Order ID',
-    values: 'Values', valuesHint: 'คั่นด้วย , สำหรับหลายค่า',
+    values: 'Values', valuesHint: 'รองรับ เว้นวรรค/ขึ้นบรรทัดใหม่ (จำกัด 50)',
     batchOrderIds: 'Order IDs (คั่นด้วย ,)',
     explainStatus: 'Timeline', lastUpdated: 'อัปเดตล่าสุด',
     showPerPage: 'แสดง', of: 'จาก',
@@ -429,7 +429,7 @@ const i18n = {
     cancel: 'Cancel', save: 'Save', colSelector: 'Select Columns',
     allStatus: 'All Status', riderPerf: 'Rider Performance',
     queryType: 'Query Type', consignment: 'Consignment', orderId: 'Order ID',
-    values: 'Values', valuesHint: 'Separate by , for multiple values',
+    values: 'Values', valuesHint: 'Supports space/newline (Limit 50)',
     batchOrderIds: 'Order IDs (separate by ,)',
     explainStatus: 'Timeline', lastUpdated: 'Last updated',
     showPerPage: 'Show', of: 'of',
@@ -601,9 +601,19 @@ const COLS = {
               </div>`;
     }},
     { id:'seeRoute', label:'See Route', sk:null, r: d => renderRouteLinks(d.rawResults) },
-    { id:'pickUpSLA', label:'PickUp SLA', sk:'pickUpSLA', r: d => `<small>${fmtDt(d.pickUpSLA)}</small>` },
-    { id:'status', label:'Status', sk:'status', r: d => jobBadge(d.status) },
-    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+    { id:'pickUpSLA', label:'PickUp SLA', sk:'pickUpSLA', r: d => {
+        const sla = d.pickUpSLA ? new Date(d.pickUpSLA) : null;
+        const pickedUp = (d.updateStatuses || []).find(s => s.status === 'job_picked_up');
+        const pickedUpAt = pickedUp ? new Date(pickedUp.updatedAt) : null;
+        const late = sla && pickedUpAt && pickedUpAt > sla;
+        return sla
+          ? `<small${late ? ' style="color:#e67e22;font-weight:600;"' : ''}>${fmtDt(sla)}${late ? ' ▼' : ''}</small>`
+          : '–';
+      }},
+    { id:'status', label:'Status', sk:'status', r: d => 
+        `${jobBadge(d.status)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="event.stopPropagation(); showJobTimeline('${d.jobId}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
+    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` },
+    { id:'updatedAt', label:'Updated', sk:'updatedAt', r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
   ],
 
   orders: [
@@ -621,7 +631,9 @@ const COLS = {
     }},
     { id:'itemsConfirm', label:'Items Confirm', sk:'isOrderItemsConfirmation', r: d => (d.isOrderItemsConfirmation === true || d.isOrderItemsConfirmation === 'true') ? '<span class="badge bg-success">True</span>' : ((d.isOrderItemsConfirmation === false || d.isOrderItemsConfirmation === 'false') ? '<span class="badge bg-danger">False</span>' : '–') },
     { id:'currentOrderStatus', label:'Status', sk:'currentOrderStatus', r: d =>
-      `${orderStatusBadge(d.currentOrderStatus)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="showTimeline('${d._id}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
+      d.isNotFound 
+        ? `<span class="badge bg-secondary opacity-50">No data</span>` 
+        : `${orderStatusBadge(d.currentOrderStatus)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="showTimeline('${d._id}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
     { id:'riderName', label:'Rider', sk:'riderName', r: d => d.riderName
         ? `<div>${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
@@ -650,7 +662,7 @@ const COLS = {
 const DEFAULT_COLS = {
   pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
-  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','status','createdAt'],
+  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','status','createdAt','updatedAt'],
 
   orders:  ['consignment','internalOrderId','storeCode','jobId','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
@@ -671,11 +683,21 @@ function saveActiveCols(tbl, cols) { localStorage.setItem(`cols_${tbl}`, JSON.st
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function pad(n) { return String(n).padStart(2,'0'); }
-function fmtDt(d) {
-  if (!d) return '–';
+function toBkk(d) {
+  if (!d) return null;
   const dt = new Date(d);
-  if (isNaN(dt)) return '–';
-  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+  if (isNaN(dt)) return null;
+  return new Date(dt.getTime() + 7 * 3600000);
+}
+function fmtDt(d) {
+  const bkk = toBkk(d);
+  if (!bkk) return '–';
+  return `${pad(bkk.getUTCDate())}/${pad(bkk.getUTCMonth()+1)} ${pad(bkk.getUTCHours())}:${pad(bkk.getUTCMinutes())}:${pad(bkk.getUTCSeconds())}`;
+}
+function fmtDtCsv(d) {
+  const bkk = toBkk(d);
+  if (!bkk) return '';
+  return `${bkk.getUTCFullYear()}-${pad(bkk.getUTCMonth()+1)}-${pad(bkk.getUTCDate())} ${pad(bkk.getUTCHours())}:${pad(bkk.getUTCMinutes())}:${pad(bkk.getUTCSeconds())}`;
 }
 
 function getRiderJobSummary(userId) {
@@ -1186,6 +1208,40 @@ function showTimeline(oid) {
   new bootstrap.Modal(document.getElementById('timelineModal')).show();
 }
 
+function showJobTimeline(jobId) {
+  const d = state.jobs.data.find(j => j.jobId === jobId);
+  if (!d) return;
+  const history = d.updateStatuses || [];
+  const last = history.length - 1;
+  const bodyHtml = history.length ? history.map((s, i) => {
+    let badgeCls = 'bg-secondary';
+    const st = s.status || '';
+    if (st.includes('accepted')) badgeCls = 'bg-primary';
+    else if (st.includes('delivering') || st.includes('picked_up') || st.includes('completed')) badgeCls = 'bg-success';
+    else if (st.includes('cancelled') || st.includes('failed')) badgeCls = 'bg-danger';
+    else if (st.includes('assigned')) badgeCls = 'bg-info text-dark';
+
+    return `
+      <div class="tl-row mb-1 d-flex gap-2">
+        <div class="d-flex flex-column align-items-center" style="width:14px;">
+          <div class="timeline-dot ${i===last?'done':''}"></div>
+          ${i<last?`<div class="timeline-line" style="height:28px;"></div>`:''}
+        </div>
+        <div class="tl-content flex-grow-1">
+          <div class="d-flex align-items-center gap-2 flex-wrap w-100">
+            <small class="text-muted" style="min-width:110px;">${fmtDt(s.updatedAt)}</small>
+            <span class="badge ${badgeCls} status-badge">${s.status}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('') : '<em class="text-muted">ไม่มีข้อมูล</em>';
+
+  document.getElementById('timelineTitle').innerHTML =
+    `<i class="bi bi-clock-history me-2"></i>Job: ${d.jobId} <span class="ms-2">${jobBadge(d.status)}</span>`;
+  document.getElementById('timelineBody').innerHTML = bodyHtml;
+  new bootstrap.Modal(document.getElementById('timelineModal')).show();
+}
+
 // ─── COLUMN SELECTOR MODAL ───────────────────────────────────────────────────
 let _activeColTbl = null;
 function openColModal(tbl) {
@@ -1267,15 +1323,43 @@ async function fetchJobs(btn) {
 async function fetchOrders(btn) {
   applyCooldown(btn);
   const type = document.querySelector('input[name="orderType"]:checked').value;
-  const values = document.getElementById('orderValues').value.trim();
-  if (!values) { setError('orders', 'กรุณากรอก values'); return; }
-  saveInputHistory('orderValues', values);
+  const rawValues = document.getElementById('orderValues').value.trim();
+  if (!rawValues) { setError('orders', 'กรุณากรอก values'); return; }
+  
+  // Split by comma, space, or newline
+  let valArr = rawValues.split(/[\s,]+/).filter(v => v.trim() !== '');
+  
+  // Limit to 50
+  if (valArr.length > 50) {
+    alert('ระบบจำกัดการค้นหาที่ 50 รายการ (กำลังค้นหา 50 รายการแรก)');
+    valArr = valArr.slice(0, 50);
+  }
+  
+  const values = valArr.join(',');
+  saveInputHistory('orderValues', rawValues);
   setLoading('orders', true);
   try {
     const r = await fetch(`${API_BASE}/api/orders?type=${encodeURIComponent(type)}&values=${encodeURIComponent(values)}`);
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
-    document.getElementById('count-orders').textContent = j.count;
-    state.orders.data = j.data; state.orders.page = 1;
+    
+    const foundData = j.data || [];
+    // Map queried values to found data or "No data" placeholders
+    const fullData = valArr.map(val => {
+      const found = foundData.find(d => 
+        (d.consignment && d.consignment.toLowerCase() === val.toLowerCase()) || 
+        (d.internalOrderId && d.internalOrderId.toLowerCase() === val.toLowerCase())
+      );
+      if (found) return found;
+      return {
+        consignment: type === 'consignment' ? val : '–',
+        internalOrderId: type === 'orderid' ? val : '–',
+        isNotFound: true,
+        _id: 'not_found_' + Math.random()
+      };
+    });
+
+    document.getElementById('count-orders').textContent = foundData.length + ' Found / ' + valArr.length + ' Total';
+    state.orders.data = fullData; state.orders.page = 1;
     renderSection('orders'); renderRiderPerf(); markUpdated();
   } catch(e) { setError('orders', e.message); } finally { setLoading('orders', false); }
 }
@@ -1302,18 +1386,39 @@ function exportJobsCSV() {
     return;
   }
   
-  const headers = ['Job ID', 'Store', 'Rider Name', 'Rider ID', 'Order Count', 'Order IDs', 'PickUp SLA', 'Status', 'Created At'];
-  const rows = data.map(d => [
-    `"${d.jobId||''}"`,
-    `"${d.storeCode||''}"`,
-    `"${d.riderName||''}"`,
-    `"${d.riderId||''}"`,
-    d.orderCount||0,
-    `"${(d.orderIds||[]).join(', ')}"`,
-    `"${d.pickUpSLA||''}"`,
-    `"${d.status||''}"`,
-    `"${d.createdAt||''}"`
-  ]);
+  const delayMin = (actual, sla) => {
+    if (!actual || !sla) return '';
+    const diff = Math.round((new Date(actual) - new Date(sla)) / 60000);
+    return diff > 0 ? `+${diff}` : diff;
+  };
+
+  const headers = [
+    'Job ID', 'Store', 'Rider Name', 'Rider ID', 'Order Count', 'Order IDs', 'Status', 'Created At',
+    'PickUp SLA', 'Actual Pickup', 'Pickup Delay (min)',
+    'Delivery SLA', 'Actual Delivery', 'Delivery Delay (min)'
+  ];
+
+  const rows = data.map(d => {
+    const statuses = d.updateStatuses || [];
+    const pickedUpAt  = statuses.find(s => s.status === 'job_picked_up')?.updatedAt  || '';
+    const completedAt = statuses.find(s => s.status === 'job_completed')?.updatedAt  || '';
+    return [
+      `"${d.jobId||''}"`,
+      `"${d.storeCode||''}"`,
+      `"${d.riderName||''}"`,
+      `"${d.riderId||''}"`,
+      d.orderCount||0,
+      `"${(d.orderIds||[]).join(', ')}"`,
+      `"${d.status||''}"`,
+      `"${fmtDtCsv(d.createdAt)}"`,
+      `"${fmtDtCsv(d.pickUpSLA)}"`,
+      `"${fmtDtCsv(pickedUpAt)}"`,
+      delayMin(pickedUpAt, d.pickUpSLA),
+      `"${fmtDtCsv(d.deliverySLA)}"`,
+      `"${fmtDtCsv(completedAt)}"`,
+      delayMin(completedAt, d.deliverySLA)
+    ];
+  });
   
   const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

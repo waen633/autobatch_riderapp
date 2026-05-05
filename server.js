@@ -86,7 +86,7 @@ app.get('/api/jobs', async (req, res) => {
           projection: {
             jobId: 1, orderIds: 1, status: 1, createdAt: 1, updatedAt: 1, updateStatuses: 1, storeId: 1,
             'assignment.rider.id': 1, 'assignment.rider.name': 1,
-            pickUpSLA: 1,
+            pickUpSLA: 1, sla: 1,
             'routeOptimizationResult.orderSummary.rawResult': 1,
             'routeOptimizationResult.rawResult': 1,
             'routeOptimizationResult.orderSummary.routePolylinePoints': 1
@@ -131,6 +131,7 @@ app.get('/api/jobs', async (req, res) => {
         orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
         orderCount: Array.isArray(d.orderIds) ? d.orderIds.length : 0,
         pickUpSLA: d.pickUpSLA || null,
+        deliverySLA: d.sla || null,
         status: d.status || null,
         createdAt: d.createdAt || null,
         updatedAt: d.updatedAt || null,

@@ -27,7 +27,8 @@
       "Bash(python3 -m json.tool)",
       "Bash(git commit -m 'Simplify order route visualization to show pickup and delivery markers *)",
       "Bash(git commit -m 'Change order route column label from '\\\\''Route'\\\\'' to '\\\\''Location'\\\\'' *)",
-      "Bash(git commit -m 'Revert Jobs column to '\\\\''See Route'\\\\'', keep Orders as '\\\\''Location'\\\\'' *)"
+      "Bash(git commit -m 'Revert Jobs column to '\\\\''See Route'\\\\'', keep Orders as '\\\\''Location'\\\\'' *)",
+      "Bash(git commit -m 'Add copy and consignment functions to Batch Query section *)"
     ]
   }
 }

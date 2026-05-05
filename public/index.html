@@ -648,7 +648,18 @@ const COLS = {
   batches: [
     { id:'batchId', label:'Batch ID', sk:'batchId', r: d => `<small class="font-monospace">${d.batchId||'–'}</small>` },
     { id:'orderCount', label:'# Orders', sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
-    { id:'orderIds', label:'Order IDs', sk:null, r: d => (d.orderIds||[]).map(o=>`<span class="font-monospace d-block" style="font-size:.73rem;">${o}</span>`).join('')||'–' },
+    { id:'orderIds', label:'Order IDs', sk:null, r: d => {
+      if (!d.orderIds || !d.orderIds.length) return '–';
+      const orderIds = d.orderIds.join(', ');
+      return `<div class="d-flex gap-2 align-items-start">
+        <div style="flex:1;"><span class="font-monospace d-block" style="font-size:.73rem;">${d.orderIds.map(o=>`<span class="d-block">${o}</span>`).join('')}</span></div>
+        <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="white-space:nowrap;" onclick="copyToClip('${orderIds}', this)" title="Copy Order IDs"><i class="bi bi-clipboard"></i></button>
+      </div>`;
+    }},
+    { id:'consignments', label:'Consignments', sk:null, r: d => {
+      if (!d.orderIds || !d.orderIds.length) return '–';
+      return `<button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="fetchBatchConsignments(this, '${d.orderIds.join(',')}')" style="white-space:nowrap;"><i class="bi bi-box-seam"></i> Get</button>`;
+    }},
     { id:'status', label:'Status', sk:'status', r: d => {
       const map = { success:'success', failed:'danger', pending:'warning text-dark', processing:'info text-dark' };
       const cls = map[d.status]||'secondary';
@@ -1431,6 +1442,25 @@ async function fetchBatches(btn) {
     state.batches.data = j.data; state.batches.page = 1;
     renderSection('batches'); markUpdated();
   } catch(e) { setError('batches', e.message); } finally { setLoading('batches', false); }
+}
+
+async function fetchBatchConsignments(btn, orderIdStr) {
+  const orderIds = orderIdStr.split(',').map(id => id.trim()).join(',');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Loading...';
+  try {
+    const r = await fetch(`${API_BASE}/api/orders?type=orderid&values=${encodeURIComponent(orderIds)}`);
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    const consignments = (j.data || []).map(o => o.consignment).filter(Boolean);
+    const consignmentStr = consignments.join(', ');
+    copyToClip(consignmentStr, btn);
+    btn.title = `${consignments.length} consignment(s) copied`;
+  } catch(e) {
+    alert(`Error: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-box-seam"></i> Get';
+  }
 }
 
 // ─── EXPORT CSV ─────────────────────────────────────────────────────────────────

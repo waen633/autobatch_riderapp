@@ -2,7 +2,7 @@
 
 > Dashboard สำหรับ monitor และจัดการกระบวนการ Auto-Batching, Rider Assignment และ Order Status แบบ Real-time
 
-![Version](https://img.shields.io/badge/version-1.0.2-blue)
+![Version](https://img.shields.io/badge/version-1.0.3-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.x-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -14,9 +14,11 @@
 |------|-----------|
 | 📦 **Pending Orders** | ดู Order ที่รอสร้าง Job พร้อม Waiting Duration แบบ Real-time |
 | 🏍️ **Rider Pool** | สถานะ Rider ทุกคนในพื้นที่ พร้อม Idle Time และ Flags |
-| 📋 **Jobs** | ค้นหา Job ตามช่วงเวลา ดู Rider / SLA / Status |
+| 📋 **Jobs** | ค้นหา Job ตามช่วงเวลา ดู Rider / SLA / Status และ **สลับ Order ID/Consignment** ได้ |
+| 🗺️ **Route Viewer** | ดูเส้นทางการวิ่งของ Rider บนแผนที่จริงผ่านระบบ **Polyline Decoding** |
 | 🔍 **Order Query** | ค้นหา Order ด้วย Consignment หรือ Order ID |
 | 📦 **Batch Query** | ดูข้อมูล Batch ที่มี Order ID นั้น |
+| 🛠️ **UI Fix** | ระบบขยายดู Raw Data แบบปุ่มเฉพาะจุด ป้องกันการคลิกพลาด |
 
 ---
 
@@ -24,7 +26,7 @@
 
 - **Backend**: Node.js + Express.js
 - **Database**: MongoDB
-- **Frontend**: HTML / CSS / JavaScript (vanilla)
+- **Frontend**: HTML / CSS / JavaScript (Vanilla) + **Leaflet.js** (Maps)
 
 ---
 
@@ -64,10 +66,11 @@ npm start
 ```
 autobatch_riderapp/
 ├── public/
-│   └── index.html      # Frontend ทั้งหมด
-├── server.js           # Backend API (Express)
+│   ├── index.html          # Frontend Dashboard หลัก
+│   └── route-viewer.html   # ระบบวาดแผนที่เส้นทาง (Leaflet)
+├── server.js               # Backend API (Express)
 ├── package.json
-├── .env                # ⚠️ ต้องสร้างเอง (ไม่อยู่ใน repo)
+├── .env                    # ⚠️ ต้องสร้างเอง (ไม่อยู่ใน repo)
 └── README.md
 ```
 
@@ -96,6 +99,7 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 1.0.3 | เพิ่ม Route Viewer (แผนที่), ระบบสลับ Order ID/Consignment ใน Jobs, ปรับปรุง UI ปุ่มดู Raw Data |
 | 1.0.2 | เพิ่ม Waiting Duration ใน Pending Orders, Export CSV, Status Timeline |
 | 1.0.1 | เพิ่ม Dual-language (TH/EN), Color-coded Timeline |
 | 1.0.0 | Initial release |

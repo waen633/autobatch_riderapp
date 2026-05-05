@@ -25,7 +25,8 @@
       "Bash(git commit -m 'Add See Route feature for individual orders *)",
       "Bash(npm start *)",
       "Bash(python3 -m json.tool)",
-      "Bash(git commit -m 'Simplify order route visualization to show pickup and delivery markers *)"
+      "Bash(git commit -m 'Simplify order route visualization to show pickup and delivery markers *)",
+      "Bash(git commit -m 'Change order route column label from '\\\\''Route'\\\\'' to '\\\\''Location'\\\\'' *)"
     ]
   }
 }

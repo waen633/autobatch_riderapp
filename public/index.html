@@ -625,7 +625,7 @@ const COLS = {
     { id:'internalOrderId', label:'Order ID', sk:'internalOrderId', r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
     { id:'storeCode', label:'Store', sk:'storeCode', r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
     { id:'jobId', label:'Job ID', sk:'jobId', r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
-    { id:'seeRoute', label:'Route', sk:null, r: d => renderRouteLinks(d.rawResults) },
+    { id:'seeRoute', label:'Location', sk:null, r: d => renderRouteLinks(d.rawResults) },
     { id:'payment', label:'Payment', sk:'paymentMethod', r: d => {
       const parts = [];
       if (d.paymentMethod) parts.push(`<span class="badge bg-secondary status-badge">${d.paymentMethod}</span>`);
@@ -799,7 +799,7 @@ function renderRouteLinks(rawResults) {
     .join('%0A');
   if (!joined) return '–';
   const href = `${ROUTE_VIEWER_BASE}${joined}`;
-  return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="font-size:.78rem;">See Route</a>`;
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="font-size:.78rem;">Location</a>`;
 }
 
 function jobBadge(s) {

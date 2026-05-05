@@ -699,7 +699,13 @@ function setLoading(section, bool) {
   if (el) el.style.display = bool ? 'flex' : 'none';
 }
 function copyToClip(btn) {
-  const text = btn.dataset.text;
+  const outerDiv = btn.closest('.d-flex.align-items-start.justify-content-between');
+  if (!outerDiv) return;
+  const container = outerDiv.querySelector(':scope > div:first-child');
+  const spans = container.querySelectorAll('.order-id-val');
+  const texts = Array.from(spans).map(s => s.textContent.trim()).filter(Boolean);
+  const text = texts.join(', ');
+
   navigator.clipboard.writeText(text).then(() => {
     const orig = btn.innerHTML;
     btn.innerHTML = '<i class="bi bi-check"></i>';

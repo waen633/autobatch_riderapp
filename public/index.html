@@ -454,12 +454,23 @@ function toggleFullscreen(btn) {
   const isFullscreen = card.classList.toggle('card-fullscreen');
   const icon = btn.querySelector('i');
   if (isFullscreen) {
-    icon.classList.remove('bi-arrows-fullscreen');
-    icon.classList.add('bi-fullscreen-exit');
+    icon.classList.replace('bi-arrows-fullscreen', 'bi-x-lg');
+    btn.classList.add('btn-danger', 'text-white');
+    btn.classList.remove('col-btn');
     document.body.style.overflow = 'hidden';
+    
+    // Close on outside click
+    const closeHandler = (e) => {
+      if (card.classList.contains('card-fullscreen') && !card.contains(e.target)) {
+        toggleFullscreen(btn);
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
   } else {
-    icon.classList.remove('bi-fullscreen-exit');
-    icon.classList.add('bi-arrows-fullscreen');
+    icon.classList.replace('bi-x-lg', 'bi-arrows-fullscreen');
+    btn.classList.add('col-btn');
+    btn.classList.remove('btn-danger', 'text-white');
     document.body.style.overflow = '';
   }
 }

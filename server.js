@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const path = require('path');
+const polyline = require('polyline');
 
 const app = express();
 app.use(cors());
@@ -403,9 +404,11 @@ app.get('/api/orders', async (req, res) => {
       const deliveryTask = (d.workflowInput?.tasks || []).find(t => t.direction === 'DELIVERY');
       const routePolylines = [];
       if (pickupTask?.lat && pickupTask?.lng && deliveryTask?.lat && deliveryTask?.lng) {
+        const coords = [[pickupTask.lat, pickupTask.lng], [deliveryTask.lat, deliveryTask.lng]];
+        const encodedPolyline = polyline.encode(coords, 5);
         routePolylines.push(JSON.stringify({
           visits: [],
-          transitions: [{ routePolyline: {} }, { routePolyline: { points: `${pickupTask.lat},${pickupTask.lng} ${deliveryTask.lat},${deliveryTask.lng}` } }]
+          transitions: [{ routePolyline: {} }, { routePolyline: { points: encodedPolyline } }]
         }));
       }
       return {

@@ -212,12 +212,38 @@ Dashboard ปัจจุบัน (Lotus Auto-Batching Dashboard) เชื่�
 - [x] **Error Handling:** รายการที่ค้นหาไม่พบจะแสดงเป็นแถว "No data" ในตารางผลลัพธ์
 - [ ] MongoDB Index ถูกสร้างแล้ว (ตรวจด้วย `db.collection.getIndexes()`)
 
+## 5. Developer Implementation Guide (สรุปงานสำหรับ Developer)
+
+เพื่อให้ Dashboard ทำงานได้อย่างปลอดภัยและสมบูรณ์ Dev ต้องจัดการส่วนหลักดังนี้:
+
+### 5.1 Endpoints & Data Schema (Detailed)
+
+| ประเภทงาน | Endpoint (ตัวอย่าง) | ข้อมูลขาเข้า (Input) | ข้อมูลขาออกที่จำเป็น (Output Fields) |
+| :--- | :--- | :--- | :--- |
+| **Auth** | `POST /auth/login` | `username`, `password` | `accessToken`, `userProfile` (role, allowedStoreCodes) |
+| **Pending** | `GET /api/v1/orders/pending` | `storeCodes[]` | `orderId`, `consignment`, `serviceType`, `storeCode`, `createdAt`, `batchId` |
+| **Rider Pool** | `GET /api/v1/riders/pool` | `storeCodes[]` | `userId`, `name`, `phone`, `status`, `join_pool_at`, `ready_for_auto_assign`, **`staff_online`, `not_banned`, `no_active_job`, `not_on_break`** (Flags สำหรับไอคอน), `job_on_hand_id`, `job_on_hand_status`, `mapUrl` |
+| **Jobs** | `GET /api/v1/jobs` | `storeCodes[]`, `from`, `to` | `jobId`, `storeCode`, `riderName`, `riderId`, `orderIds[]`, `orderCount`, `pickUpSLA`, `deliverySLA`, `status`, **`updateStatuses[]`** (ใช้ทำ Timeline), **`rawResults[]`** (สำหรับวาดเส้นแผนที่) |
+| **Search** | `GET /api/v1/orders/search` | `type`, `values[]` | `internalOrderId`, `consignment`, `storeCode`, `jobId`, `riderName`, `riderId`, `riderPhone`, `workingType`, **`paymentMethod`, `paymentChannel`, `codChannel`, `codAmount`**, `currentOrderStatus`, `isOrderItemsConfirmation`, **`statusHistory[]`**, **`rawResults[]`** |
+| **Batch** | `GET /api/v1/batches/search` | `orderIds[]` | `batchId`, `orderIds[]`, `orderCount`, `status`, `roStatus`, `roStartTime`, `roEndTime`, `createdAt` |
+
+### 5.2 มาตรฐานความปลอดภัยและ Logic ที่ต้องรักษาไว้
+
+1.  **Data Projection (สำคัญ):** ห้ามส่งฟิลด์ที่เป็นความลับ เช่น `passwordHash`, `internalToken` หรือข้อมูลส่วนตัวลูกค้าที่ไม่ได้ใช้แสดงผลบนหน้าเว็บ
+2.  **Route Polylines:** ฟิลด์ `rawResults` ต้องส่งเป็น Array ของ String (Encoded Polyline) เพื่อให้ฟีเจอร์ "See Route" ทำงานได้
+3.  **Timeline Calculation:** ข้อมูลใน `statusHistory` และ `updateStatuses` ต้องมีทั้ง `status` และ `updatedAt` เพื่อให้หน้าบ้านคำนวณ Duration ในแต่ละขั้นตอนได้
+4.  **Server-side Validation:**
+    *   **Date Limit:** ต้องดักจับช่วงวันที่ (Date Range) ห้ามเกิน 7 วันที่ Backend
+    *   **Array Limit:** จำกัดจำนวนรายการใน Array (เช่น `values`) ไม่เกิน 100 รายการต่อ Request
+5.  **Performance:** สร้าง MongoDB Index สำหรับฟิลด์ `storeCode`, `createdAt`, `consignment`, `jobId`
+6.  **Rate Limiting:** ติดตั้ง `express-rate-limit` (Login: 10/นาที, APIs: 60/นาที)
+
 ---
 
-## 5. ข้อมูลอ้างอิง (References)
+## 6. ข้อมูลอ้างอิง (References)
 
 | ไฟล์ | ลิงก์ |
-|---|---|
+| :--- | :--- |
 | API Security Specification | `api_security_spec.md` |
 | System Architecture Plan | `system_architecture_plan.md` |
 | Project Pricing Estimate | `project_pricing_estimate.md` |

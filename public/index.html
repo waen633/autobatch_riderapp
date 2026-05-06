@@ -614,6 +614,15 @@ const COLS = {
           ? `<small${late ? ' style="color:#e67e22;font-weight:600;"' : ''}>${fmtDt(sla)}${late ? ' ▼' : ''}</small>`
           : '–';
       }},
+    { id:'deliverySLA', label:'Delivery SLA', sk:'deliverySLA', r: d => {
+        const sla = d.deliverySLA ? new Date(d.deliverySLA) : null;
+        const completed = (d.updateStatuses || []).find(s => s.status === 'job_completed');
+        const completedAt = completed ? new Date(completed.updatedAt) : null;
+        const late = sla && completedAt && completedAt > sla;
+        return sla
+          ? `<small${late ? ' style="color:#dc2626;font-weight:600;"' : ''}>${fmtDt(sla)}${late ? ' ▼' : ''}</small>`
+          : '–';
+      }},
     { id:'status', label:'Status', sk:'status', r: d => 
         `${jobBadge(d.status)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="event.stopPropagation(); showJobTimeline('${d.jobId}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
     { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` },
@@ -677,7 +686,7 @@ const COLS = {
 const DEFAULT_COLS = {
   pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
-  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','status','createdAt','updatedAt'],
+  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
 
   orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
@@ -948,8 +957,21 @@ function applyFilters(tbl) {
   let data = [...state[tbl].data];
   const q = state[tbl].search?.trim().toLowerCase();
   if (q) data = data.filter(row => JSON.stringify(row).toLowerCase().includes(q));
-  if (tbl==='jobs' && state.jobs.statusFilter)
-    data = data.filter(d => d.status === state.jobs.statusFilter);
+  if (tbl==='jobs' && state.jobs.statusFilter) {
+    if (state.jobs.statusFilter === 'late_pickup') {
+      data = data.filter(d => {
+        const pickedUp = (d.updateStatuses || []).find(s => s.status === 'job_picked_up');
+        return pickedUp && d.pickUpSLA && new Date(pickedUp.updatedAt) > new Date(d.pickUpSLA);
+      });
+    } else if (state.jobs.statusFilter === 'late_delivery') {
+      data = data.filter(d => {
+        const completed = (d.updateStatuses || []).find(s => s.status === 'job_completed');
+        return completed && d.deliverySLA && new Date(completed.updatedAt) > new Date(d.deliverySLA);
+      });
+    } else {
+      data = data.filter(d => d.status === state.jobs.statusFilter);
+    }
+  }
   const { sortCol, sortDir } = state[tbl];
   if (sortCol) {
     data.sort((a,b) => {
@@ -1074,8 +1096,8 @@ function renderJobsDash() {
   if (!Object.keys(counts).length) { dash.innerHTML=''; return; }
 
   let html = `<span class="badge bg-light text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2 border" onclick="filterJobsByStatus('')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">All Status <span class="badge bg-secondary rounded-pill">${state.jobs.data.length}</span></span>`;
-  if (latePick > 0) html += `<span class="badge bg-warning text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Pickups <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${latePick}</span></span>`;
-  if (lateDel > 0) html += `<span class="badge bg-danger dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Deliveries <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${lateDel}</span></span>`;
+  if (latePick > 0) html += `<span class="badge bg-warning text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" onclick="filterJobsByStatus('late_pickup')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Pickups <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${latePick}</span></span>`;
+  if (lateDel > 0) html += `<span class="badge bg-danger dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" onclick="filterJobsByStatus('late_delivery')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Deliveries <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${lateDel}</span></span>`;
   
   html += Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([s,n]) => {
     const map = {
@@ -1515,7 +1537,7 @@ function exportJobsCSV() {
   const headers = [
     'Job ID', 'Store', 'Rider Name', 'Rider ID', 'Order Count', 'Order IDs', 'Status', 'Created At',
     'PickUp SLA', 'Actual Pickup', 'Pickup Delay (min)',
-    'Delivery SLA', 'Actual Delivery'
+    'Delivery SLA', 'Actual Delivery', 'Delivery Delay (min)'
   ];
 
   const rows = data.map(d => {
@@ -1535,7 +1557,8 @@ function exportJobsCSV() {
       `"${fmtDtCsv(pickedUpAt)}"`,
       delayMin(pickedUpAt, d.pickUpSLA),
       `"${fmtDtCsv(d.deliverySLA)}"`,
-      `"${fmtDtCsv(completedAt)}"`
+      `"${fmtDtCsv(completedAt)}"`,
+      delayMin(completedAt, d.deliverySLA)
     ];
   });
   

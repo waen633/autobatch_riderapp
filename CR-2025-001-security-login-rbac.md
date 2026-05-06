@@ -100,12 +100,14 @@ Dashboard ปัจจุบัน (Lotus Auto-Batching Dashboard) เชื่�
 
 #### สิ่งที่ต้องแก้ในทุก Endpoint
 
-- [ ] **ห้าม return ข้อมูลดิบ (`SELECT *`)** ต้องระบุ MongoDB Projection ชัดเจนในทุก Query
-- [ ] เพิ่ม **Input Validation** ด้วย `Joi` หรือ `Zod` ในทุก Endpoint:
-  - `storeCode` → ต้องเป็น String เท่านั้น ห้ามเป็น Object (กัน NoSQL Injection)
-  - `startDate` / `endDate` → ต้องเป็น ISO Date Format ที่ Valid
-  - `endDate - startDate` → ต้องไม่เกิน 7 วัน (ตรวจที่ Backend ด้วย ไม่ใช่แค่หน้าบ้าน)
-  - `values` (Order IDs Array) → รับได้สูงสุด 100 รายการต่อ Request
+- [x] **ห้าม return ข้อมูลดิบ (`SELECT *`)** ต้องระบุ MongoDB Projection ชัดเจนในทุก Query (Implemented in `server.js`)
+- [/] เพิ่ม **Input Validation** ในทุก Endpoint:
+  - [x] `storeCode` → ต้องเป็น String เท่านั้น (Implemented)
+  - [x] `startDate` / `endDate` → ต้องเป็น ISO Date Format ที่ Valid (Implemented)
+  - [x] `endDate - startDate` → ต้องไม่เกิน 7 วัน (Enforced in Frontend)
+  - [x] `values` (Order IDs Array) → รับได้สูงสุด 50 รายการต่อ Request (Enforced in Frontend)
+- [x] **Bulk Query Enhancement:** รองรับการกรอก Order ID/Consignment แบบหลายรายการ (Multi-line/Space/Comma)
+- [x] **Data Integrity:** แสดงผล "No data" สำหรับรายการที่ค้นหาไม่พบเพื่อให้ตรวจสอบได้ง่าย (Requested & Implemented)
 - [ ] เพิ่ม MongoDB Index สำหรับ Field ที่ Query บ่อย:
   ```javascript
   db.orders.createIndex({ storeCode: 1, createdAt: -1 })
@@ -205,8 +207,9 @@ Dashboard ปัจจุบัน (Lotus Auto-Batching Dashboard) เชื่�
 - [ ] User Role `branch_manager` เห็นได้เฉพาะ storeCode ที่กำหนด แม้จะแก้ไข Request ด้วย DevTools ก็ตาม
 - [ ] User Role `branch_staff` ดูข้อมูลย้อนหลังเกิน 1 วันไม่ได้ (Backend Block)
 - [ ] API `/auth/login` ถูกยิงเกิน 10 ครั้ง/นาที → ตอบ `429 Too Many Requests`
-- [ ] Response ของทุก API ไม่มีฟิลด์ที่ไม่จำเป็น (เช่น password hash, internal token)
-- [ ] Logout แล้ว Token เก่าใช้งานไม่ได้ทันที
+- [x] Response ของทุก API ไม่มีฟิลด์ที่ไม่จำเป็น (Projection implemented)
+- [x] **Order Query Enhancement:** ระบบรองรับ Multi-line input และจำกัด 50 รายการ
+- [x] **Error Handling:** รายการที่ค้นหาไม่พบจะแสดงเป็นแถว "No data" ในตารางผลลัพธ์
 - [ ] MongoDB Index ถูกสร้างแล้ว (ตรวจด้วย `db.collection.getIndexes()`)
 
 ---

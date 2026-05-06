@@ -224,6 +224,7 @@
             <button class="btn btn-outline-success btn-sm" onclick="exportJobsCSV()"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
             <select id="jobs-status-filter" class="form-select form-select-sm" style="width:150px" onchange="state.jobs.statusFilter=this.value;state.jobs.page=1;renderSection('jobs')">
               <option value="" data-i18n="allStatus">All Status</option>
+              <option value="job_created">job_created</option>
               <option value="job_accepted">job_accepted</option>
               <option value="job_assigned">job_assigned</option>
               <option value="job_picking_up">job_picking_up</option>
@@ -823,6 +824,7 @@ function renderRouteLinks(rawResults, label = 'See Route') {
 
 function jobBadge(s) {
   const map = {
+    job_created:'secondary',
     job_accepted:'primary', job_assigned:'info text-dark',
     job_picking_up:'warning text-dark', job_picked_up:'success',
     job_delivering:'success', job_delivered:'secondary',
@@ -1101,6 +1103,7 @@ function renderJobsDash() {
   
   html += Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([s,n]) => {
     const map = {
+      job_created:'secondary',
       job_accepted:'primary', job_assigned:'info text-dark',
       job_picking_up:'warning text-dark', job_picked_up:'success',
       job_delivering:'success', job_delivered:'secondary',

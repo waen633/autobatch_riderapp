@@ -155,9 +155,9 @@
             <i class="bi bi-arrow-counterclockwise"></i> <span data-i18n="reset">Reset</span>
           </button>
           <div class="btn-group ms-2">
-            <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(0)">Today</button>
-            <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(3)">3 Days</button>
-            <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(7)">7 Days</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(0)" data-i18n="today">Today</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(3)" data-i18n="day3">3 Days</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(7)" data-i18n="day7">7 Days</button>
           </div>
         </div>
         <div class="col-auto ms-auto">
@@ -174,15 +174,15 @@
     <div class="col-12">
       <div class="card" id="live-map-card">
         <div class="card-header map-header-clickable d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-top: 3px solid #16a34a;" onclick="toggleMapCollapse()">
-          <span><i class="bi bi-geo-alt-fill me-2 text-success"></i>Live Rider Map</span>
+          <span><i class="bi bi-geo-alt-fill me-2 text-success"></i><span data-i18n="liveMap">Live Rider Map</span></span>
           <div class="d-flex align-items-center gap-3 flex-wrap" onclick="event.stopPropagation()">
             <span class="d-flex gap-2 align-items-center" style="font-size:.71rem; color:#64748b;">
               <b style="color:#475569;">Dot:</b>
-              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;vertical-align:middle;"></span> Ready</span>
-              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f97316;vertical-align:middle;"></span> Picking</span>
-              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3b82f6;vertical-align:middle;"></span> Delivering</span>
-              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#facc15;vertical-align:middle;"></span> Busy</span>
-              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#94a3b8;vertical-align:middle;"></span> No Pool</span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;vertical-align:middle;"></span> <span data-i18n="dot_ready">Ready</span></span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f97316;vertical-align:middle;"></span> <span data-i18n="dot_picking">Picking</span></span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3b82f6;vertical-align:middle;"></span> <span data-i18n="dot_delivering">Delivering</span></span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#facc15;vertical-align:middle;"></span> <span data-i18n="dot_busy">Busy</span></span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#94a3b8;vertical-align:middle;"></span> <span data-i18n="dot_noPool">No Pool</span></span>
             </span>
             <span id="store-legend" class="d-flex gap-2 align-items-center flex-wrap" style="font-size:.71rem;"></span>
             <span class="badge bg-success" id="count-map">–</span>
@@ -193,17 +193,17 @@
         <div id="map-card-body">
           <div class="card-body p-2">
             <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
-              <button class="btn btn-success btn-sm" onclick="fetchLiveAll(this)"><i class="bi bi-map me-1"></i>Get + Map</button>
+              <button class="btn btn-success btn-sm" onclick="fetchLiveAll(this)"><i class="bi bi-map me-1"></i><span data-i18n="getMap">Get + Map</span></button>
               <div id="loading-map" class="d-none d-flex align-items-center gap-1">
                 <div class="spinner-border spinner-border-sm text-success"></div>
-                <span class="text-muted small">Loading map…</span>
+                <span class="text-muted small" data-i18n="mapLoading">Loading map…</span>
               </div>
               <div id="error-map" class="alert alert-danger py-1 d-none small mb-0" style="max-width:400px;"></div>
             </div>
             <div id="live-map" style="height:440px; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
               <div class="text-center text-muted">
                 <i class="bi bi-geo-alt" style="font-size:2rem;"></i>
-                <div class="mt-1 small">กด Get + Map เพื่อโหลด</div>
+                <div class="mt-1 small" data-i18n="mapPlaceholder">กด Get + Map เพื่อโหลด</div>
               </div>
             </div>
           </div>
@@ -283,7 +283,7 @@
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-primary btn-sm" onclick="fetchJobs(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getJobs">Get Jobs</span></button>
-            <button class="btn btn-outline-success btn-sm" onclick="exportJobsCSV()"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
+            <button class="btn btn-outline-success btn-sm" onclick="exportJobsCSV()"><i class="bi bi-filetype-csv me-1"></i><span data-i18n="exportCsv">Export CSV</span></button>
             <select id="jobs-status-filter" class="form-select form-select-sm" style="width:150px" onchange="state.jobs.statusFilter=this.value;state.jobs.page=1;renderSection('jobs')">
               <option value="" data-i18n="allStatus">All Status</option>
               <option value="job_created">job_created</option>
@@ -474,30 +474,56 @@ const i18n = {
     navTitle: 'Lotus Auto-Batching Dashboard',
     storeCode: 'Store Code',
     storeCodeHint: 'หลายสาขาคั่นด้วย ,',
-    fromLabel: 'From', toLabel: 'To', reset: 'Reset',
+    fromLabel: 'From', toLabel: 'To', reset: 'รีเซ็ต',
+    today: 'วันนี้', day3: '3 วัน', day7: '7 วัน',
     pendingNote: '* Pending & Riders ไม่ใช้ date range',
     sectionPending: 'Pending Orders', sectionPendingDesc: 'รอสร้าง Job',
     sectionRiders: 'Rider Pool', sectionJobs: 'Jobs', sectionJobsDesc: 'ตามช่วงเวลา',
     sectionStuck: 'Stuck Jobs', sectionStuckDesc: 'Job ค้าง',
     sectionOrders: 'Order Query', sectionOrdersDesc: 'ค้นหา Order ด้วย Consignment / Order ID',
     sectionBatches: 'Batch Query', sectionBatchesDesc: 'ค้นหา Batch ที่มี Order ID นี้',
-    getPending: 'Get Pending', getRiders: 'Get Riders', getJobs: 'Get Jobs',
-    getStuck: 'Get Stuck', queryOrder: 'Query', queryBatch: 'Query Batch',
-    search: 'ค้นหา…', filterResult: 'Filter…', loading: 'กำลังโหลด…',
-    noData: 'ไม่พบข้อมูล', pressGet: 'กด Get เพื่อโหลด', pressQuery: 'กรอก Query แล้วกด',
+    getPending: 'ดึง Pending', getRiders: 'ดึง Riders', getJobs: 'ดึง Jobs',
+    getMap: 'ดึง + แผนที่',
+    getStuck: 'ดึง Stuck', queryOrder: 'ค้นหา', queryBatch: 'ค้นหา Batch',
+    exportCsv: 'Export CSV',
+    search: 'ค้นหา…', filterResult: 'กรอง…', loading: 'กำลังโหลด…',
+    noData: 'ไม่พบข้อมูล', pressGet: 'กด ดึง เพื่อโหลด', pressQuery: 'กรอก Query แล้วกด',
     cancel: 'ยกเลิก', save: 'บันทึก', colSelector: 'เลือก Column',
-    allStatus: 'All Status', riderPerf: 'Rider Performance',
+    allStatus: 'ทุกสถานะ', riderPerf: 'สถิติ Rider',
     queryType: 'ประเภท Query', consignment: 'Consignment', orderId: 'Order ID',
-    values: 'Values', valuesHint: 'รองรับ เว้นวรรค/ขึ้นบรรทัดใหม่ (จำกัด 50)',
+    values: 'ค่าที่ค้นหา', valuesHint: 'รองรับ เว้นวรรค/ขึ้นบรรทัดใหม่ (จำกัด 50)',
     batchOrderIds: 'Order IDs (คั่นด้วย ,)',
     explainStatus: 'Timeline', lastUpdated: 'อัปเดตล่าสุด',
     showPerPage: 'แสดง', of: 'จาก',
-    jobCount_label: 'Job ในช่วงเวลา'
+    jobCount_label: 'Job ในช่วงเวลา',
+    liveMap: 'Live Rider Map',
+    mapPlaceholder: 'กด ดึง + แผนที่ เพื่อโหลด',
+    mapLoading: 'กำลังโหลดแผนที่…',
+    dot_ready: 'พร้อม', dot_picking: 'รับของ', dot_delivering: 'ส่ง', dot_busy: 'ยุ่ง', dot_noPool: 'ไม่ใน Pool',
+    latePickups: 'รับของช้า', lateDeliveries: 'ส่งช้า',
+    idleHour: 'ชม.', idleMin: 'น.',
+    rs_ready: 'พร้อมรับงาน', rs_noPool: 'ไม่ใน Pool', rs_offline: 'Offline',
+    rs_banned: 'ถูก Ban ชั่วคราว', rs_picking: 'กำลังรับของ', rs_pickedUp: 'รับของแล้ว',
+    rs_delivering: 'กำลังส่ง', rs_accepted: 'รับงานแล้ว', rs_working: 'กำลังทำงาน',
+    rs_onBreak: 'พักเบรก', rs_notReady: 'ไม่พร้อม',
+    flag_online: 'Online (อยู่ใน app)', flag_notBanned: 'ไม่โดน Ban (ไม่ได้ reject job)',
+    flag_noJob: 'ไม่มีงานในมือ', flag_notOnBreak: 'ไม่ได้พักเบรก',
+    col_store: 'สาขา', col_orderId: 'Order ID', col_consignment: 'Consignment',
+    col_service: 'ประเภทบริการ', col_created: 'สร้างเมื่อ', col_waiting: '⏳ รอมา',
+    col_queue: 'คิว', col_name: 'ชื่อ / เบอร์', col_userId: 'User ID',
+    col_idleTime: 'รอนาน', col_joinedPool: 'เข้า Pool',
+    col_status: 'สถานะ', col_flags: 'Flags', col_jobOnHand: 'งานในมือ', col_map: 'แผนที่',
+    col_jobId: 'Job ID', col_rider: 'ไรเดอร์', col_count: '#', col_orderIds: 'Order IDs',
+    col_seeRoute: 'ดูเส้นทาง', col_pickupSLA: 'SLA รับของ', col_deliverySLA: 'SLA ส่ง',
+    col_updated: 'อัปเดต', col_location: 'ตำแหน่ง', col_payment: 'การชำระ',
+    col_itemsConfirm: 'ยืนยัน Items', col_batchId: 'Batch ID',
+    col_roStatus: 'RO Status', col_roStart: 'RO เริ่ม', col_roEnd: 'RO สิ้นสุด'
   },
   en: {
     navTitle: 'Lotus Auto-Batching Dashboard',
     storeCode: 'Store Code', storeCodeHint: 'Multiple stores: separate by ,',
     fromLabel: 'From', toLabel: 'To', reset: 'Reset',
+    today: 'Today', day3: '3 Days', day7: '7 Days',
     pendingNote: '* Pending & Riders do not use date range',
     sectionPending: 'Pending Orders', sectionPendingDesc: 'Waiting for Job',
     sectionRiders: 'Rider Pool', sectionJobs: 'Jobs', sectionJobsDesc: 'By Time Range',
@@ -505,7 +531,9 @@ const i18n = {
     sectionOrders: 'Order Query', sectionOrdersDesc: 'Search by Consignment / Order ID',
     sectionBatches: 'Batch Query', sectionBatchesDesc: 'Find Batch containing Order ID',
     getPending: 'Get Pending', getRiders: 'Get Riders', getJobs: 'Get Jobs',
+    getMap: 'Get + Map',
     getStuck: 'Get Stuck', queryOrder: 'Query', queryBatch: 'Query Batch',
+    exportCsv: 'Export CSV',
     search: 'Search…', filterResult: 'Filter…', loading: 'Loading…',
     noData: 'No data found', pressGet: 'Click Get to load', pressQuery: 'Fill in values then click Query',
     cancel: 'Cancel', save: 'Save', colSelector: 'Select Columns',
@@ -515,7 +543,29 @@ const i18n = {
     batchOrderIds: 'Order IDs (separate by ,)',
     explainStatus: 'Timeline', lastUpdated: 'Last updated',
     showPerPage: 'Show', of: 'of',
-    jobCount_label: 'Jobs in range'
+    jobCount_label: 'Jobs in range',
+    liveMap: 'Live Rider Map',
+    mapPlaceholder: 'Click Get + Map to load',
+    mapLoading: 'Loading map…',
+    dot_ready: 'Ready', dot_picking: 'Picking', dot_delivering: 'Delivering', dot_busy: 'Busy', dot_noPool: 'No Pool',
+    latePickups: 'Late Pickups', lateDeliveries: 'Late Deliveries',
+    idleHour: 'h', idleMin: 'm',
+    rs_ready: 'Ready', rs_noPool: 'Not in Pool', rs_offline: 'Offline',
+    rs_banned: 'Banned (temp)', rs_picking: 'Picking up', rs_pickedUp: 'Picked up',
+    rs_delivering: 'Delivering', rs_accepted: 'Job accepted', rs_working: 'Working',
+    rs_onBreak: 'On break', rs_notReady: 'Not ready',
+    flag_online: 'Online (in app)', flag_notBanned: 'Not banned (no job reject)',
+    flag_noJob: 'No active job', flag_notOnBreak: 'Not on break',
+    col_store: 'Store', col_orderId: 'Order ID', col_consignment: 'Consignment',
+    col_service: 'Service', col_created: 'Created', col_waiting: '⏳ Waiting',
+    col_queue: '#', col_name: 'Name / Phone', col_userId: 'User ID',
+    col_idleTime: 'Idle Time', col_joinedPool: 'Joined Pool',
+    col_status: 'Status', col_flags: 'Flags', col_jobOnHand: 'Job on hand', col_map: 'Map',
+    col_jobId: 'Job ID', col_rider: 'Rider', col_count: '#', col_orderIds: 'Order IDs',
+    col_seeRoute: 'See Route', col_pickupSLA: 'PickUp SLA', col_deliverySLA: 'Delivery SLA',
+    col_updated: 'Updated', col_location: 'Location', col_payment: 'Payment',
+    col_itemsConfirm: 'Items Confirm', col_batchId: 'Batch ID',
+    col_roStatus: 'RO Status', col_roStart: 'RO Start', col_roEnd: 'RO End'
   }
 };
 function t(key) { return i18n[lang][key] || key; }
@@ -525,10 +575,12 @@ function toggleLang() {
   applyLang();
 }
 function applyLang() {
+  document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   document.getElementById('lang-btn').textContent = lang === 'th' ? 'EN' : 'TH';
   ALL_TBLS.forEach(tbl => renderSection(tbl));
+  renderJobsDash();
 }
 
 function toggleFullscreen(btn) {
@@ -638,43 +690,41 @@ const state = {
 // ─── COLUMN DEFINITIONS ───────────────────────────────────────────────────────
 const COLS = {
   pending: [
-    { id:'storeCode', label:'Store', sk:'storeCode', r: d => d.storeCode||'–' },
-    { id:'orderId', label:'Order ID', sk:'orderId', r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
-    { id:'consignment', label:'Consignment', sk:'consignment', r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
-    { id:'service', label:'Service', sk:'serviceType', r: d => `<span class="badge bg-secondary status-badge">${d.serviceType||'–'}</span>` },
-    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` },
-    { id:'waitDuration', label:'⏳ Waiting', sk:'createdAt', r: d => pendingWaitHtml(d) }
+    { id:'storeCode',   lk:'col_store',       sk:'storeCode',   r: d => d.storeCode||'–' },
+    { id:'orderId',     lk:'col_orderId',      sk:'orderId',     r: d => `<small class="font-monospace">${d.orderId||'–'}</small>` },
+    { id:'consignment', lk:'col_consignment',  sk:'consignment', r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
+    { id:'service',     lk:'col_service',      sk:'serviceType', r: d => `<span class="badge bg-secondary status-badge">${d.serviceType||'–'}</span>` },
+    { id:'createdAt',   lk:'col_created',      sk:'createdAt',   r: d => `<small>${fmtDt(d.createdAt)}</small>` },
+    { id:'waitDuration',lk:'col_waiting',      sk:'createdAt',   r: d => pendingWaitHtml(d) }
   ],
   riders: [
-    { id:'queue', label:'#', sk:'queue', r: d => queueBadge(d) },
-    { id:'storeCode', label:'Store', sk:'storeCode', r: d => d.storeCode||'–' },
-    { id:'name', label:'Name / Phone', sk:'name', r: d => {
+    { id:'queue',       lk:'col_queue',       sk:'queue',                r: d => queueBadge(d) },
+    { id:'storeCode',   lk:'col_store',       sk:'storeCode',            r: d => d.storeCode||'–' },
+    { id:'name',        lk:'col_name',        sk:'name',                 r: d => {
       const js = getRiderJobSummary(d.userId);
       const jb = js ? `<span class="badge bg-primary ms-1" title="${js.orderIds.join('\n')}" style="cursor:pointer;" onclick="filterJobsByRider('${d.userId}')">${js.count} jobs</span>` : '';
       return `<div class="fw-semibold lh-sm">${d.name||d.username}${jb}</div><small class="text-muted">${d.phone}</small>`;
     }},
-    { id:'userId', label:'User ID', sk:'userId', r: d => `<small class="font-monospace text-muted">${d.userId||'–'}</small>` },
-    { id:'idle_time', label:'Idle Time', sk:'join_pool_at', r: d => idleHtml(d) },
-    { id:'join_pool_at', label:'Joined Pool', sk:'join_pool_at', r: d => `<small>${fmtDt(d.join_pool_at)}</small>` },
-    { id:'ready', label:'Ready', sk:'ready_for_auto_assign', r: d => d.ready_for_auto_assign
-        ? `<i class="bi bi-check-circle-fill text-success" style="font-size:1.1rem;"></i>`
-        : `<i class="bi bi-x-circle-fill text-danger" style="font-size:1.1rem;"></i>` },
-    { id:'flags', label:'Flags', sk:null, r: d => flagsHtml(d) },
-    { id:'job_on_hand', label:'Job on hand', sk:'job_on_hand_id', r: d => d.job_on_hand_id
+    { id:'userId',      lk:'col_userId',      sk:'userId',               r: d => `<small class="font-monospace text-muted">${d.userId||'–'}</small>` },
+    { id:'idle_time',   lk:'col_idleTime',    sk:'join_pool_at',         r: d => idleHtml(d) },
+    { id:'join_pool_at',lk:'col_joinedPool',  sk:'join_pool_at',         r: d => `<small>${fmtDt(d.join_pool_at)}</small>` },
+    { id:'ready',       lk:'col_status',      sk:'ready_for_auto_assign',r: d => riderStatusBadge(d) },
+    { id:'flags',       lk:'col_flags',       sk:null,                   r: d => flagsHtml(d) },
+    { id:'job_on_hand', lk:'col_jobOnHand',   sk:'job_on_hand_id',       r: d => d.job_on_hand_id
         ? `<small class="font-monospace d-block">${d.job_on_hand_id}</small>${jobBadge(d.job_on_hand_status)}`
         : `<span class="text-muted">–</span>` },
-    { id:'map', label:'Map', sk:null, r: d => d.mapUrl
+    { id:'map',         lk:'col_map',         sk:null,                   r: d => d.mapUrl
         ? `<a href="${d.mapUrl}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1"><i class="bi bi-geo-alt-fill"></i></a>`
         : '–' }
   ],
   jobs: [
-    { id:'jobId', label:'Job ID', sk:'jobId', r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
-    { id:'storeCode', label:'Store', sk:'storeCode', r: d => d.storeCode||'–' },
-    { id:'rider', label:'Rider', sk:'riderName', r: d => d.riderName
+    { id:'jobId',       lk:'col_jobId',       sk:'jobId',       r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
+    { id:'storeCode',   lk:'col_store',       sk:'storeCode',   r: d => d.storeCode||'–' },
+    { id:'rider',       lk:'col_rider',       sk:'riderName',   r: d => d.riderName
         ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
-    { id:'orderCount', label:'#', sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
-    { id:'orderIds', label:'Order IDs', sk:null, r: d => {
+    { id:'orderCount',  lk:'col_count',       sk:'orderCount',  r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
+    { id:'orderIds',    lk:'col_orderIds',    sk:null,          r: d => {
       if (!d.orderIds || !d.orderIds.length) return '–';
       const ordersHtml = d.orderIds.map(o=>`<span class="font-monospace d-block order-id-val" style="font-size:.73rem;" data-oid="${o}">${o}</span>`).join('');
       const orderStr = d.orderIds.join(', ');
@@ -686,10 +736,10 @@ const COLS = {
                 </div>
               </div>`;
     }},
-    { id:'seeRoute', label:'See Route', sk:null, r: d => d.jobId
+    { id:'seeRoute',    lk:'col_seeRoute',    sk:null,          r: d => d.jobId
         ? `<button class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openJobRoute('${d.jobId}',this)"><i class="bi bi-map me-1"></i>Route</button>`
         : '–' },
-    { id:'pickUpSLA', label:'PickUp SLA', sk:'pickUpSLA', r: d => {
+    { id:'pickUpSLA',   lk:'col_pickupSLA',   sk:'pickUpSLA',   r: d => {
         const sla = d.pickUpSLA ? new Date(d.pickUpSLA) : null;
         const pickedUp = (d.updateStatuses || []).find(s => s.status === 'job_picked_up');
         const pickedUpAt = pickedUp ? new Date(pickedUp.updatedAt) : null;
@@ -698,7 +748,7 @@ const COLS = {
           ? `<small${late ? ' style="color:#e67e22;font-weight:600;"' : ''}>${fmtDt(sla)}${late ? ' ▼' : ''}</small>`
           : '–';
       }},
-    { id:'deliverySLA', label:'Delivery SLA', sk:'deliverySLA', r: d => {
+    { id:'deliverySLA', lk:'col_deliverySLA', sk:'deliverySLA', r: d => {
         const sla = d.deliverySLA ? new Date(d.deliverySLA) : null;
         const completed = (d.updateStatuses || []).find(s => s.status === 'job_completed');
         const completedAt = completed ? new Date(completed.updatedAt) : null;
@@ -707,21 +757,21 @@ const COLS = {
           ? `<small${late ? ' style="color:#dc2626;font-weight:600;"' : ''}>${fmtDt(sla)}${late ? ' ▼' : ''}</small>`
           : '–';
       }},
-    { id:'status', label:'Status', sk:'status', r: d => 
+    { id:'status',      lk:'col_status',      sk:'status',      r: d =>
         `${jobBadge(d.status)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="event.stopPropagation(); showJobTimeline('${d.jobId}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
-    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` },
-    { id:'updatedAt', label:'Updated', sk:'updatedAt', r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
+    { id:'createdAt',   lk:'col_created',     sk:'createdAt',   r: d => `<small>${fmtDt(d.createdAt)}</small>` },
+    { id:'updatedAt',   lk:'col_updated',     sk:'updatedAt',   r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
   ],
 
   orders: [
-    { id:'consignment', label:'Consignment', sk:'consignment', r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
-    { id:'internalOrderId', label:'Order ID', sk:'internalOrderId', r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
-    { id:'storeCode', label:'Store', sk:'storeCode', r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
-    { id:'jobId', label:'Job ID', sk:'jobId', r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
-    { id:'seeRoute', label:'Location', sk:null, r: d => d.rawResults?.length
-        ? `<button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openOrderRoute('${d._id}')"><i class="bi bi-geo-alt me-1"></i>Location</button>`
+    { id:'consignment',       lk:'col_consignment',  sk:'consignment',           r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
+    { id:'internalOrderId',   lk:'col_orderId',      sk:'internalOrderId',        r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
+    { id:'storeCode',         lk:'col_store',        sk:'storeCode',             r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
+    { id:'jobId',             lk:'col_jobId',        sk:'jobId',                 r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
+    { id:'seeRoute',          lk:'col_location',     sk:null,                    r: d => d.rawResults?.length
+        ? `<button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openOrderRoute('${d._id}')"><i class="bi bi-geo-alt me-1"></i>${t('col_location')}</button>`
         : '–' },
-    { id:'payment', label:'Payment', sk:'paymentMethod', r: d => {
+    { id:'payment',           lk:'col_payment',      sk:'paymentMethod',         r: d => {
       const parts = [];
       if (d.paymentMethod) parts.push(`<span class="badge bg-secondary status-badge">${d.paymentMethod}</span>`);
       if (d.paymentChannel) parts.push(`<span class="badge bg-info text-dark status-badge">${d.paymentChannel}</span>`);
@@ -729,23 +779,22 @@ const COLS = {
       if (d.codAmount) parts.push(`<small class="text-danger fw-bold">฿${d.codAmount}</small>`);
       return parts.join(' ') || '–';
     }},
-    { id:'itemsConfirm', label:'Items Confirm', sk:'isOrderItemsConfirmation', r: d => (d.isOrderItemsConfirmation === true || d.isOrderItemsConfirmation === 'true') ? '<span class="badge bg-success">True</span>' : ((d.isOrderItemsConfirmation === false || d.isOrderItemsConfirmation === 'false') ? '<span class="badge bg-danger">False</span>' : '–') },
-    { id:'currentOrderStatus', label:'Status', sk:'currentOrderStatus', r: d =>
-      d.isNotFound 
-        ? `<span class="badge bg-secondary opacity-50">No data</span>` 
+    { id:'itemsConfirm',      lk:'col_itemsConfirm', sk:'isOrderItemsConfirmation', r: d => (d.isOrderItemsConfirmation === true || d.isOrderItemsConfirmation === 'true') ? '<span class="badge bg-success">True</span>' : ((d.isOrderItemsConfirmation === false || d.isOrderItemsConfirmation === 'false') ? '<span class="badge bg-danger">False</span>' : '–') },
+    { id:'currentOrderStatus',lk:'col_status',       sk:'currentOrderStatus',    r: d =>
+      d.isNotFound
+        ? `<span class="badge bg-secondary opacity-50">No data</span>`
         : `${orderStatusBadge(d.currentOrderStatus)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="showTimeline('${d._id}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
-    { id:'riderName', label:'Rider', sk:'riderName', r: d => d.riderName
+    { id:'riderName',         lk:'col_rider',        sk:'riderName',             r: d => d.riderName
         ? `<div>${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
-    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` },
-    { id:'updatedAt', label:'Updated', sk:'updatedAt', r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
+    { id:'createdAt',         lk:'col_created',      sk:'createdAt',             r: d => `<small>${fmtDt(d.createdAt)}</small>` },
+    { id:'updatedAt',         lk:'col_updated',      sk:'updatedAt',             r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
   ],
   batches: [
-    { id:'batchId', label:'Batch ID', sk:'batchId', r: d => `<small class="font-monospace">${d.batchId||'–'}</small>` },
-    { id:'orderCount', label:'# Orders', sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
-    { id:'orderIds', label:'Order IDs', sk:null, r: d => {
+    { id:'batchId',    lk:'col_batchId',   sk:'batchId',    r: d => `<small class="font-monospace">${d.batchId||'–'}</small>` },
+    { id:'orderCount', lk:'col_count',     sk:'orderCount', r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
+    { id:'orderIds',   lk:'col_orderIds',  sk:null,         r: d => {
       if (!d.orderIds || !d.orderIds.length) return '–';
-      const orderIds = d.orderIds.join(', ');
       return `<div class="d-flex gap-2 align-items-start">
         <div style="flex:1;"><span class="batch-ids-display font-monospace d-block" style="font-size:.73rem;" data-orderids="${d.orderIds.join(',')}">${d.orderIds.map(o=>`<span class="d-block">${o}</span>`).join('')}</span></div>
         <div class="d-flex gap-1">
@@ -754,18 +803,18 @@ const COLS = {
         </div>
       </div>`;
     }},
-    { id:'status', label:'Status', sk:'status', r: d => {
+    { id:'status',     lk:'col_status',    sk:'status',     r: d => {
       const map = { success:'success', failed:'danger', pending:'warning text-dark', processing:'info text-dark' };
       const cls = map[d.status]||'secondary';
       return d.status ? `<span class="badge bg-${cls} status-badge">${d.status}</span>` : '–';
     }},
-    { id:'roStatus', label:'RO Status', sk:'roStatus', r: d => {
+    { id:'roStatus',   lk:'col_roStatus',  sk:'roStatus',   r: d => {
       const cls = d.roStatus === 'completed' ? 'success' : d.roStatus ? 'warning text-dark' : 'secondary';
       return d.roStatus ? `<span class="badge bg-${cls} status-badge">${d.roStatus}</span>` : '–';
     }},
-    { id:'roStartTime', label:'RO Start', sk:'roStartTime', r: d => `<small>${fmtDt(d.roStartTime)}</small>` },
-    { id:'roEndTime', label:'RO End', sk:'roEndTime', r: d => `<small>${fmtDt(d.roEndTime)}</small>` },
-    { id:'createdAt', label:'Created', sk:'createdAt', r: d => `<small>${fmtDt(d.createdAt)}</small>` }
+    { id:'roStartTime',lk:'col_roStart',   sk:'roStartTime',r: d => `<small>${fmtDt(d.roStartTime)}</small>` },
+    { id:'roEndTime',  lk:'col_roEnd',     sk:'roEndTime',  r: d => `<small>${fmtDt(d.roEndTime)}</small>` },
+    { id:'createdAt',  lk:'col_created',   sk:'createdAt',  r: d => `<small>${fmtDt(d.createdAt)}</small>` }
   ]
 };
 
@@ -846,7 +895,7 @@ function idleHtml(d) {
   if (!d.join_pool_at || !d.no_active_job || d.queue === 'not_in_pool') return '–';
   const mins = (Date.now() - new Date(d.join_pool_at).getTime()) / 60000;
   const h = Math.floor(mins/60), m = Math.round(mins%60);
-  const text = h>0 ? `${h}h ${m}m` : `${Math.round(mins)}m`;
+  const text = h>0 ? `${h}${t('idleHour')} ${m}${t('idleMin')}` : `${Math.round(mins)}${t('idleMin')}`;
   const cls = mins>=180?'idle-danger':mins>=60?'idle-warn':'';
   return `<span class="${cls}">${text}</span>`;
 }
@@ -883,16 +932,34 @@ function queueBadge(d) {
   return `<span class="badge bg-primary">${d.queue}</span>`;
 }
 
+function riderStatusBadge(d) {
+  if (d.queue === 'not_in_pool') return `<span class="badge bg-secondary">${t('rs_noPool')}</span>`;
+  if (d.ready_for_auto_assign)   return `<span class="badge bg-success">${t('rs_ready')}</span>`;
+  if (!d.staff_online)           return `<span class="badge bg-dark">${t('rs_offline')}</span>`;
+  if (!d.not_banned)             return `<span class="badge bg-danger">${t('rs_banned')}</span>`;
+  if (!d.no_active_job) {
+    const s = d.job_on_hand_status || '';
+    const key = s === 'job_picking_up' ? 'rs_picking'
+              : s === 'job_picked_up'  ? 'rs_pickedUp'
+              : s === 'job_delivering' ? 'rs_delivering'
+              : (s === 'job_accepted' || s === 'job_assigned') ? 'rs_accepted'
+              : 'rs_working';
+    return `<span class="badge bg-primary">${t(key)}</span>`;
+  }
+  if (!d.not_on_break) return `<span class="badge bg-warning text-dark">${t('rs_onBreak')}</span>`;
+  return `<span class="badge bg-secondary">${t('rs_notReady')}</span>`;
+}
+
 function flagsHtml(d) {
   const defs = [
-    { k:'staff_online', icon:'wifi', label:'Online' },
-    { k:'not_banned', icon:'shield-check', label:'Not Banned' },
-    { k:'no_active_job', icon:'briefcase', label:'No Active Job' },
-    { k:'not_on_break', icon:'cup-hot', label:'Not On Break' }
+    { k:'staff_online',  icon:'wifi',         tk:'flag_online' },
+    { k:'not_banned',    icon:'shield-check', tk:'flag_notBanned' },
+    { k:'no_active_job', icon:'briefcase',    tk:'flag_noJob' },
+    { k:'not_on_break',  icon:'cup-hot',      tk:'flag_notOnBreak' }
   ];
   return defs.map(f => {
     const ok = d[f.k];
-    return `<i class="bi bi-${f.icon}${ok?'-fill':''} ${ok?'text-success':'text-danger'} me-1" title="${f.label}"></i>`;
+    return `<i class="bi bi-${f.icon}${ok?'-fill':''} ${ok?'text-success':'text-danger'} me-1" title="${t(f.tk)}"></i>`;
   }).join('');
 }
 
@@ -1116,7 +1183,8 @@ function renderSection(tbl) {
     thead.innerHTML = '<tr>' + colDefs.map(c => {
       const sortable = c.sk != null;
       const arrow = !sortable ? '' : sortCol===c.sk ? (sortDir==='asc'?' ▲':' ▼') : ' <span style="opacity:.4">⇅</span>';
-      return `<th class="${sortable?'sort-th':''}" ${sortable?`onclick="sortBy('${tbl}','${c.sk}')"`:''}>${c.label}${arrow}</th>`;
+      const label = c.lk ? t(c.lk) : c.label;
+      return `<th class="${sortable?'sort-th':''}" ${sortable?`onclick="sortBy('${tbl}','${c.sk}')"`:''}>${label}${arrow}</th>`;
     }).join('') + '<th style="width: 40px;"></th></tr>';
   }
 
@@ -1182,9 +1250,9 @@ function renderJobsDash() {
   const dash = document.getElementById('jobs-dash');
   if (!Object.keys(counts).length) { dash.innerHTML=''; return; }
 
-  let html = `<span class="badge bg-light text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2 border" onclick="filterJobsByStatus('')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">All Status <span class="badge bg-secondary rounded-pill">${state.jobs.data.length}</span></span>`;
-  if (latePick > 0) html += `<span class="badge bg-warning text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" onclick="filterJobsByStatus('late_pickup')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Pickups <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${latePick}</span></span>`;
-  if (lateDel > 0) html += `<span class="badge bg-danger dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" onclick="filterJobsByStatus('late_delivery')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Late Deliveries <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${lateDel}</span></span>`;
+  let html = `<span class="badge bg-light text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2 border" onclick="filterJobsByStatus('')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${t('allStatus')} <span class="badge bg-secondary rounded-pill">${state.jobs.data.length}</span></span>`;
+  if (latePick > 0) html += `<span class="badge bg-warning text-dark dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" onclick="filterJobsByStatus('late_pickup')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${t('latePickups')} <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${latePick}</span></span>`;
+  if (lateDel > 0) html += `<span class="badge bg-danger dash-badge me-2 d-inline-flex align-items-center gap-1 p-2" onclick="filterJobsByStatus('late_delivery')" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${t('lateDeliveries')} <span class="badge bg-dark rounded-pill bg-opacity-50 text-white">${lateDel}</span></span>`;
   
   html += Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([s,n]) => {
     const map = {

@@ -726,11 +726,16 @@ const COLS = {
     { id:'orderCount',  lk:'col_count',       sk:'orderCount',  r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
     { id:'orderIds',    lk:'col_orderIds',    sk:null,          r: d => {
       if (!d.orderIds || !d.orderIds.length) return '–';
-      const ordersHtml = d.orderIds.map(o=>`<span class="font-monospace d-block order-id-val" style="font-size:.73rem;" data-oid="${o}">${o}</span>`).join('');
+      const ordersHtml = d.orderIds.map((o, i) =>
+        `<div class="d-flex align-items-baseline gap-1 lh-sm">
+           <span class="badge bg-light text-secondary border seq-badge" style="font-size:.62rem;min-width:1.6rem;text-align:center;flex-shrink:0;">#${i+1}</span>
+           <span class="font-monospace order-id-val" style="font-size:.73rem;" data-oid="${o}">${o}</span>
+         </div>`
+      ).join('');
       const orderStr = d.orderIds.join(', ');
-      return `<div class="d-flex align-items-start justify-content-between">
-                <div>${ordersHtml}</div>
-                <div class="d-flex gap-1 ms-1">
+      return `<div class="d-flex align-items-start justify-content-between gap-1">
+                <div class="d-flex flex-column gap-1">${ordersHtml}</div>
+                <div class="d-flex gap-1 ms-1" style="flex-shrink:0;">
                   <button class="btn btn-sm btn-light py-0 px-1 border copy-order-btn" data-text="${orderStr}" onclick="event.stopPropagation(); copyToClip(this)" title="Copy all"><i class="bi bi-copy"></i></button>
                   <button class="btn btn-sm btn-light py-0 px-1 border" onclick="event.stopPropagation(); toggleConsignment(this)" title="Toggle Consignment"><i class="bi bi-shuffle"></i></button>
                 </div>

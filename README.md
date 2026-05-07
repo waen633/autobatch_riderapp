@@ -2,7 +2,7 @@
 
 > Dashboard สำหรับ monitor และจัดการกระบวนการ Auto-Batching, Rider Assignment และ Order Status แบบ Real-time
 
-![Version](https://img.shields.io/badge/version-1.0.5-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.x-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -12,13 +12,13 @@
 
 | ส่วน | รายละเอียด |
 |------|-----------|
+| 🗺️ **Live Rider Map** | แสดงตำแหน่ง Rider + Store แบบ Real-time บนแผนที่ กด **Get + Map** โหลดได้ทันที พร้อม collapse/fullscreen |
 | 📦 **Pending Orders** | ดู Order ที่รอสร้าง Job พร้อม Waiting Duration แบบ Real-time |
 | 🏍️ **Rider Pool** | สถานะ Rider ทุกคนในพื้นที่ พร้อม Idle Time และ Flags |
-| 📋 **Jobs** | ค้นหา Job ตามช่วงเวลา ดู Rider / SLA / Status และ **สลับ Order ID/Consignment** ได้ |
-| 🗺️ **Route Viewer** | ดูเส้นทางการวิ่งของ Rider บนแผนที่จริงผ่านระบบ **Polyline Decoding** |
+| 📋 **Jobs** | ค้นหา Job ตามช่วงเวลา ดู Rider / SLA / Status / Route และ **สลับ Order ID/Consignment** ได้ |
 | 🔍 **Order Query** | ค้นหา Order ด้วย Consignment หรือ Order ID |
 | 📦 **Batch Query** | ดูข้อมูล Batch ที่มี Order ID นั้น |
-| 🛠️ **UI/UX Improvements** | ระบบขยายดู Raw Data แบบปุ่มเฉพาะจุด และ **Enhanced Fullscreen Mode** (ปิดได้ด้วยการคลิกด้านนอก หรือปุ่ม X) |
+| 🛠️ **UI/UX** | Fullscreen, collapse, Raw Data expand, Dual-language (TH/EN) |
 
 ---
 
@@ -83,6 +83,7 @@ autobatch_riderapp/
 | GET | `/api/pending` | ดึง Pending Orders |
 | GET | `/api/jobs` | ดึง Jobs ตามช่วงเวลา |
 | GET | `/api/riders` | ดึงสถานะ Rider Pool |
+| GET | `/api/live` | ดึงตำแหน่ง Rider + Store สำหรับ Live Map |
 | GET | `/api/orders` | ค้นหา Order |
 | GET | `/api/batches` | ค้นหา Batch |
 
@@ -99,6 +100,7 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 1.1.0 | เพิ่ม **Live Rider Map**: แสดง Rider/Store บนแผนที่แบบ Real-time, ไอคอนมอเตอร์ไซต์สีตาม Store, status dot บอกสถานะ Job; เปลี่ยน "See Route" ใน Jobs เป็น modal popup แทนเปิดหน้าใหม่; เพิ่ม API `/api/live` |
 | 1.0.5 | ปรับปรุงระบบค้นหา Order: รองรับการใส่หลายรายการพร้อมกัน (สูงสุด 50), เพิ่มสถานะ "No data" สำหรับรายการที่ไม่พบ, และแยกปุ่ม "See Route" (Jobs) กับ "Location" (Order Query) |
 | 1.0.4 | ปรับปรุงระบบ Fullscreen: ปิดได้ด้วยการคลิกด้านนอก และเปลี่ยนไอคอนเป็น X เมื่อขยาย |
 | 1.0.3 | เพิ่ม Route Viewer (แผนที่), ระบบสลับ Order ID/Consignment ใน Jobs, ปรับปรุง UI ปุ่มดู Raw Data |

@@ -364,6 +364,41 @@ app.get('/api/job-route', async (req, res) => {
   }
 });
 
+// ─── JOBS KM BATCH ───────────────────────────────────────────────────────────
+app.get('/api/jobs-km', async (req, res) => {
+  try {
+    const jobIds = (req.query.jobIds || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!jobIds.length) return res.status(400).json({ error: 'jobIds required' });
+    if (jobIds.length > 500) return res.status(400).json({ error: 'max 500 jobIds' });
+
+    const c = await getClient();
+    const docs = await c.db('4pl-oms').collection('autobatchingjobs')
+      .find(
+        { jobId: { $in: jobIds } },
+        { projection: { _id: 0, jobId: 1, 'routeOptimizationResult.orderSummary.rawResult': 1, 'routeOptimizationResult.rawResult': 1 } }
+      ).toArray();
+
+    const result = docs.map(d => {
+      const rawResults = extractRawResults(d);
+      let totalMeters = 0;
+      rawResults.forEach(rawStr => {
+        try {
+          const raw = typeof rawStr === 'string' ? JSON.parse(rawStr) : rawStr;
+          (Array.isArray(raw.transitions) ? raw.transitions : []).forEach(t => {
+            if (t?.travelDistanceMeters) totalMeters += t.travelDistanceMeters;
+          });
+        } catch {}
+      });
+      return { jobId: d.jobId, totalKm: totalMeters > 0 ? parseFloat((totalMeters / 1000).toFixed(2)) : null };
+    });
+
+    res.json({ data: result });
+  } catch (e) {
+    console.error('[/api/jobs-km]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── ORDER QUERY ──────────────────────────────────────────────────────────────
 app.get('/api/orders', async (req, res) => {
   try {

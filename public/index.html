@@ -1682,12 +1682,33 @@ function copyBatchDisplay(btn) {
 }
 
 // ─── EXPORT CSV ─────────────────────────────────────────────────────────────────
-function exportJobsCSV() {
+async function exportJobsCSV() {
   const data = applyFilters('jobs');
-  if (!data || !data.length) {
-    alert(t('noData'));
-    return;
-  }
+  if (!data || !data.length) { alert(t('noData')); return; }
+
+  const btn = document.querySelector('[onclick="exportJobsCSV()"]');
+  const origHtml = btn?.innerHTML;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Fetching km…'; }
+
+  try {
+    const missing = data.filter(d => d.totalKm == null).map(d => d.jobId).filter(Boolean);
+    if (missing.length) {
+      const CHUNK = 200;
+      for (let i = 0; i < missing.length; i += CHUNK) {
+        const chunk = missing.slice(i, i + CHUNK);
+        const r = await fetch(`${API_BASE}/api/jobs-km?jobIds=${chunk.map(encodeURIComponent).join(',')}`);
+        if (r.ok) {
+          const j = await r.json();
+          (j.data || []).forEach(({ jobId, totalKm }) => {
+            const job = state.jobs?.data?.find(d => d.jobId === jobId);
+            if (job && totalKm != null) job.totalKm = totalKm;
+          });
+        }
+      }
+    }
+  } catch {}
+
+  if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
   
   const delayMin = (actual, sla) => {
     if (!actual || !sla) return '';
@@ -1836,18 +1857,15 @@ function _renderRouteMap(rawResults, jobId) {
   });
   if (bounds.length) routeMap.fitBounds(bounds, { padding: [32, 32] });
   else routeMap.setView([13.7563, 100.5018], 11);
-  const legs = layers.filter(l => l.polyline).length;
   const totalMeters = layers.reduce((s, l) => s + (l.distanceMeters || 0), 0);
   const totalKm = totalMeters > 0 ? (totalMeters / 1000).toFixed(2) : null;
   const metaEl = document.getElementById('routeModalMeta');
-  if (legs) metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`${legs} legs`, { bg:'#eff6ff', text:'#1d4ed8', border:'#bfdbfe' }) }));
-  if (totalKm) {
-    metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`🛣 ${totalKm} km`, { bg:'#f0fdf4', text:'#15803d', border:'#bbf7d0' }) }));
-    if (jobId) {
-      const job = state.jobs?.data?.find(j => j.jobId === jobId);
-      if (job) job.totalKm = parseFloat(totalKm);
-    }
+  if (jobId) {
+    const job = state.jobs?.data?.find(j => j.jobId === jobId);
+    if (job?.orderCount) metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`${job.orderCount} orders`, { bg:'#eff6ff', text:'#1d4ed8', border:'#bfdbfe' }) }));
+    if (totalKm && job) job.totalKm = parseFloat(totalKm);
   }
+  if (totalKm) metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`🛣 ${totalKm} km`, { bg:'#f0fdf4', text:'#15803d', border:'#bbf7d0' }) }));
 }
 
 function _mapLoading() {

@@ -16,6 +16,8 @@ let client = null;
 async function getClient() {
   if (!client) {
     client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 10000 });
+    client.on('close', () => { client = null; });
+    client.on('topologyClosed', () => { client = null; });
     await client.connect();
     console.log('MongoDB connected');
   }
@@ -503,6 +505,108 @@ app.get('/api/batches', async (req, res) => {
     res.json({ count: enriched.length, data: enriched });
   } catch (e) {
     console.error('[/api/batches]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── LIVE MAP ────────────────────────────────────────────────────────────────
+app.get('/api/live', async (req, res) => {
+  try {
+    const storeCodes = splitCodes(req.query.storeCode);
+    if (!storeCodes.length) return res.status(400).json({ error: 'storeCode required' });
+
+    const c = await getClient();
+
+    const [zones, stores] = await Promise.all([
+      c.db('4pl-address-and-zoning').collection('geographies')
+        .find(
+          { storeCode: { $in: storeCodes }, deleted: { $ne: true }, areaPath: { $exists: true, $ne: ',,' } },
+          { projection: { _id: 0, storeCode: 1, areaPath: 1 } }
+        ).toArray(),
+      c.db('lastmile').collection('stores')
+        .find(
+          { code: { $in: storeCodes } },
+          { projection: { _id: 0, code: 1, name: 1, location: 1, 'metadata.config.assignment.autoAssign.jobSurface.radius': 1 } }
+        ).toArray()
+    ]);
+
+    const storeMap = {};
+    stores.forEach(s => { storeMap[s.code] = s; });
+
+    const storeClusterMap = {};
+    zones.forEach(z => {
+      const code = z.storeCode;
+      const clusters = (z.areaPath || '').split(',').map(x => x.trim()).filter(x => /^[a-f0-9]{24}$/i.test(x));
+      if (!storeClusterMap[code]) storeClusterMap[code] = { storeCode: code, clusterIds: new Set() };
+      clusters.forEach(x => storeClusterMap[code].clusterIds.add(x));
+    });
+
+    const riders = [];
+    const storeMarkers = [];
+
+    for (const [code, item] of Object.entries(storeClusterMap)) {
+      const clusterList = Array.from(item.clusterIds).map(id => new ObjectId(id));
+      const store = storeMap[code] || null;
+      const storeLng = store?.location?.coordinates?.[0];
+      const storeLat = store?.location?.coordinates?.[1];
+      const radius = store?.metadata?.config?.assignment?.autoAssign?.jobSurface?.radius || 100;
+
+      if (storeLat != null) {
+        storeMarkers.push({ storeCode: code, name: store.name || code, lat: storeLat, lng: storeLng, radius });
+      }
+
+      const staffs = await c.db('4pl-fleet').collection('staffs')
+        .find(
+          { 'metaData.shifts.clusterId': { $in: clusterList }, status: 'ONLINE' },
+          { projection: { _id: 0, userId: 1, username: 1, firstname: 1, lastname: 1, phone: 1, breakAt: 1, location: 1, 'metaData.autoBatchRejected': 1 } }
+        ).toArray();
+
+      const staffUserIds = staffs.map(s => s.userId).filter(Boolean);
+      if (!staffUserIds.length) continue;
+
+      const [jobs, pools] = await Promise.all([
+        c.db('4pl-oms').collection('autobatchingjobs')
+          .find(
+            { 'assignment.rider.id': { $in: staffUserIds }, status: { $in: ['job_accepted','job_assigned','job_picking_up','job_picked_up','job_delivering'] } },
+            { projection: { _id: 0, jobId: 1, status: 1, 'assignment.rider.id': 1 } }
+          ).toArray(),
+        c.db('4pl-oms').collection('autobatchingriderpools')
+          .find({ userId: { $in: staffUserIds } }, { projection: { _id: 0, userId: 1 } })
+          .toArray()
+      ]);
+
+      const activeJobMap = new Map();
+      jobs.forEach(j => {
+        const rid = safeStr(j.assignment?.rider?.id);
+        if (rid && !activeJobMap.has(rid)) activeJobMap.set(rid, { jobId: j.jobId, status: j.status });
+      });
+      const poolUserIds = new Set(pools.map(p => safeStr(p.userId)).filter(Boolean));
+
+      const now = new Date();
+      staffs.forEach(staff => {
+        const uid = safeStr(staff.userId);
+        if (!uid) return;
+        const riderLng = staff.location?.coordinates?.[0];
+        const riderLat = staff.location?.coordinates?.[1];
+        if (riderLat == null) return;
+        const jobInfo = activeJobMap.get(uid);
+        const inPool = poolUserIds.has(uid);
+        const { eligible } = evalEligibility(uid, inPool ? {} : null, now, activeJobMap, staff);
+        riders.push({
+          storeCode: code, userId: uid,
+          name: `${staff.firstname || ''} ${staff.lastname || ''}`.trim() || staff.username || uid,
+          phone: staff.phone || '',
+          lat: riderLat, lng: riderLng,
+          inPool, eligible,
+          jobId: jobInfo?.jobId || null,
+          jobStatus: jobInfo?.status || null
+        });
+      });
+    }
+
+    res.json({ riders, stores: storeMarkers });
+  } catch (e) {
+    console.error('[/api/live]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

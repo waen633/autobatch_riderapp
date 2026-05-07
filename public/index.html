@@ -14,6 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/material_green.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body { background: #f8fafc; font-family: 'Inter', 'Prompt', sans-serif; font-size: 13.5px; color: #1e293b; }
     .card { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; }
@@ -94,6 +95,26 @@
       flex-direction: column;
       overflow: hidden;
     }
+    .card-fullscreen #map-card-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .card-fullscreen #map-card-body .card-body {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .card-fullscreen #live-map {
+      flex: 1 1 auto !important;
+      height: auto !important;
+      min-height: 0 !important;
+    }
+    #map-card-body {
+      transition: none;
+    }
+    .map-header-clickable { cursor: pointer; }
+    .map-header-clickable:hover { background: #f8fafc; }
   </style>
 </head>
 <body>
@@ -148,6 +169,47 @@
 
   <!-- 2x2 GRID -->
   <div class="row g-3">
+
+    <!-- SECTION 0: LIVE MAP -->
+    <div class="col-12">
+      <div class="card" id="live-map-card">
+        <div class="card-header map-header-clickable d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-top: 3px solid #16a34a;" onclick="toggleMapCollapse()">
+          <span><i class="bi bi-geo-alt-fill me-2 text-success"></i>Live Rider Map</span>
+          <div class="d-flex align-items-center gap-3 flex-wrap" onclick="event.stopPropagation()">
+            <span class="d-flex gap-2 align-items-center" style="font-size:.71rem; color:#64748b;">
+              <b style="color:#475569;">Dot:</b>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;vertical-align:middle;"></span> Ready</span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f97316;vertical-align:middle;"></span> Picking</span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3b82f6;vertical-align:middle;"></span> Delivering</span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#facc15;vertical-align:middle;"></span> Busy</span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#94a3b8;vertical-align:middle;"></span> No Pool</span>
+            </span>
+            <span id="store-legend" class="d-flex gap-2 align-items-center flex-wrap" style="font-size:.71rem;"></span>
+            <span class="badge bg-success" id="count-map">–</span>
+            <button class="btn col-btn" onclick="event.stopPropagation(); toggleFullscreen(this); setTimeout(()=>{ if(liveMap) liveMap.invalidateSize(); }, 50);" title="Fullscreen"><i class="bi bi-arrows-fullscreen"></i></button>
+            <button class="btn col-btn" id="map-collapse-btn" onclick="event.stopPropagation(); toggleMapCollapse()" title="Collapse"><i class="bi bi-chevron-up"></i></button>
+          </div>
+        </div>
+        <div id="map-card-body">
+          <div class="card-body p-2">
+            <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
+              <button class="btn btn-success btn-sm" onclick="fetchLiveAll(this)"><i class="bi bi-map me-1"></i>Get + Map</button>
+              <div id="loading-map" class="d-none d-flex align-items-center gap-1">
+                <div class="spinner-border spinner-border-sm text-success"></div>
+                <span class="text-muted small">Loading map…</span>
+              </div>
+              <div id="error-map" class="alert alert-danger py-1 d-none small mb-0" style="max-width:400px;"></div>
+            </div>
+            <div id="live-map" style="height:440px; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
+              <div class="text-center text-muted">
+                <i class="bi bi-geo-alt" style="font-size:2rem;"></i>
+                <div class="mt-1 small">กด Get + Map เพื่อโหลด</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- SECTION 1: PENDING ORDERS -->
     <div class="col-12 col-xl-6">
@@ -365,6 +427,24 @@
   </div>
 </div>
 
+<!-- ROUTE MODAL -->
+<div class="modal fade" id="routeModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width:90vw;">
+    <div class="modal-content d-flex flex-column" style="height:85vh;">
+      <div class="modal-header py-2" style="border-bottom:1px solid #e2e8f0; flex-shrink:0;">
+        <div>
+          <h6 class="modal-title mb-0"><i class="bi bi-map me-2 text-primary"></i><span id="routeModalTitle">Route</span></h6>
+          <small class="text-muted" id="routeModalMeta"></small>
+        </div>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0 flex-grow-1" style="min-height:0;">
+        <div id="route-modal-map" style="height:100%;width:100%;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- STATUS TIMELINE MODAL -->
 <div class="modal fade" id="timelineModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -378,6 +458,7 @@
   </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
@@ -605,7 +686,10 @@ const COLS = {
                 </div>
               </div>`;
     }},
-    { id:'seeRoute', label:'See Route', sk:null, r: d => renderRouteLinks(d.rawResults) },
+    { id:'seeRoute', label:'See Route', sk:null, r: d => {
+      if (!d.rawResults?.length) return '–';
+      return `<button class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openRouteModal('${d.jobId}')"><i class="bi bi-map me-1"></i>Route</button>`;
+    }},
     { id:'pickUpSLA', label:'PickUp SLA', sk:'pickUpSLA', r: d => {
         const sla = d.pickUpSLA ? new Date(d.pickUpSLA) : null;
         const pickedUp = (d.updateStatuses || []).find(s => s.status === 'job_picked_up');
@@ -1575,6 +1659,251 @@ function exportJobsCSV() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+// ─── ROUTE MODAL ──────────────────────────────────────────────────────────────
+let routeMap = null;
+
+function _decodePolyline(encoded, precision = 5) {
+  let i = 0, lat = 0, lng = 0;
+  const coords = [], f = Math.pow(10, precision);
+  while (i < encoded.length) {
+    let r = 0, s = 0, b;
+    do { b = encoded.charCodeAt(i++) - 63; r |= (b & 0x1f) << s; s += 5; } while (b >= 0x20);
+    lat += (r & 1) ? ~(r >> 1) : (r >> 1);
+    r = 0; s = 0;
+    do { b = encoded.charCodeAt(i++) - 63; r |= (b & 0x1f) << s; s += 5; } while (b >= 0x20);
+    lng += (r & 1) ? ~(r >> 1) : (r >> 1);
+    coords.push([lat / f, lng / f]);
+  }
+  return coords;
+}
+
+function _buildRouteLayers(rawRoutes) {
+  const layers = [], pinByKey = new Map();
+  const key = p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+  const shipLabel = v => { const l = String(v?.shipmentLabel||''); const m = l.match(/26LOTUS-[A-Za-z0-9-]+/); return m ? m[0] : (l||'–'); };
+  const pinHtml = (isPickup, title, orderId) => {
+    const [border, color] = isPickup ? ['#2563eb','#1d4ed8'] : ['#dc2626','#b91c1c'];
+    return `<div style="border:2px solid ${border};border-radius:6px;background:#fff;padding:2px 7px;font-size:11px;font-weight:700;color:${color};white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.25);line-height:1.3;">${title}<span style="display:block;font-size:10px;font-weight:600;">${orderId}</span></div>`;
+  };
+  const addPin = (point, isPickup, title, orderId, tip) => {
+    const k = key(point);
+    if (pinByKey.has(k)) return;
+    const mk = L.marker(point, { icon: L.divIcon({ className:'', html: pinHtml(isPickup, title, orderId), iconSize: null }) });
+    mk.bindTooltip(tip, { direction:'top' });
+    pinByKey.set(k, true);
+    layers.push({ marker: mk, points: [point] });
+  };
+
+  rawRoutes.forEach(raw => {
+    const visits = Array.isArray(raw.visits) ? raw.visits : [];
+    const transitions = Array.isArray(raw.transitions) ? raw.transitions : [];
+    const pickups   = visits.filter(v => v?.isPickup === true);
+    const deliveries = visits.filter(v => v?.isPickup !== true);
+    const lastPickup = pickups[pickups.length - 1] || null;
+
+    const legs = [];
+    for (let i = 1; i < transitions.length; i++) {
+      const enc = transitions[i]?.routePolyline?.points;
+      if (!enc) continue;
+      let pts = []; try { pts = _decodePolyline(enc); } catch { pts = []; }
+      if (pts.length) legs.push({ pts, i });
+    }
+
+    if (lastPickup && legs.length)
+      addPin(legs[0].pts[0], true, 'P1', shipLabel(lastPickup), `Pickup: ${shipLabel(lastPickup)}`);
+
+    legs.forEach((leg, idx) => {
+      const visit = deliveries[idx] || null;
+      const pl = L.polyline(leg.pts, { color:'#dc2626', weight:4, opacity:0.85 });
+      pl.bindTooltip(`D${idx+1}: ${shipLabel(visit)}`, { sticky:true });
+      layers.push({ polyline: pl, points: leg.pts });
+      addPin(leg.pts[leg.pts.length-1], false, `D${idx+1}`, shipLabel(visit), `Delivery ${idx+1}: ${shipLabel(visit)}`);
+    });
+  });
+
+  return layers;
+}
+
+function openRouteModal(jobId) {
+  const job = state.jobs.data.find(j => j.jobId === jobId);
+  if (!job?.rawResults?.length) { alert('ไม่มีข้อมูล route สำหรับ job นี้'); return; }
+
+  document.getElementById('routeModalTitle').textContent = `Job: ${jobId}`;
+  document.getElementById('routeModalMeta').textContent =
+    [job.riderName, job.storeCode, job.status].filter(Boolean).join(' · ');
+
+  const modalEl = document.getElementById('routeModal');
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  modalEl.addEventListener('shown.bs.modal', () => {
+    if (routeMap) { routeMap.remove(); routeMap = null; }
+    document.getElementById('route-modal-map').innerHTML = '';
+    routeMap = L.map('route-modal-map', { zoomControl:true, attributionControl:false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(routeMap);
+
+    const parsed = job.rawResults.map(s => { try { return typeof s==='string' ? JSON.parse(s) : s; } catch { return null; } }).filter(Boolean);
+    const layers = _buildRouteLayers(parsed);
+    const bounds = [];
+    layers.forEach(item => {
+      if (item.polyline) item.polyline.addTo(routeMap);
+      if (item.marker)  item.marker.addTo(routeMap);
+      bounds.push(...item.points);
+    });
+    if (bounds.length) routeMap.fitBounds(bounds, { padding:[32,32] });
+    else routeMap.setView([13.7563, 100.5018], 11);
+
+    const metaEl = document.getElementById('routeModalMeta');
+    metaEl.textContent += ` · ${layers.filter(l=>l.polyline).length} legs`;
+  }, { once:true });
+
+  modalEl.addEventListener('hidden.bs.modal', () => {
+    if (routeMap) { routeMap.remove(); routeMap = null; }
+  }, { once:true });
+}
+
+// ─── LIVE MAP ─────────────────────────────────────────────────────────────────
+let liveMap = null;
+const STORE_PALETTE = ['#0ea5e9','#a855f7','#f59e0b','#10b981','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899'];
+let _storeColorMap = {};
+let _paletteIdx = 0;
+
+function getStoreColor(code) {
+  if (!_storeColorMap[code]) {
+    _storeColorMap[code] = STORE_PALETTE[_paletteIdx % STORE_PALETTE.length];
+    _paletteIdx++;
+  }
+  return _storeColorMap[code];
+}
+
+function getStatusDotColor(r) {
+  if (r.jobStatus === 'job_delivering') return '#3b82f6';
+  if (['job_picking_up','job_picked_up','job_accepted','job_assigned'].includes(r.jobStatus)) return '#f97316';
+  if (!r.inPool) return '#94a3b8';
+  return r.eligible ? '#22c55e' : '#facc15';
+}
+
+function makeRiderIcon(storeColor, dotColor) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="position:relative;width:32px;height:32px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:${storeColor};border:2.5px solid rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 2px 6px rgba(0,0,0,0.35);line-height:1;">&#x1F3CD;</div>
+      <div style="position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:${dotColor};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>
+    </div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+  });
+}
+
+function makeStoreIcon(storeColor) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:36px;height:36px;border-radius:8px;background:${storeColor};border:2.5px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 3px 8px rgba(0,0,0,0.4);">&#x1F3EA;</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18]
+  });
+}
+
+async function fetchLiveMap() {
+  const { storeCode } = getInputs();
+  const loadEl = document.getElementById('loading-map');
+  const errEl  = document.getElementById('error-map');
+  loadEl.classList.remove('d-none');
+  errEl.classList.add('d-none');
+  try {
+    const r = await fetch(`${API_BASE}/api/live?storeCode=${encodeURIComponent(storeCode)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+
+    // Reset store colors for fresh assignment each fetch
+    _storeColorMap = {}; _paletteIdx = 0;
+    (j.stores || []).forEach(s => getStoreColor(s.storeCode));
+    (j.riders || []).forEach(r => getStoreColor(r.storeCode));
+
+    // Init map
+    if (liveMap) { liveMap.remove(); liveMap = null; }
+    const container = document.getElementById('live-map');
+    container.innerHTML = '';
+    liveMap = L.map('live-map', { zoomControl: true, attributionControl: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(liveMap);
+
+    const bounds = [];
+
+    // Store markers
+    (j.stores || []).forEach(s => {
+      if (s.lat == null) return;
+      bounds.push([s.lat, s.lng]);
+      const sc = getStoreColor(s.storeCode);
+      L.circle([s.lat, s.lng], {
+        radius: s.radius || 100,
+        color: sc, fillColor: sc, fillOpacity: 0.1, weight: 2, dashArray: '5'
+      }).addTo(liveMap);
+      L.marker([s.lat, s.lng], { icon: makeStoreIcon(sc) }).addTo(liveMap)
+        .bindTooltip(`<b>${s.storeCode}</b> ${s.name || ''}`, { permanent: false, offset: [0, -18] })
+        .bindPopup(`<b>${s.storeCode}</b><br>${s.name || ''}<br><small>Radius: ${s.radius}m</small>`);
+    });
+
+    // Rider markers
+    (j.riders || []).forEach(r => {
+      if (r.lat == null) return;
+      bounds.push([r.lat, r.lng]);
+      const sc = getStoreColor(r.storeCode);
+      const dc = getStatusDotColor(r);
+      const statusLine = r.jobId
+        ? `<br><span style="font-size:.78rem;"><b>Job:</b> <code>${r.jobId}</code><br><b>Status:</b> ${r.jobStatus}</span>`
+        : '';
+      const poolLine = r.inPool
+        ? `<span style="color:#16a34a;font-size:.78rem;">&#x25CF; In Pool${r.eligible ? ' &#x2713; Ready' : ''}</span>`
+        : `<span style="color:#94a3b8;font-size:.78rem;">&#x25CB; Not in Pool</span>`;
+      L.marker([r.lat, r.lng], { icon: makeRiderIcon(sc, dc) }).addTo(liveMap)
+        .bindTooltip(`<b>${r.name}</b><br>${r.jobStatus || (r.inPool ? 'In Pool' : 'No Pool')}`, { permanent: false, offset: [0, -16] })
+        .bindPopup(`<div style="min-width:175px;line-height:1.65;">
+          <b>${r.name}</b><br>
+          <span style="font-size:.78rem;">&#x1F4DE; ${r.phone || '&ndash;'}</span><br>
+          ${poolLine}${statusLine}
+        </div>`);
+    });
+
+    if (bounds.length) liveMap.fitBounds(bounds, { padding: [40, 40] });
+
+    // Update dynamic store color legend
+    const legendEl = document.getElementById('store-legend');
+    if (legendEl) {
+      const entries = Object.entries(_storeColorMap);
+      legendEl.innerHTML = entries.length
+        ? '<b style="color:#475569;">Stores:</b> ' + entries.map(([code, color]) =>
+            `<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${color};vertical-align:middle;margin-right:2px;border:1px solid rgba(0,0,0,0.15);"></span>${code}</span>`
+          ).join('')
+        : '';
+    }
+
+    document.getElementById('count-map').textContent = j.riders?.length ?? 0;
+    markUpdated();
+  } catch(e) {
+    errEl.textContent = `⚠ ${e.message}`;
+    errEl.classList.remove('d-none');
+  } finally {
+    loadEl.classList.add('d-none');
+  }
+}
+
+async function fetchLiveAll(btn) {
+  applyCooldown(btn);
+  await Promise.all([fetchRiders(null), fetchLiveMap()]);
+}
+
+function toggleMapCollapse() {
+  const body = document.getElementById('map-card-body');
+  const btn  = document.getElementById('map-collapse-btn');
+  const icon = btn.querySelector('i');
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  icon.className = collapsed ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+  if (collapsed && liveMap) liveMap.invalidateSize();
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────

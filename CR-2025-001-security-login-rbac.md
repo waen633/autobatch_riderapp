@@ -216,27 +216,166 @@ Dashboard ปัจจุบัน (Lotus Auto-Batching Dashboard) เชื่�
 
 เพื่อให้ Dashboard ทำงานได้อย่างปลอดภัยและสมบูรณ์ Dev ต้องจัดการส่วนหลักดังนี้:
 
-### 5.1 Endpoints & Data Schema (Detailed)
+### 5.1 Current API Endpoints — Accurate Spec (อัปเดต 2025-05-07)
 
-| ประเภทงาน | Endpoint (ตัวอย่าง) | ข้อมูลขาเข้า (Input) | ข้อมูลขาออกที่จำเป็น (Output Fields) |
-| :--- | :--- | :--- | :--- |
-| **Auth** | `POST /auth/login` | `username`, `password` | `accessToken`, `userProfile` (role, allowedStoreCodes) |
-| **Pending** | `GET /api/v1/orders/pending` | `storeCodes[]` | `orderId`, `consignment`, `serviceType`, `storeCode`, `createdAt`, `batchId` |
-| **Rider Pool** | `GET /api/v1/riders/pool` | `storeCodes[]` | `userId`, `name`, `phone`, `status`, `join_pool_at`, `ready_for_auto_assign`, **`staff_online`, `not_banned`, `no_active_job`, `not_on_break`** (Flags สำหรับไอคอน), `job_on_hand_id`, `job_on_hand_status`, `mapUrl` |
-| **Jobs** | `GET /api/v1/jobs` | `storeCodes[]`, `from`, `to` | `jobId`, `storeCode`, `riderName`, `riderId`, `orderIds[]`, `orderCount`, `pickUpSLA`, `deliverySLA`, `status`, **`updateStatuses[]`** (ใช้ทำ Timeline), **`rawResults[]`** (สำหรับวาดเส้นแผนที่) |
-| **Search** | `GET /api/v1/orders/search` | `type`, `values[]` | `internalOrderId`, `consignment`, `storeCode`, `jobId`, `riderName`, `riderId`, `riderPhone`, `workingType`, **`paymentMethod`, `paymentChannel`, `codChannel`, `codAmount`**, `currentOrderStatus`, `isOrderItemsConfirmation`, **`statusHistory[]`**, **`rawResults[]`** |
-| **Batch** | `GET /api/v1/batches/search` | `orderIds[]` | `batchId`, `orderIds[]`, `orderCount`, `status`, `roStatus`, `roStartTime`, `roEndTime`, `createdAt` |
+> **หมายเหตุ:** ชื่อ endpoint ด้านล่างคือชื่อปัจจุบันใน `server.js` ที่ใช้งานจริง  
+> หลังทำ CR-001 (Auth) เสร็จ ให้เปลี่ยน prefix เป็น `/api/v1/` และเพิ่ม `authMiddleware` ก่อน register route ทุกเส้น
 
-### 5.2 มาตรฐานความปลอดภัยและ Logic ที่ต้องรักษาไว้
+---
 
-1.  **Data Projection (สำคัญ):** ห้ามส่งฟิลด์ที่เป็นความลับ เช่น `passwordHash`, `internalToken` หรือข้อมูลส่วนตัวลูกค้าที่ไม่ได้ใช้แสดงผลบนหน้าเว็บ
-2.  **Route Polylines:** ฟิลด์ `rawResults` ต้องส่งเป็น Array ของ String (Encoded Polyline) เพื่อให้ฟีเจอร์ "See Route" ทำงานได้
-3.  **Timeline Calculation:** ข้อมูลใน `statusHistory` และ `updateStatuses` ต้องมีทั้ง `status` และ `updatedAt` เพื่อให้หน้าบ้านคำนวณ Duration ในแต่ละขั้นตอนได้
-4.  **Server-side Validation:**
-    *   **Date Limit:** ต้องดักจับช่วงวันที่ (Date Range) ห้ามเกิน 7 วันที่ Backend
-    *   **Array Limit:** จำกัดจำนวนรายการใน Array (เช่น `values`) ไม่เกิน 100 รายการต่อ Request
-5.  **Performance:** สร้าง MongoDB Index สำหรับฟิลด์ `storeCode`, `createdAt`, `consignment`, `jobId`
-6.  **Rate Limiting:** ติดตั้ง `express-rate-limit` (Login: 10/นาที, APIs: 60/นาที)
+#### `GET /api/pending`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `storeCode` — comma-separated store codes (required) |
+| **MongoDB** | `4pl-oms`.`pendingorders` |
+| **Filter** | `storeCode: $in storeCodes`, `deleted: { $ne: true }` |
+| **Returns** | `{ count, data: [{ _id, batchId, orderId, consignment, serviceType, storeCode, createdAt }] }` |
+| **Security Gap** | ❌ ไม่มี `.limit()` → ถ้า store มี pending orders เยอะมากจะ return ทั้งหมด |
+| **ต้องแก้** | เพิ่ม `.limit(500)` · Backend validate storeCode scope · Rate limit 60/min/user |
+
+---
+
+#### `GET /api/jobs`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `storeCode` (comma-separated, required), `from` (ISO datetime, required), `to` (ISO datetime, required) |
+| **MongoDB** | `lastmile`.`stores` → แปลง storeCode→storeId, แล้ว `4pl-oms`.`autobatchingjobs` |
+| **Filter** | `storeId: $in storeIds`, `createdAt: { $gte: from, $lt: to }` |
+| **Returns** | `{ count, data: [{ jobId, storeCode, riderName, riderId, orderIds[], orderCount, pickUpSLA, deliverySLA, status, createdAt, updatedAt, updateStatuses[] }] }` |
+| **หมายเหตุ** | `rawResults` (polyline) **ถูกถอดออกแล้ว** — ดึงเฉพาะตอนกด See Route ผ่าน `/api/job-route` |
+| **Security Gap** | ❌ ไม่มี backend date range validation (frontend จำกัด 7 วัน แต่ backend ไม่ block) · `.limit(2000)` อาจยังมากเกินไปสำหรับ export |
+| **ต้องแก้** | เพิ่ม backend date range check ≤ 7 วัน · Rate limit 30/min/user (query หนัก 2 collections) |
+
+---
+
+#### `GET /api/job-route`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `jobId` (string, required) |
+| **MongoDB** | `4pl-oms`.`autobatchingjobs` (findOne) |
+| **Filter** | `{ jobId }` |
+| **Returns** | `{ rawResults: string[] }` — Array ของ encoded polyline JSON strings |
+| **หมายเหตุ** | Lazy-load endpoint สำหรับ "See Route" modal ดึงข้อมูลเฉพาะเมื่อกด button |
+| **Security Gap** | ❌ ไม่มี auth → ใครรู้ jobId สามารถดู route ได้ |
+| **ต้องแก้** | เพิ่ม authMiddleware · validate jobId format · Rate limit 60/min/user |
+
+---
+
+#### `GET /api/stuck`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `storeCode` (comma-separated, required), `from` (ISO datetime), `to` (ISO datetime) |
+| **MongoDB** | `4pl-oms`.`autobatchingjobs` |
+| **Filter** | `workflowInput.metadata.storeId: $in storeCodes`, `orderReferenceId: { $exists: false }`, `fleetDispatchType: AUTO_BATCHING`, `workflowInput.metadata.jobId: { $exists: false }`, `currentOrderStatus: { $ne: ORDER_CANCELLED }` |
+| **Returns** | `{ count, data: [{ _id, orderId, currentOrderStatus, createdAt, workflowInput.metadata.storeId, workflowInput.fleetDispatchType }] }` |
+| **หมายเหตุ** | ⚠️ endpoint นี้ query ด้วย `workflowInput.metadata.storeId` (string) โดยตรง ต่างจาก `/api/jobs` ที่แปลง storeCode → ObjectId ก่อน |
+| **Security Gap** | ❌ ไม่มี backend date range validation · storeCode trusted จาก client โดยตรง |
+| **ต้องแก้** | Backend enforce date range ≤ 7 วัน · Rate limit 30/min/user |
+
+---
+
+#### `GET /api/riders`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `storeCode` (comma-separated, required) |
+| **MongoDB** | ดึง 5 collections ต่อกัน (sequential per store): `4pl-address-and-zoning`.`geographies` → `lastmile`.`stores` → `4pl-fleet`.`staffs` → `4pl-oms`.`autobatchingjobs` → `4pl-oms`.`autobatchingriderpools` |
+| **Returns** | `{ count, readyCount, data: [{ storeCode, queue, poolId, userId, username, name, phone, status, join_pool_at, ready_for_auto_assign, staff_online, not_banned, no_active_job, not_on_break, job_on_hand_id, job_on_hand_status, mapUrl }] }` |
+| **Security Gap** | ❌ `phone`, `userId` ส่งออกไปทุก role · query หนักมาก (5 DBs/store, sequential loop) |
+| **ต้องแก้** | RBAC: `branch_staff` ต้องไม่เห็น `phone`, `userId` · Rate limit 20/min/user (query หนักที่สุด) · พิจารณา Redis cache TTL 30s |
+
+---
+
+#### `GET /api/live`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `storeCode` (comma-separated, required) |
+| **MongoDB** | เหมือน `/api/riders` แต่ใช้ `Promise.all` parallel ในบางส่วน: `geographies` + `stores` (parallel) → `staffs` → `autobatchingjobs` + `autobatchingriderpools` (parallel) |
+| **Returns** | `{ riders: [{ storeCode, userId, name, phone, lat, lng, inPool, eligible, jobId, jobStatus }], stores: [{ storeCode, name, lat, lng, radius }] }` |
+| **หมายเหตุ** | ใช้กับ Live Rider Map บน Dashboard · riders ที่ไม่มี location coordinates จะถูก filter ออก |
+| **Security Gap** | ❌ ส่ง `phone` ออกไปทุก role · ไม่มีการ validate จำนวน storeCode (ถ้าส่ง 20 store จะ query หนักมาก) |
+| **ต้องแก้** | จำกัด storeCode สูงสุด 5 ต่อ request (หรือตาม allowedStoreCodes ของ user) · RBAC hide `phone` สำหรับ `branch_staff` · Rate limit 20/min/user · Redis cache TTL 15s |
+
+---
+
+#### `GET /api/orders`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `type` (`consignment` หรือ `orderid`, required), `values` (comma-separated, required) |
+| **MongoDB** | `4pl-oms`.`orders` |
+| **Filter** | `orderReferenceId: { $exists: false }` + `workflowInput.metadata.consignment` หรือ `workflowInput.metadata.orderId` |
+| **Returns** | `{ count, data: [{ _id, orderId, internalOrderId, consignment, storeCode, storeName, jobId, isOrderItemsConfirmation, fleetDispatchType, currentOrderStatus, paymentMethod, paymentChannel, codChannel, codAmount, riderName, riderId, riderPhone, workingType, createdAt, updatedAt, statusHistory[], rawResults[] }] }` |
+| **หมายเหตุ** | `rawResults` คือ encoded polyline ที่สร้างจาก pickup/delivery coordinates ในตัว document เอง (ไม่ได้ดึง DB เพิ่ม) |
+| **Security Gap** | ❌ ไม่มี `.limit()` · ไม่มี server-side limit บน `values` array (frontend จำกัด 50 แต่ backend ไม่ block) · `riderPhone` ส่งออกทุก role |
+| **ต้องแก้** | เพิ่ม `.limit(100)` · Backend validate `values.length ≤ 50` · RBAC: hide `riderPhone`, `riderId` สำหรับ `branch_staff` · Rate limit 30/min/user |
+
+---
+
+#### `GET /api/batches`
+
+| | รายละเอียด |
+|---|---|
+| **Query Params** | `orderIds` (comma-separated, required) |
+| **MongoDB** | `4pl-oms`.`autobatchingbatches` |
+| **Filter** | `orderIds: $in idList` |
+| **Returns** | `{ count, data: [{ _id, batchId, orderIds[], orderCount, storeId, status, roStartTime, roEndTime, roStatus, createdAt }] }` |
+| **Security Gap** | ❌ ไม่มี server-side limit บน `orderIds` array |
+| **ต้องแก้** | Backend validate `orderIds.length ≤ 100` · Rate limit 30/min/user |
+
+---
+
+### 5.2 Rate Limit Summary (ต้องตั้งค่าหลัง CR-001 เสร็จ)
+
+| Endpoint (ปัจจุบัน) | Endpoint (หลัง CR-001) | Rate Limit | เหตุผล |
+|---|---|---|---|
+| `POST /auth/login` | `POST /auth/login` | **10 ครั้ง / นาที / IP** | ป้องกัน brute-force |
+| `POST /auth/refresh` | `POST /auth/refresh` | 20 ครั้ง / นาที / IP | |
+| `GET /api/pending` | `GET /api/v1/orders/pending` | 60 ครั้ง / นาที / user | query เบา |
+| `GET /api/jobs` | `GET /api/v1/jobs` | **30 ครั้ง / นาที / user** | query 2 collections |
+| `GET /api/job-route` | `GET /api/v1/jobs/route` | 60 ครั้ง / นาที / user | findOne เร็ว |
+| `GET /api/stuck` | `GET /api/v1/jobs/stuck` | 30 ครั้ง / นาที / user | |
+| `GET /api/riders` | `GET /api/v1/riders` | **20 ครั้ง / นาที / user** | query 5 DBs หนักสุด |
+| `GET /api/live` | `GET /api/v1/riders/live` | **20 ครั้ง / นาที / user** | query 5 DBs หนักสุด |
+| `GET /api/orders` | `GET /api/v1/orders/search` | **30 ครั้ง / นาที / user** | |
+| `GET /api/batches` | `GET /api/v1/batches` | 30 ครั้ง / นาที / user | |
+
+> **Implementation:** ใช้ `express-rate-limit` แยก limiter ตาม endpoint group  
+> ```javascript
+> const heavyLimiter = rateLimit({ windowMs: 60_000, max: 20, keyGenerator: req => req.user?.id || req.ip });
+> const normalLimiter = rateLimit({ windowMs: 60_000, max: 60, keyGenerator: req => req.user?.id || req.ip });
+> const searchLimiter = rateLimit({ windowMs: 60_000, max: 30, keyGenerator: req => req.user?.id || req.ip });
+> const loginLimiter = rateLimit({ windowMs: 60_000, max: 10 }); // key by IP เท่านั้น
+> ```
+
+---
+
+### 5.3 Server-side Validation ที่ต้องเพิ่ม (ปัจจุบันยังไม่มี)
+
+| Validation | Endpoint | ปัจจุบัน | ต้องแก้ |
+|---|---|---|---|
+| Date range ≤ 7 วัน | `/api/jobs`, `/api/stuck` | Frontend เท่านั้น | ❌ ต้องเพิ่ม Backend check |
+| `values.length ≤ 50` | `/api/orders` | Frontend เท่านั้น | ❌ ต้องเพิ่ม Backend check |
+| `orderIds.length ≤ 100` | `/api/batches` | ไม่มี | ❌ ต้องเพิ่ม Backend check |
+| `storeCode` count ≤ 5 | `/api/riders`, `/api/live` | ไม่มี | ❌ ต้องเพิ่ม (ป้องกัน DB overload) |
+| Result limit | `/api/pending`, `/api/orders` | ไม่มี `.limit()` | ❌ เพิ่ม `.limit(500)` และ `.limit(100)` |
+| storeCode scope enforcement | ทุก endpoint | Client trusted 100% | ❌ ต้อง override ด้วย `user.allowedStoreCodes` |
+
+---
+
+### 5.4 มาตรฐานความปลอดภัยและ Logic ที่ต้องรักษาไว้
+
+1. **Data Projection (สำคัญ):** ห้ามส่งฟิลด์ที่เป็นความลับ เช่น `passwordHash`, `internalToken` หรือข้อมูลส่วนตัวลูกค้าที่ไม่ได้ใช้แสดงผลบนหน้าเว็บ
+2. **Route Polylines:** ฟิลด์ `rawResults` ต้องส่งเป็น Array ของ String (Encoded Polyline) เพื่อให้ฟีเจอร์ "See Route" / "Location" modal ทำงานได้
+3. **Timeline Calculation:** ข้อมูลใน `statusHistory` และ `updateStatuses` ต้องมีทั้ง `status` และ `updatedAt` เพื่อให้หน้าบ้านคำนวณ Duration ในแต่ละขั้นตอนได้
+4. **Jobs Lazy Loading:** `/api/jobs` ไม่ส่ง `routeOptimizationResult` — ดึงผ่าน `/api/job-route` เฉพาะเมื่อกด "See Route" เท่านั้น (ลด payload จาก ~40MB → <1MB)
+5. **Performance:** สร้าง MongoDB Index สำหรับฟิลด์ `storeCode`, `createdAt`, `consignment`, `jobId`
+6. **CORS:** เปลี่ยนจาก `cors()` (wildcard `*`) → ระบุ `allowedOrigins` ชัดเจน
 
 ---
 

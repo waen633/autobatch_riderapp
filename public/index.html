@@ -686,10 +686,9 @@ const COLS = {
                 </div>
               </div>`;
     }},
-    { id:'seeRoute', label:'See Route', sk:null, r: d => {
-      if (!d.rawResults?.length) return '–';
-      return `<button class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openRouteModal('${d.jobId}')"><i class="bi bi-map me-1"></i>Route</button>`;
-    }},
+    { id:'seeRoute', label:'See Route', sk:null, r: d => d.jobId
+        ? `<button class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openJobRoute('${d.jobId}',this)"><i class="bi bi-map me-1"></i>Route</button>`
+        : '–' },
     { id:'pickUpSLA', label:'PickUp SLA', sk:'pickUpSLA', r: d => {
         const sla = d.pickUpSLA ? new Date(d.pickUpSLA) : null;
         const pickedUp = (d.updateStatuses || []).find(s => s.status === 'job_picked_up');
@@ -719,7 +718,9 @@ const COLS = {
     { id:'internalOrderId', label:'Order ID', sk:'internalOrderId', r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
     { id:'storeCode', label:'Store', sk:'storeCode', r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
     { id:'jobId', label:'Job ID', sk:'jobId', r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
-    { id:'seeRoute', label:'Location', sk:null, r: d => renderRouteLinks(d.rawResults, 'Location') },
+    { id:'seeRoute', label:'Location', sk:null, r: d => d.rawResults?.length
+        ? `<button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openOrderRoute('${d._id}')"><i class="bi bi-geo-alt me-1"></i>Location</button>`
+        : '–' },
     { id:'payment', label:'Payment', sk:'paymentMethod', r: d => {
       const parts = [];
       if (d.paymentMethod) parts.push(`<span class="badge bg-secondary status-badge">${d.paymentMethod}</span>`);
@@ -1726,42 +1727,74 @@ function _buildRouteLayers(rawRoutes) {
   return layers;
 }
 
-function openRouteModal(jobId) {
-  const job = state.jobs.data.find(j => j.jobId === jobId);
-  if (!job?.rawResults?.length) { alert('ไม่มีข้อมูล route สำหรับ job นี้'); return; }
-
-  document.getElementById('routeModalTitle').textContent = `Job: ${jobId}`;
-  document.getElementById('routeModalMeta').textContent =
-    [job.riderName, job.storeCode, job.status].filter(Boolean).join(' · ');
-
+function _showRouteModal(title, meta, onShown) {
+  document.getElementById('routeModalTitle').textContent = title;
+  document.getElementById('routeModalMeta').textContent = meta;
   const modalEl = document.getElementById('routeModal');
-  const modal = new bootstrap.Modal(modalEl);
-  modal.show();
-
-  modalEl.addEventListener('shown.bs.modal', () => {
-    if (routeMap) { routeMap.remove(); routeMap = null; }
-    document.getElementById('route-modal-map').innerHTML = '';
-    routeMap = L.map('route-modal-map', { zoomControl:true, attributionControl:false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(routeMap);
-
-    const parsed = job.rawResults.map(s => { try { return typeof s==='string' ? JSON.parse(s) : s; } catch { return null; } }).filter(Boolean);
-    const layers = _buildRouteLayers(parsed);
-    const bounds = [];
-    layers.forEach(item => {
-      if (item.polyline) item.polyline.addTo(routeMap);
-      if (item.marker)  item.marker.addTo(routeMap);
-      bounds.push(...item.points);
-    });
-    if (bounds.length) routeMap.fitBounds(bounds, { padding:[32,32] });
-    else routeMap.setView([13.7563, 100.5018], 11);
-
-    const metaEl = document.getElementById('routeModalMeta');
-    metaEl.textContent += ` · ${layers.filter(l=>l.polyline).length} legs`;
-  }, { once:true });
-
+  new bootstrap.Modal(modalEl).show();
+  modalEl.addEventListener('shown.bs.modal', onShown, { once: true });
   modalEl.addEventListener('hidden.bs.modal', () => {
     if (routeMap) { routeMap.remove(); routeMap = null; }
-  }, { once:true });
+  }, { once: true });
+}
+
+function _renderRouteMap(rawResults) {
+  if (routeMap) { routeMap.remove(); routeMap = null; }
+  const container = document.getElementById('route-modal-map');
+  container.innerHTML = '';
+  routeMap = L.map('route-modal-map', { zoomControl: true, attributionControl: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(routeMap);
+  const parsed = rawResults.map(s => { try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return null; } }).filter(Boolean);
+  const layers = _buildRouteLayers(parsed);
+  const bounds = [];
+  layers.forEach(item => {
+    if (item.polyline) item.polyline.addTo(routeMap);
+    if (item.marker)  item.marker.addTo(routeMap);
+    bounds.push(...item.points);
+  });
+  if (bounds.length) routeMap.fitBounds(bounds, { padding: [32, 32] });
+  else routeMap.setView([13.7563, 100.5018], 11);
+  const legs = layers.filter(l => l.polyline).length;
+  if (legs) document.getElementById('routeModalMeta').textContent += ` · ${legs} legs`;
+}
+
+function _mapLoading() {
+  if (routeMap) { routeMap.remove(); routeMap = null; }
+  document.getElementById('route-modal-map').innerHTML =
+    `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;">
+      <div class="text-center"><div class="spinner-border text-primary mb-2"></div><div class="small">Loading route…</div></div>
+    </div>`;
+}
+
+function _mapError(msg) {
+  document.getElementById('route-modal-map').innerHTML =
+    `<div style="display:flex;align-items:center;justify-content:center;height:100%;">
+      <div class="alert alert-danger m-4">⚠ ${msg}</div>
+    </div>`;
+}
+
+async function openJobRoute(jobId, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+  const job = state.jobs.data.find(j => j.jobId === jobId);
+  const meta = job ? [job.riderName, job.storeCode, job.status].filter(Boolean).join(' · ') : jobId;
+  _showRouteModal(`Job: ${jobId}`, meta, async () => {
+    _mapLoading();
+    try {
+      const r = await fetch(`${API_BASE}/api/job-route?jobId=${encodeURIComponent(jobId)}`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      _renderRouteMap(j.rawResults);
+    } catch(e) { _mapError(e.message); }
+  });
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-map me-1"></i>Route'; }
+}
+
+function openOrderRoute(id) {
+  const order = state.orders.data.find(o => o._id === id);
+  if (!order?.rawResults?.length) { alert('ไม่มีข้อมูล route'); return; }
+  const title = `Order: ${order.consignment || order.internalOrderId || id}`;
+  const meta  = [order.storeCode, order.storeName, order.currentOrderStatus].filter(Boolean).join(' · ');
+  _showRouteModal(title, meta, () => _renderRouteMap(order.rawResults));
 }
 
 // ─── LIVE MAP ─────────────────────────────────────────────────────────────────

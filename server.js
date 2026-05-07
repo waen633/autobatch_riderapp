@@ -89,10 +89,7 @@ app.get('/api/jobs', async (req, res) => {
           projection: {
             jobId: 1, orderIds: 1, status: 1, createdAt: 1, updatedAt: 1, updateStatuses: 1, storeId: 1,
             'assignment.rider.id': 1, 'assignment.rider.name': 1,
-            pickUpSLA: 1, sla: 1,
-            'routeOptimizationResult.orderSummary.rawResult': 1,
-            'routeOptimizationResult.rawResult': 1,
-            'routeOptimizationResult.orderSummary.routePolylinePoints': 1
+            pickUpSLA: 1, sla: 1
           }
         }
       )
@@ -100,48 +97,20 @@ app.get('/api/jobs', async (req, res) => {
       .limit(2000)
       .toArray();
 
-    const enriched = docs.map(d => {
-      const summary = Array.isArray(d.routeOptimizationResult?.orderSummary)
-        ? d.routeOptimizationResult.orderSummary
-        : [];
-
-      const summaryRaw = summary
-        .map(s => s?.rawResult)
-        .filter(Boolean)
-        .map(v => (typeof v === 'string' ? v : JSON.stringify(v)));
-
-      const topLevelRaw = d.routeOptimizationResult?.rawResult
-        ? [typeof d.routeOptimizationResult.rawResult === 'string'
-            ? d.routeOptimizationResult.rawResult
-            : JSON.stringify(d.routeOptimizationResult.rawResult)]
-        : [];
-
-      const polylineFallbackAsRaw = summary
-        .map(s => s?.routePolylinePoints)
-        .filter(Boolean)
-        .map(points => JSON.stringify({
-          visits: [],
-          transitions: [{ routePolyline: {} }, { routePolyline: { points } }]
-        }));
-
-      const rawResults = [...summaryRaw, ...topLevelRaw, ...polylineFallbackAsRaw];
-
-      return {
-        jobId: d.jobId || null,
-        storeCode: storeIdToCode[safeStr(d.storeId)] || null,
-        riderName: d.assignment?.rider?.name || null,
-        riderId: d.assignment?.rider?.id ? safeStr(d.assignment.rider.id) : null,
-        orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
-        orderCount: Array.isArray(d.orderIds) ? d.orderIds.length : 0,
-        pickUpSLA: d.pickUpSLA || null,
-        deliverySLA: d.sla || null,
-        status: d.status || null,
-        createdAt: d.createdAt || null,
-        updatedAt: d.updatedAt || null,
-        updateStatuses: Array.isArray(d.updateStatuses) ? d.updateStatuses : [],
-        rawResults
-      };
-    });
+    const enriched = docs.map(d => ({
+      jobId: d.jobId || null,
+      storeCode: storeIdToCode[safeStr(d.storeId)] || null,
+      riderName: d.assignment?.rider?.name || null,
+      riderId: d.assignment?.rider?.id ? safeStr(d.assignment.rider.id) : null,
+      orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
+      orderCount: Array.isArray(d.orderIds) ? d.orderIds.length : 0,
+      pickUpSLA: d.pickUpSLA || null,
+      deliverySLA: d.sla || null,
+      status: d.status || null,
+      createdAt: d.createdAt || null,
+      updatedAt: d.updatedAt || null,
+      updateStatuses: Array.isArray(d.updateStatuses) ? d.updateStatuses : []
+    }));
 
     res.json({ count: enriched.length, data: enriched });
   } catch (e) {
@@ -349,6 +318,48 @@ app.get('/api/riders', async (req, res) => {
     res.json({ count: finalResult.length, readyCount, data: finalResult });
   } catch (e) {
     console.error('[/api/riders]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── JOB ROUTE (on-demand) ───────────────────────────────────────────────────
+function extractRawResults(d) {
+  const summary = Array.isArray(d.routeOptimizationResult?.orderSummary)
+    ? d.routeOptimizationResult.orderSummary : [];
+  const summaryRaw = summary.map(s => s?.rawResult).filter(Boolean)
+    .map(v => typeof v === 'string' ? v : JSON.stringify(v));
+  const topLevelRaw = d.routeOptimizationResult?.rawResult
+    ? [typeof d.routeOptimizationResult.rawResult === 'string'
+        ? d.routeOptimizationResult.rawResult
+        : JSON.stringify(d.routeOptimizationResult.rawResult)]
+    : [];
+  const polylineFallback = summary.map(s => s?.routePolylinePoints).filter(Boolean)
+    .map(points => JSON.stringify({
+      visits: [], transitions: [{ routePolyline: {} }, { routePolyline: { points } }]
+    }));
+  return [...summaryRaw, ...topLevelRaw, ...polylineFallback];
+}
+
+app.get('/api/job-route', async (req, res) => {
+  try {
+    const { jobId } = req.query;
+    if (!jobId) return res.status(400).json({ error: 'jobId required' });
+    const c = await getClient();
+    const doc = await c.db('4pl-oms').collection('autobatchingjobs').findOne(
+      { jobId },
+      { projection: {
+          _id: 0, jobId: 1,
+          'routeOptimizationResult.orderSummary.rawResult': 1,
+          'routeOptimizationResult.rawResult': 1,
+          'routeOptimizationResult.orderSummary.routePolylinePoints': 1
+      }}
+    );
+    if (!doc) return res.status(404).json({ error: 'Job not found' });
+    const rawResults = extractRawResults(doc);
+    if (!rawResults.length) return res.status(404).json({ error: 'No route data for this job' });
+    res.json({ rawResults });
+  } catch (e) {
+    console.error('[/api/job-route]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

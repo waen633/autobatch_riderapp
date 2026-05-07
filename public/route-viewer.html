@@ -117,12 +117,18 @@
       return obj && obj[key] && obj[key].amount ? String(obj[key].amount) : null;
     }
 
+    function fmtKm(meters) {
+      if (meters == null || isNaN(meters)) return null;
+      return (meters / 1000).toFixed(2) + ' km';
+    }
+
     function tooltipHtml(routeIdx, legIdx, type, visit, transition) {
       const visitLoad = visit?.loadDemands || {};
       const orders = amount(visitLoad, 'totalOrders') || '-';
       const weight = amount(visitLoad, 'weightGrams') || '-';
       const volume = amount(visitLoad, 'boxDimensionVolumes') || '-';
-      return [
+      const km = fmtKm(transition?.travelDistanceMeters);
+      const rows = [
         `<b>Route ${routeIdx} / Leg ${legIdx}</b>`,
         `Type: ${type}`,
         `Visit Label: ${visit?.visitLabel || '-'}`,
@@ -130,7 +136,9 @@
         `Orders: ${orders}`,
         `Weight(g): ${weight}`,
         `Volume: ${volume}`
-      ].join('<br>');
+      ];
+      if (km) rows.push(`Distance: <b>${km}</b>`);
+      return rows.join('<br>');
     }
 
     function getOrderIdLabel(visit) {
@@ -198,7 +206,7 @@
           let points = [];
           try { points = decodePolyline(encoded, 5); } catch { points = []; }
           if (!points.length) continue;
-          travelLegs.push({ transition, points, transitionIndex: i });
+          travelLegs.push({ transition, points, transitionIndex: i, distanceMeters: transition.travelDistanceMeters || 0 });
         }
 
         // P1: use load from last pickup visit, place at start of first delivery leg.
@@ -223,6 +231,7 @@
         travelLegs.forEach((leg, idx) => {
           const deliverySeq = idx + 1;
           const visit = deliveryVisits[idx] || null;
+          const km = fmtKm(leg.distanceMeters);
           const polyline = L.polyline(leg.points, { color: colors.delivery, weight: 4, opacity: 0.9 });
           polyline.bindTooltip(tooltipHtml(routeCounter, leg.transitionIndex, 'delivery', visit, leg.transition), { sticky: true });
 
@@ -231,7 +240,7 @@
           const pinOrders = amount(visitLoad, 'totalOrders') || '-';
           const pinWeight = amount(visitLoad, 'weightGrams') || '-';
           const orderIdLabel = getOrderIdLabel(visit);
-          layers.push({ type: 'delivery', polyline, marker: null, points: leg.points });
+          layers.push({ type: 'delivery', polyline, marker: null, points: leg.points, distanceMeters: leg.distanceMeters });
           upsertMarker(
             endPoint,
             'delivery',
@@ -265,7 +274,9 @@
         map.setView([13.7563, 100.5018], 11);
       }
 
-      metaEl.textContent = `Rendered ${layers.length} legs`;
+      const totalMeters = layers.reduce((s, l) => s + (l.distanceMeters || 0), 0);
+      const totalKm = totalMeters > 0 ? ` · ${(totalMeters / 1000).toFixed(2)} km total` : '';
+      metaEl.textContent = `Rendered ${layers.length} legs${totalKm}`;
     }
 
     function init() {

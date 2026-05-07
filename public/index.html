@@ -434,7 +434,7 @@
       <div class="modal-header py-2" style="border-bottom:1px solid #e2e8f0; flex-shrink:0;">
         <div>
           <h6 class="modal-title mb-0"><i class="bi bi-map me-2 text-primary"></i><span id="routeModalTitle">Route</span></h6>
-          <small class="text-muted" id="routeModalMeta"></small>
+          <div id="routeModalMeta" style="margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></div>
         </div>
         <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
       </div>
@@ -1698,7 +1698,8 @@ function exportJobsCSV() {
   const headers = [
     'Job ID', 'Store', 'Rider Name', 'Rider ID', 'Order Count', 'Order IDs', 'Status', 'Created At',
     'PickUp SLA', 'Actual Pickup', 'Pickup Delay (min)',
-    'Delivery SLA', 'Actual Delivery', 'Delivery Delay (min)'
+    'Delivery SLA', 'Actual Delivery', 'Delivery Delay (min)',
+    'Total KM'
   ];
 
   const rows = data.map(d => {
@@ -1719,7 +1720,8 @@ function exportJobsCSV() {
       delayMin(pickedUpAt, d.pickUpSLA),
       `"${fmtDtCsv(d.deliverySLA)}"`,
       `"${fmtDtCsv(completedAt)}"`,
-      delayMin(completedAt, d.deliverySLA)
+      delayMin(completedAt, d.deliverySLA),
+      d.totalKm != null ? d.totalKm : ''
     ];
   });
   
@@ -1779,10 +1781,11 @@ function _buildRouteLayers(rawRoutes) {
 
     const legs = [];
     for (let i = 1; i < transitions.length; i++) {
-      const enc = transitions[i]?.routePolyline?.points;
+      const t = transitions[i] || {};
+      const enc = t?.routePolyline?.points;
       if (!enc) continue;
       let pts = []; try { pts = _decodePolyline(enc); } catch { pts = []; }
-      if (pts.length) legs.push({ pts, i });
+      if (pts.length) legs.push({ pts, i, distanceMeters: t.travelDistanceMeters || 0 });
     }
 
     if (lastPickup && legs.length)
@@ -1790,19 +1793,25 @@ function _buildRouteLayers(rawRoutes) {
 
     legs.forEach((leg, idx) => {
       const visit = deliveries[idx] || null;
+      const km = leg.distanceMeters > 0 ? ` · ${(leg.distanceMeters / 1000).toFixed(2)} km` : '';
       const pl = L.polyline(leg.pts, { color:'#dc2626', weight:4, opacity:0.85 });
-      pl.bindTooltip(`D${idx+1}: ${shipLabel(visit)}`, { sticky:true });
-      layers.push({ polyline: pl, points: leg.pts });
-      addPin(leg.pts[leg.pts.length-1], false, `D${idx+1}`, shipLabel(visit), `Delivery ${idx+1}: ${shipLabel(visit)}`);
+      pl.bindTooltip(`D${idx+1}: ${shipLabel(visit)}${km}`, { sticky:true });
+      layers.push({ polyline: pl, points: leg.pts, distanceMeters: leg.distanceMeters });
+      addPin(leg.pts[leg.pts.length-1], false, `D${idx+1}`, shipLabel(visit), `Delivery ${idx+1}: ${shipLabel(visit)}${km}`);
     });
   });
 
   return layers;
 }
 
+function _metaBadge(text, color) {
+  return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:${color.bg};color:${color.text};border:1px solid ${color.border}">${text}</span>`;
+}
+
 function _showRouteModal(title, meta, onShown) {
   document.getElementById('routeModalTitle').textContent = title;
-  document.getElementById('routeModalMeta').textContent = meta;
+  const metaEl = document.getElementById('routeModalMeta');
+  metaEl.innerHTML = meta.split(' · ').map(s => _metaBadge(s, { bg:'#f1f5f9', text:'#475569', border:'#e2e8f0' })).join('');
   const modalEl = document.getElementById('routeModal');
   new bootstrap.Modal(modalEl).show();
   modalEl.addEventListener('shown.bs.modal', onShown, { once: true });
@@ -1811,7 +1820,7 @@ function _showRouteModal(title, meta, onShown) {
   }, { once: true });
 }
 
-function _renderRouteMap(rawResults) {
+function _renderRouteMap(rawResults, jobId) {
   if (routeMap) { routeMap.remove(); routeMap = null; }
   const container = document.getElementById('route-modal-map');
   container.innerHTML = '';
@@ -1828,7 +1837,17 @@ function _renderRouteMap(rawResults) {
   if (bounds.length) routeMap.fitBounds(bounds, { padding: [32, 32] });
   else routeMap.setView([13.7563, 100.5018], 11);
   const legs = layers.filter(l => l.polyline).length;
-  if (legs) document.getElementById('routeModalMeta').textContent += ` · ${legs} legs`;
+  const totalMeters = layers.reduce((s, l) => s + (l.distanceMeters || 0), 0);
+  const totalKm = totalMeters > 0 ? (totalMeters / 1000).toFixed(2) : null;
+  const metaEl = document.getElementById('routeModalMeta');
+  if (legs) metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`${legs} legs`, { bg:'#eff6ff', text:'#1d4ed8', border:'#bfdbfe' }) }));
+  if (totalKm) {
+    metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`🛣 ${totalKm} km`, { bg:'#f0fdf4', text:'#15803d', border:'#bbf7d0' }) }));
+    if (jobId) {
+      const job = state.jobs?.data?.find(j => j.jobId === jobId);
+      if (job) job.totalKm = parseFloat(totalKm);
+    }
+  }
 }
 
 function _mapLoading() {
@@ -1856,7 +1875,7 @@ async function openJobRoute(jobId, btn) {
       const r = await fetch(`${API_BASE}/api/job-route?jobId=${encodeURIComponent(jobId)}`);
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      _renderRouteMap(j.rawResults);
+      _renderRouteMap(j.rawResults, jobId);
     } catch(e) { _mapError(e.message); }
   });
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-map me-1"></i>Route'; }

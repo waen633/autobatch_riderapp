@@ -1989,21 +1989,12 @@ function renderRiderPerfTable() {
     // e.g. "(LT) 1104 ธนภูมิ ศรีภูมิเดิม" → "ธนภูมิ ศรีภูมิเดิม"
     //      "(LT) [SVD] 1104 4 เสนานิคม"   → "เสนานิคม"
     const _riderCleanName = (full, id) => {
-      // strip (LT) [SVD] prefixes, skip store codes (>=100), keep rider seq# only if name is 1 word
-      let s = (full||'').trim().replace(/^([\(\[][^\)\]]*[\)\]]\s*)+/, '').trim();
-      const parts = s.split(/\s+/);
-      let start = 0;
-      while (start < parts.length && /^\d+$/.test(parts[start]) && Number(parts[start]) >= 100) start++;
-      const rem = parts.slice(start);
-      // rider seq# (small num) before a single-word name → keep for disambiguation
-      if (rem.length >= 2 && /^\d+$/.test(rem[0]) && Number(rem[0]) < 100) {
-        const nameWords = rem.slice(1);
-        return (nameWords.length >= 2 ? nameWords.join(' ') : rem.join(' ')) || s;
-      }
-      return rem.join(' ') || s || (id||'').slice(-6) || '?';
+      let s = (full||'').trim();
+      s = s.replace(/^([\(\[][^\)\]]*[\)\]]\s*)+/, ''); // strip (LT) [SVD] etc.
+      s = s.replace(/^(\d+\s*)+/, '').trim();             // strip all leading numbers
+      return s || (id||'').slice(-6) || '?';
     };
-    // short version (2 words) for donut chart labels/tooltips
-    const _riderShortName = (full, id) => _riderCleanName(full, id).split(/\s+/).slice(0,2).join(' ');
+    const _riderShortName = (full, id) => _riderCleanName(full, id);
     const DL_RIDER = {
       display: ctx => { const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return t>0 && ctx.dataset.data[ctx.dataIndex]/t > 0.05; },
       color: '#fff', font: { size: 9.5, weight: 'bold' },

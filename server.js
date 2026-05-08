@@ -675,9 +675,14 @@ app.get('/api/rider-performance', async (req, res) => {
       .find({ code: { $in: storeCodes } }, { projection: { _id: 1, code: 1 } })
       .toArray();
     if (!storeList.length) return res.status(404).json({ error: 'No stores found' });
+
+    const storeIdToCode = {};
+    storeList.forEach(s => { storeIdToCode[safeStr(s._id)] = s.code; });
     const storeIds = storeList.map(s => s._id);
 
-    const ACCEPTED = ['job_accepted', 'job_picking_up', 'job_picked_up', 'job_delivering', 'job_delivered', 'job_completed'];
+    // Active = rider currently working; Completed = done; Cancelled = cancelled
+    const ACTIVE    = ['job_assigned', 'job_accepted', 'job_picking_up', 'job_picked_up', 'job_delivering'];
+    const COMPLETED = ['job_delivered', 'job_completed'];
 
     const pipeline = [
       { $match: {
@@ -686,28 +691,33 @@ app.get('/api/rider-performance', async (req, res) => {
         'assignment.rider.id': { $exists: true, $ne: null }
       }},
       { $group: {
-        _id: '$assignment.rider.id',
+        _id: { riderId: '$assignment.rider.id', storeId: '$storeId' },
         riderName: { $first: '$assignment.rider.name' },
-        total: { $sum: 1 },
-        accepted: { $sum: { $cond: [{ $in: ['$status', ACCEPTED] }, 1, 0] }},
+        total:     { $sum: 1 },
+        active:    { $sum: { $cond: [{ $in: ['$status', ACTIVE] },    1, 0] }},
+        completed: { $sum: { $cond: [{ $in: ['$status', COMPLETED] }, 1, 0] }},
         cancelled: { $sum: { $cond: [{ $eq: ['$status', 'job_cancelled'] }, 1, 0] }}
       }},
       { $addFields: {
-        acceptRate: { $round: [{ $multiply: [{ $divide: ['$accepted', { $max: ['$total', 1] }] }, 100] }, 1] },
-        cancelRate: { $round: [{ $multiply: [{ $divide: ['$cancelled', { $max: ['$total', 1] }] }, 100] }, 1] }
+        accepted:    { $add: ['$active', '$completed'] },
+        acceptRate:  { $round: [{ $multiply: [{ $divide: [{ $add: ['$active', '$completed'] }, { $max: ['$total', 1] }] }, 100] }, 1] },
+        cancelRate:  { $round: [{ $multiply: [{ $divide: ['$cancelled', { $max: ['$total', 1] }] }, 100] }, 1] }
       }},
-      { $sort: { total: -1 } }
+      { $sort: { '_id.storeId': 1, total: -1 } }
     ];
 
     const rows = await c.db('4pl-oms').collection('autobatchingjobs').aggregate(pipeline).toArray();
     const data = rows.map(r => ({
-      riderId: safeStr(r._id),
-      riderName: r.riderName || safeStr(r._id) || 'Unknown',
-      total: r.total,
-      accepted: r.accepted,
+      riderId:   safeStr(r._id.riderId),
+      riderName: r.riderName || safeStr(r._id.riderId) || 'Unknown',
+      storeCode: storeIdToCode[safeStr(r._id.storeId)] || safeStr(r._id.storeId),
+      total:     r.total,
+      active:    r.active,
+      completed: r.completed,
       cancelled: r.cancelled,
-      acceptRate: r.acceptRate,
-      cancelRate: r.cancelRate
+      accepted:  r.accepted,
+      acceptRate:  r.acceptRate,
+      cancelRate:  r.cancelRate
     }));
 
     res.json({ count: data.length, data });

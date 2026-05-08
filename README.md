@@ -2,7 +2,7 @@
 
 > Dashboard สำหรับ monitor และจัดการกระบวนการ Auto-Batching, Rider Assignment และ Order Status แบบ Real-time
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.3.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.x-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -18,15 +18,35 @@
 | 📋 **Jobs** | ค้นหา Job ตามช่วงเวลา ดู Rider / SLA / Status / Route และ **สลับ Order ID/Consignment** ได้ |
 | 🔍 **Order Query** | ค้นหา Order ด้วย Consignment หรือ Order ID |
 | 📦 **Batch Query** | ดูข้อมูล Batch ที่มี Order ID นั้น |
+| 📊 **Store Performance** | Donut chart สรุปงานและ Workload Share ต่อ Rider แยกตามสาขา พร้อม collapse/expand |
+| 🔄 **Auto-Refresh** | ตั้งเวลา refresh อัตโนมัติแยกต่อหัวข้อ (Off / 5 / 10 / 30 นาที) |
 | 🛠️ **UI/UX** | Fullscreen, collapse, Raw Data expand, Dual-language (TH/EN) |
+
+---
+
+## 📊 Store Performance
+
+หัวข้อใหม่แสดงสถิติแต่ละสาขาแบบ side-by-side กับ Live Map (Map 1/3 — Store Performance 2/3)
+
+**แต่ละสาขามี 2 Donut chart:**
+
+| Chart | รายละเอียด |
+|-------|-----------|
+| **Jobs Overview** | สัดส่วน job_active / job_delivered / job_cancelled / job_other |
+| **Workload Share** | สัดส่วนงานของ Rider แต่ละคน เรียงมากไปน้อย |
+
+- Pizza hover effect — ชิ้นส่วน pop-out พร้อม tooltip แสดงชื่อ + %
+- Collapse/expand ต่อสาขา
+- Rider name แสดงเป็นชื่อจริง (ตัด prefix `(LT)`, `[SVD]` และรหัสสาขาออก)
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Backend**: Node.js + Express.js
-- **Database**: MongoDB
-- **Frontend**: HTML / CSS / JavaScript (Vanilla) + **Leaflet.js** (Maps)
+- **Database**: MongoDB (`4pl-oms`, `4pl-fleet`, `lastmile`)
+- **Frontend**: HTML / CSS / JavaScript (Vanilla) + **Leaflet.js** (Maps) + **Chart.js v4** (Donuts)
+- **Libraries**: Bootstrap 5, flatpickr, chartjs-plugin-datalabels
 
 ---
 
@@ -54,7 +74,11 @@ PORT=3000
 
 ### 4. รัน Server
 ```bash
+# Development
 npm start
+
+# Production (PM2)
+pm2 start server.js --name dashboard
 ```
 
 เปิด Browser แล้วไปที่ **http://localhost:3000** 🎉
@@ -84,8 +108,18 @@ autobatch_riderapp/
 | GET | `/api/jobs` | ดึง Jobs ตามช่วงเวลา |
 | GET | `/api/riders` | ดึงสถานะ Rider Pool |
 | GET | `/api/live` | ดึงตำแหน่ง Rider + Store สำหรับ Live Map |
+| GET | `/api/riderperf` | ดึงข้อมูล Store Performance (Jobs + Workload Share per Rider) |
 | GET | `/api/orders` | ค้นหา Order |
 | GET | `/api/batches` | ค้นหา Batch |
+
+---
+
+## 📅 Date Range Picker
+
+- เลือกวันเริ่มต้น **อิสระ** (ไม่จำกัดปี)
+- กด **Reset** → clear ทั้ง From/To ออก พร้อมลบ limit ทั้งหมด
+- ช่วงสูงสุด **7 วัน** (To ถูกล็อคอัตโนมัติหลังจากเลือก From)
+- Preset: **Today**, **3 Days**, **7 Days**
 
 ---
 
@@ -100,6 +134,8 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 1.3.0 | เพิ่ม **Store Performance**: Donut 2 ชุดต่อสาขา (Jobs Overview + Workload Share), layout Map 1/3 / Store Perf 2/3, pizza hover effect, collapse/expand ต่อสาขา; เพิ่ม **Auto-Refresh** dropdown 4 sections; Date picker reset ล้างวันได้อิสระ + 7-day max cap; แก้ Rider name ตัด prefix (LT)/(SVD); เปลี่ยน label เป็น job status จริง |
+| 1.2.0 | เพิ่ม API `/api/riderperf`; Rider Performance table แยกตามสาขา; แสดง Accept Rate / Cancel Rate bar |
 | 1.1.0 | เพิ่ม **Live Rider Map**: แสดง Rider/Store บนแผนที่แบบ Real-time, ไอคอนมอเตอร์ไซต์สีตาม Store, status dot บอกสถานะ Job; เปลี่ยน "See Route" ใน Jobs เป็น modal popup แทนเปิดหน้าใหม่; เพิ่ม API `/api/live` |
 | 1.0.5 | ปรับปรุงระบบค้นหา Order: รองรับการใส่หลายรายการพร้อมกัน (สูงสุด 50), เพิ่มสถานะ "No data" สำหรับรายการที่ไม่พบ, และแยกปุ่ม "See Route" (Jobs) กับ "Location" (Order Query) |
 | 1.0.4 | ปรับปรุงระบบ Fullscreen: ปิดได้ด้วยการคลิกด้านนอก และเปลี่ยนไอคอนเป็น X เมื่อขยาย |

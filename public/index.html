@@ -2553,7 +2553,7 @@ function toggleMapCollapse() {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 let fpFrom = flatpickr("#fromDate", {
-  enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true,
+  enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true,
   onChange: function(selectedDates) {
     if (!selectedDates[0]) return;
     // When From changes: constrain To to [From, From+7]
@@ -2572,7 +2572,7 @@ let fpFrom = flatpickr("#fromDate", {
   }
 });
 let fpTo = flatpickr("#toDate", {
-  enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true,
+  enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true,
   onChange: function(selectedDates) {
     if (!selectedDates[0]) return;
     // Only constrain From if From is not yet set (user picked To first)

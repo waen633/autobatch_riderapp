@@ -657,6 +657,66 @@ app.get('/api/live', async (req, res) => {
   }
 });
 
+// ─── RIDER PERFORMANCE ───────────────────────────────────────────────────────
+app.get('/api/rider-performance', async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const storeCodes = splitCodes(req.query.storeCode);
+    if (!storeCodes.length || !from || !to) return res.status(400).json({ error: 'storeCode, from, to required' });
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    if (isNaN(fromDate) || isNaN(toDate)) return res.status(400).json({ error: 'invalid date format' });
+
+    const c = await getClient();
+
+    const storeList = await c
+      .db('lastmile').collection('stores')
+      .find({ code: { $in: storeCodes } }, { projection: { _id: 1, code: 1 } })
+      .toArray();
+    if (!storeList.length) return res.status(404).json({ error: 'No stores found' });
+    const storeIds = storeList.map(s => s._id);
+
+    const ACCEPTED = ['job_accepted', 'job_picking_up', 'job_picked_up', 'job_delivering', 'job_delivered', 'job_completed'];
+
+    const pipeline = [
+      { $match: {
+        storeId: { $in: storeIds },
+        createdAt: { $gte: fromDate, $lt: toDate },
+        'assignment.rider.id': { $exists: true, $ne: null }
+      }},
+      { $group: {
+        _id: '$assignment.rider.id',
+        riderName: { $first: '$assignment.rider.name' },
+        total: { $sum: 1 },
+        accepted: { $sum: { $cond: [{ $in: ['$status', ACCEPTED] }, 1, 0] }},
+        cancelled: { $sum: { $cond: [{ $eq: ['$status', 'job_cancelled'] }, 1, 0] }}
+      }},
+      { $addFields: {
+        acceptRate: { $round: [{ $multiply: [{ $divide: ['$accepted', { $max: ['$total', 1] }] }, 100] }, 1] },
+        cancelRate: { $round: [{ $multiply: [{ $divide: ['$cancelled', { $max: ['$total', 1] }] }, 100] }, 1] }
+      }},
+      { $sort: { total: -1 } }
+    ];
+
+    const rows = await c.db('4pl-oms').collection('autobatchingjobs').aggregate(pipeline).toArray();
+    const data = rows.map(r => ({
+      riderId: safeStr(r._id),
+      riderName: r.riderName || safeStr(r._id) || 'Unknown',
+      total: r.total,
+      accepted: r.accepted,
+      cancelled: r.cancelled,
+      acceptRate: r.acceptRate,
+      cancelRate: r.cancelRate
+    }));
+
+    res.json({ count: data.length, data });
+  } catch (e) {
+    console.error('[/api/rider-performance]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function safeStr(val) {

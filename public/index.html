@@ -171,8 +171,8 @@
   <div class="row g-3">
 
     <!-- SECTION 0: LIVE MAP -->
-    <div class="col-12 col-lg-4">
-      <div class="card" id="live-map-card">
+    <div class="col-12 col-lg-4 d-flex flex-column">
+      <div class="card flex-grow-1 d-flex flex-column" id="live-map-card">
         <div class="card-header map-header-clickable d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-top: 3px solid #16a34a;" onclick="toggleMapCollapse()">
           <span><i class="bi bi-geo-alt-fill me-2 text-success"></i><span data-i18n="liveMap">Live Rider Map</span></span>
           <div class="d-flex align-items-center gap-3 flex-wrap" onclick="event.stopPropagation()">
@@ -190,17 +190,23 @@
             <button class="btn col-btn" id="map-collapse-btn" onclick="event.stopPropagation(); toggleMapCollapse()" title="Collapse"><i class="bi bi-chevron-up"></i></button>
           </div>
         </div>
-        <div id="map-card-body">
-          <div class="card-body p-2">
+        <div id="map-card-body" class="flex-grow-1 d-flex flex-column">
+          <div class="card-body p-2 d-flex flex-column flex-grow-1">
             <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
               <button class="btn btn-success btn-sm" onclick="fetchLiveAll(this)"><i class="bi bi-map me-1"></i><span data-i18n="getMap">Get + Map</span></button>
+              <select id="ar-sel-map" class="form-select form-select-sm" style="width:auto;font-size:.72rem;cursor:pointer;" onchange="setAutoRefresh('map',+this.value)" title="Auto-refresh แผนที่">
+                <option value="0">⏱ ปิด Auto-refresh</option>
+                <option value="5">🔄 ทุก 5 นาที / 5 min</option>
+                <option value="10">🔄 ทุก 10 นาที / 10 min</option>
+                <option value="30">🔄 ทุก 30 นาที / 30 min</option>
+              </select>
               <div id="loading-map" class="d-none d-flex align-items-center gap-1">
                 <div class="spinner-border spinner-border-sm text-success"></div>
                 <span class="text-muted small" data-i18n="mapLoading">Loading map…</span>
               </div>
               <div id="error-map" class="alert alert-danger py-1 d-none small mb-0" style="max-width:400px;"></div>
             </div>
-            <div id="live-map" style="height:240px; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
+            <div id="live-map" style="flex:1;min-height:200px; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
               <div class="text-center text-muted">
                 <i class="bi bi-geo-alt" style="font-size:2rem;"></i>
                 <div class="mt-1 small" data-i18n="mapPlaceholder">กด Get + Map เพื่อโหลด</div>
@@ -220,6 +226,12 @@
             <button class="btn btn-outline-secondary btn-sm active" id="rp-view-ring" onclick="setRpView('ring')"><i class="bi bi-circle-half"></i></button>
             <button class="btn btn-outline-secondary btn-sm" id="rp-view-table" onclick="setRpView('table')"><i class="bi bi-table"></i></button>
             <button class="btn btn-sm text-white" style="background:#0d9488;" onclick="fetchRiderPerf(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getRiderPerf">Get</span></button>
+            <select id="ar-sel-riderperf" class="form-select form-select-sm" style="width:auto;font-size:.72rem;cursor:pointer;" onchange="setAutoRefresh('riderperf',+this.value)" title="Auto-refresh Store Performance">
+              <option value="0">⏱ ปิด Auto-refresh</option>
+              <option value="5">🔄 ทุก 5 นาที / 5 min</option>
+              <option value="10">🔄 ทุก 10 นาที / 10 min</option>
+              <option value="30">🔄 ทุก 30 นาที / 30 min</option>
+            </select>
           </div>
         </div>
         <div class="card-body p-3">
@@ -259,6 +271,12 @@
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-warning btn-sm" onclick="fetchPending(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getPending">Get Pending</span></button>
+            <select id="ar-sel-pending" class="form-select form-select-sm" style="width:auto;font-size:.72rem;cursor:pointer;" onchange="setAutoRefresh('pending',+this.value)" title="Auto-refresh Pending">
+              <option value="0">⏱ ปิด Auto-refresh</option>
+              <option value="5">🔄 ทุก 5 นาที / 5 min</option>
+              <option value="10">🔄 ทุก 10 นาที / 10 min</option>
+              <option value="30">🔄 ทุก 30 นาที / 30 min</option>
+            </select>
             <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="debounceSearch('pending', this.value)">
           </div>
           <div id="loading-pending" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-warning"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
@@ -288,6 +306,12 @@
         <div class="card-body p-2">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-sm text-white" style="background:#0077b6;" onclick="fetchRiders(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getRiders">Get Riders</span></button>
+            <select id="ar-sel-riders" class="form-select form-select-sm" style="width:auto;font-size:.72rem;cursor:pointer;" onchange="setAutoRefresh('riders',+this.value)" title="Auto-refresh Rider Pool">
+              <option value="0">⏱ ปิด Auto-refresh</option>
+              <option value="5">🔄 ทุก 5 นาที / 5 min</option>
+              <option value="10">🔄 ทุก 10 นาที / 10 min</option>
+              <option value="30">🔄 ทุก 30 นาที / 30 min</option>
+            </select>
             <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.riders.search=this.value;state.riders.page=1;renderSection('riders')">
           </div>
           <div id="loading-riders" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#0077b6;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
@@ -1604,6 +1628,23 @@ function saveColModal() {
 }
 
 // ─── FETCH FUNCTIONS ──────────────────────────────────────────────────────────
+// ─── AUTO-REFRESH ─────────────────────────────────────────────────────────────
+const _arTimers = {};
+function setAutoRefresh(section, mins) {
+  if (_arTimers[section]) { clearInterval(_arTimers[section]); delete _arTimers[section]; }
+  const sel = document.getElementById(`ar-sel-${section}`);
+  if (sel) sel.value = String(mins);
+  if (mins <= 0) return;
+  const fns = {
+    map:       () => fetchLiveAll(null),
+    pending:   () => fetchPending(null),
+    riders:    () => fetchRiders(null),
+    riderperf: () => fetchRiderPerf(null),
+  };
+  if (!fns[section]) return;
+  _arTimers[section] = setInterval(fns[section], mins * 60000);
+}
+
 function applyCooldown(btn) {
   if (!btn) return;
   btn.disabled = true;
@@ -1733,20 +1774,22 @@ const RIDER_PALETTE = [
   '#fb923c','#22d3ee','#4ade80','#fbbf24','#f43f5e','#818cf8'
 ];
 
-function _mkDonut(canvasId, chartData, ctOpts, legendEl, dlabels) {
+function _mkDonut(canvasId, chartData, ctOpts, legendEl, dlabels, extraOpts) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   if (_rpCharts[canvasId]) { try { _rpCharts[canvasId].destroy(); } catch {} }
+  if (extraOpts?.dataset) Object.assign(chartData.datasets[0], extraOpts.dataset);
   _rpCharts[canvasId] = new Chart(canvas, {
     type: 'doughnut',
     data: chartData,
     options: {
-      cutout: '68%',
+      responsive: false,
+      cutout: '65%',
       animation: { duration: 700 },
-      layout: { padding: 4 },
+      layout: { padding: extraOpts?.padding ?? 4 },
       plugins: {
         legend:     { display: false },
-        tooltip:    { enabled: false },
+        tooltip:    extraOpts?.tooltip ?? { enabled: false },
         centerText: ctOpts,
         datalabels: dlabels || { display: false }
       }
@@ -1770,6 +1813,16 @@ function _mkDonut(canvasId, chartData, ctOpts, legendEl, dlabels) {
         </span>`;
       }).filter(Boolean).join('') + '</div>';
   }
+}
+
+function toggleStoreCard(bodyId) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const sc = bodyId.replace('scb-', '');
+  const icon = document.getElementById('sc-icon-' + sc);
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? '' : 'none';
+  if (icon) { icon.className = isHidden ? 'bi bi-chevron-up' : 'bi bi-chevron-down'; }
 }
 
 // ─── RIDER PERFORMANCE SECTION ───────────────────────────────────────────────
@@ -1905,13 +1958,26 @@ function renderRiderPerfTable() {
     const byStore = {};
     sorted.forEach(r => { const sc = r.storeCode||'–'; if(!byStore[sc]) byStore[sc]=[]; byStore[sc].push(r); });
 
-    const SZ = 185;
+    const SZ = 130; // canvas render size (hi-res); CSS displays at 65px, hover scales to 2.2x
     // datalabels config: % inside each slice
     const DL_JOBS = {
       display: ctx => { const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return t>0 && ctx.dataset.data[ctx.dataIndex]/t > 0.04; },
       color: '#fff', font: { size: 11, weight: 'bold' },
       textShadowColor: 'rgba(0,0,0,0.35)', textShadowBlur: 4,
       formatter: (v, ctx) => { const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return t>0 ? Math.round(v/t*100)+'%' : ''; }
+    };
+    // strip ALL "(LT) [SVD] 1104 ..." prefixes → real name
+    // e.g. "(LT) 1104 ธนภูมิ ศรีภูมิเดิม" → "ธนภูมิ ศรีภูมิเดิม"
+    //      "(LT) [SVD] 1104 4 เสนานิคม"   → "เสนานิคม"
+    const _riderShortName = (full, id) => {
+      // strip all (XX) and [XX] tokens from start
+      let s = (full||'').trim().replace(/^([\(\[][^\)\]]*[\)\]]\s*)+/, '').trim();
+      const parts = s.split(/\s+/);
+      // skip all leading digit-only tokens (store codes like 1104, 4, etc.)
+      let start = 0;
+      while (start < parts.length && /^\d+$/.test(parts[start])) start++;
+      const name = parts.slice(start, start + 2).join(' ');
+      return name || s.split(/\s+/).slice(0, 2).join(' ') || (id||'').slice(-6) || '?';
     };
     const DL_RIDER = {
       display: ctx => { const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return t>0 && ctx.dataset.data[ctx.dataIndex]/t > 0.05; },
@@ -1921,7 +1987,7 @@ function renderRiderPerfTable() {
         const t = ctx.dataset.data.reduce((a,b)=>a+b,0);
         if (!t) return '';
         const pct  = Math.round(v/t*100);
-        const name = (ctx.chart.data.labels[ctx.dataIndex]||'').split(' ')[0];
+        const name = ctx.chart.data.labels[ctx.dataIndex]||'';
         return pct+'%\n'+name;
       }
     };
@@ -1935,27 +2001,38 @@ function renderRiderPerfTable() {
       const jId=`rpc-jobs-${sc}`, rId=`rpc-riders-${sc}`;
       const jLeg=`rpc-jleg-${sc}`, rLeg=`rpc-rleg-${sc}`;
       return `
-      <div style="background:linear-gradient(145deg,#f8fafc,#f0f9ff);border:1px solid #e2e8f0;border-radius:20px;padding:18px 22px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.07);">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#0f766e,#0d9488);color:#fff;border-radius:10px;padding:7px 16px;box-shadow:0 2px 8px rgba(13,148,136,.3);">
+      <div style="background:linear-gradient(145deg,#f8fafc,#f0f9ff);border:1px solid #e2e8f0;border-radius:20px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.07);overflow:hidden;">
+        <!-- collapsible header -->
+        <div onclick="toggleStoreCard('scb-${sc}')" style="display:flex;align-items:center;gap:10px;padding:14px 20px;flex-wrap:wrap;cursor:pointer;user-select:none;border-bottom:1px solid #e2e8f0;">
+          <div style="display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#0f766e,#0d9488);color:#fff;border-radius:10px;padding:6px 14px;box-shadow:0 2px 8px rgba(13,148,136,.3);">
             <i class="bi bi-shop"></i>
-            <span style="font-size:.92rem;font-weight:800;letter-spacing:.5px;">สาขา ${sc}</span>
+            <span style="font-size:.9rem;font-weight:800;letter-spacing:.5px;">สาขา ${sc}</span>
           </div>
-          <span style="font-size:.78rem;color:#64748b;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:4px 11px;">${riders.length} riders · ${totJobs} jobs</span>
-          <span style="font-size:.76rem;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:4px 10px;font-weight:700;border:1px solid #bfdbfe;">🏍️ ${totActive}</span>
-          <span style="font-size:.76rem;background:#dcfce7;color:#15803d;border-radius:8px;padding:4px 10px;font-weight:700;border:1px solid #bbf7d0;">✅ ${totDone}</span>
-          <span style="font-size:.76rem;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:4px 10px;font-weight:700;border:1px solid #fecaca;">❌ ${totCancel}</span>
+          <span style="font-size:.78rem;color:#64748b;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:3px 10px;">${riders.length} riders · ${totJobs} jobs</span>
+          <span style="font-size:.75rem;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:3px 9px;font-weight:700;border:1px solid #bfdbfe;">🏍️ ${totActive}</span>
+          <span style="font-size:.75rem;background:#dcfce7;color:#15803d;border-radius:8px;padding:3px 9px;font-weight:700;border:1px solid #bbf7d0;">✅ ${totDone}</span>
+          <span style="font-size:.75rem;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:3px 9px;font-weight:700;border:1px solid #fecaca;">❌ ${totCancel}</span>
+          <i id="sc-icon-${sc}" class="bi bi-chevron-up" style="margin-left:auto;color:#0d9488;font-size:.95rem;"></i>
         </div>
-        <div style="display:flex;gap:14px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:210px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-            <div style="font-size:.69rem;font-weight:800;color:#3b82f6;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;"><i class="bi bi-pie-chart-fill me-1"></i>Jobs Overview</div>
-            <div style="display:flex;justify-content:center;"><canvas id="${jId}" width="${SZ}" height="${SZ}"></canvas></div>
-            <div id="${jLeg}" style="margin-top:10px;"></div>
-          </div>
-          <div style="flex:1;min-width:210px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-            <div style="font-size:.69rem;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;"><i class="bi bi-people-fill me-1"></i>Rider Share</div>
-            <div style="display:flex;justify-content:center;"><canvas id="${rId}" width="${SZ}" height="${SZ}"></canvas></div>
-            <div id="${rLeg}" style="margin-top:10px;"></div>
+        <!-- collapsible body -->
+        <div id="scb-${sc}" style="padding:16px 20px;">
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <!-- Jobs Overview donut 270×170 + pizza hover -->
+            <div style="flex:1;min-width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+              <div style="font-size:.69rem;font-weight:800;color:#3b82f6;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;"><i class="bi bi-pie-chart-fill me-1"></i>Jobs Overview</div>
+              <div style="display:flex;justify-content:center;">
+                <canvas id="${jId}" width="205" height="205" style="width:205px;height:205px;display:block;box-sizing:border-box;"></canvas>
+              </div>
+              <div id="${jLeg}" style="margin-top:8px;"></div>
+            </div>
+            <!-- Rider Share donut 270×170 + pizza hover -->
+            <div style="flex:1;min-width:300px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+              <div style="font-size:.69rem;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;"><i class="bi bi-people-fill me-1"></i>Rider Share</div>
+              <div style="display:flex;justify-content:center;">
+                <canvas id="${rId}" width="205" height="205" style="width:205px;height:205px;display:block;box-sizing:border-box;"></canvas>
+              </div>
+              <div id="${rLeg}" style="margin-top:8px;"></div>
+            </div>
           </div>
         </div>
       </div>`;
@@ -1970,6 +2047,24 @@ function renderRiderPerfTable() {
         const totCancel = riders.reduce((s,r)=>s+r.cancelled,0);
         const totOther  = Math.max(0, totJobs - totActive - totDone - totCancel);
 
+        // pizza tooltip config (shared)
+        const pizzaTip = {
+          enabled: true,
+          backgroundColor: 'rgba(15,23,42,0.90)',
+          titleFont: { size: 12, weight: 'bold' },
+          bodyFont: { size: 11 },
+          padding: 10, cornerRadius: 8,
+          callbacks: {
+            title: ctx => ctx[0]?.label || '',
+            label: ctx => {
+              const t = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const pct = t ? ((ctx.parsed/t)*100).toFixed(1) : 0;
+              return `  ${ctx.parsed} jobs  (${pct}%)`;
+            }
+          }
+        };
+        const pizzaDataset = { hoverOffset: 20, hoverBorderWidth: 3, hoverBorderColor: '#fff' };
+
         // Jobs Overview
         _mkDonut(`rpc-jobs-${sc}`, {
           labels: ['🏍️ Active','✅ Done','❌ Cancel','⏳ Other'],
@@ -1977,30 +2072,33 @@ function renderRiderPerfTable() {
             backgroundColor:['#3b82f6','#22c55e','#ef4444','#cbd5e1'],
             borderWidth:2, borderColor:'#fff' }]
         }, { line1:String(totJobs), line2:'Total Jobs', color1:'#1e293b', color2:'#94a3b8', size1:26, size2:11 },
-        document.getElementById(`rpc-jleg-${sc}`), DL_JOBS);
+        document.getElementById(`rpc-jleg-${sc}`), null,
+        { dataset: pizzaDataset, tooltip: pizzaTip, padding: 22 });
 
-        // Rider Share
-        const names = riders.map(r => (r.riderName||'–').split(' ').slice(0,2).join(' '));
+        // Rider Share — sorted largest → smallest
+        const rSorted = [...riders].sort((a,b) => b.total - a.total);
+        const names = rSorted.map(r => _riderShortName(r.riderName, r.riderId));
         _mkDonut(`rpc-riders-${sc}`, {
           labels: names,
-          datasets:[{ data: riders.map(r=>r.total),
-            backgroundColor: riders.map((_,i)=>RIDER_PALETTE[i%RIDER_PALETTE.length]),
+          datasets:[{ data: rSorted.map(r=>r.total),
+            backgroundColor: rSorted.map((_,i)=>RIDER_PALETTE[i%RIDER_PALETTE.length]),
             borderWidth:2, borderColor:'#fff' }]
         }, { line1:String(riders.length), line2:'Riders', color1:'#1e293b', color2:'#94a3b8', size1:26, size2:11 },
-        null, DL_RIDER);
+        null, null,
+        { dataset: pizzaDataset, tooltip: pizzaTip, padding: 22 });
 
-        // Compact rider legend below rider donut
+        // Compact rider legend (sorted same order as donut)
         const rLegEl = document.getElementById(`rpc-rleg-${sc}`);
         if (rLegEl) {
           rLegEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;">' +
-            riders.map((r, i) => {
+            rSorted.map((r, i) => {
               const col  = RIDER_PALETTE[i%RIDER_PALETTE.length];
-              const name = (r.riderName||'–').split(' ')[0];
+              const name = _riderShortName(r.riderName, r.riderId);
               const pct  = totJobs > 0 ? ((r.total/totJobs)*100).toFixed(0) : 0;
               return `<div style="display:flex;align-items:center;gap:5px;min-width:0;">
                 <span style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;"></span>
-                <span style="font-size:.68rem;color:#334155;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;" title="${r.riderName}">${name}</span>
-                <span style="font-size:.7rem;font-weight:700;color:#0f172a;flex-shrink:0;">${pct}%</span>
+                <span style="font-size:.92rem;font-weight:900;color:#0f172a;flex-shrink:0;min-width:42px;">${pct}%</span>
+                <span style="font-size:.68rem;color:#475569;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;" title="${r.riderName}">${name}</span>
                 <span style="font-size:.65rem;color:#94a3b8;flex-shrink:0;">(${r.total})</span>
               </div>`;
             }).join('') + '</div>';

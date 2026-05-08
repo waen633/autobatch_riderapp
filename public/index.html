@@ -422,19 +422,34 @@
             <div class="col-auto">
               <button class="btn btn-sm text-white" style="background:#0d9488;" onclick="fetchRiderPerf(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getRiderPerf">Get Performance</span></button>
             </div>
+            <div class="col-auto d-flex gap-2">
+              <button class="btn btn-outline-secondary btn-sm active" id="rp-view-ring" onclick="setRpView('ring')"><i class="bi bi-circle-half"></i></button>
+              <button class="btn btn-outline-secondary btn-sm" id="rp-view-table" onclick="setRpView('table')"><i class="bi bi-table"></i></button>
+            </div>
             <div class="col-auto">
               <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="filterResult" placeholder="Filter…" oninput="debounceSearchPerf(this.value)">
             </div>
           </div>
           <div id="loading-riderperf" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#0d9488;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-riderperf" class="alert alert-danger py-1 d-none small mb-2"></div>
-          <div class="scroll-table" style="max-height:400px;">
-            <table class="table table-sm table-hover table-striped mb-0">
-              <thead class="table-dark sticky-header" id="thead-riderperf"></thead>
-              <tbody id="tbody-riderperf"><tr><td colspan="7" class="text-center py-3 text-muted" data-i18n="pressGetPerf">กด Get Performance เพื่อดูสถิติ Rider</td></tr></tbody>
-            </table>
+
+          <!-- Ring view -->
+          <div id="rp-ring-view" style="max-height:420px;overflow-y:auto;">
+            <div id="rp-ring-grid" class="d-flex flex-wrap gap-3 p-1">
+              <div class="text-muted py-4 w-100 text-center" data-i18n="pressGetPerf">กด Get Performance เพื่อดูสถิติ Rider</div>
+            </div>
           </div>
-          <div id="pagination-riderperf" class="pagination-bar"></div>
+
+          <!-- Table view (hidden by default) -->
+          <div id="rp-table-view" class="d-none">
+            <div class="scroll-table" style="max-height:400px;">
+              <table class="table table-sm table-hover table-striped mb-0">
+                <thead class="table-dark sticky-header" id="thead-riderperf"></thead>
+                <tbody id="tbody-riderperf"></tbody>
+              </table>
+            </div>
+            <div id="pagination-riderperf" class="pagination-bar"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1689,6 +1704,17 @@ async function fetchBatches(btn) {
 }
 
 // ─── RIDER PERFORMANCE SECTION ───────────────────────────────────────────────
+let rpView = 'ring'; // 'ring' | 'table'
+
+function setRpView(v) {
+  rpView = v;
+  document.getElementById('rp-ring-view').classList.toggle('d-none', v !== 'ring');
+  document.getElementById('rp-table-view').classList.toggle('d-none', v !== 'table');
+  document.getElementById('rp-view-ring').classList.toggle('active', v === 'ring');
+  document.getElementById('rp-view-table').classList.toggle('active', v === 'table');
+  renderRiderPerfTable();
+}
+
 async function fetchRiderPerf(btn) {
   applyCooldown(btn);
   const { storeCode, from, to } = getInputs();
@@ -1747,23 +1773,68 @@ function rateBar(rate, isCancel) {
   </div>`;
 }
 
+// SVG donut ring: r=15.9 → circumference ≈ 100, dashoffset=25 starts fill at 12 o'clock
+function donutRing(rate, isCancel, size=64) {
+  const color = rateColor(rate, isCancel);
+  const filled = (rate / 100) * 100;
+  const label = isCancel ? (lang==='th' ? 'ยกเลิก' : 'Cancel') : (lang==='th' ? 'รับงาน' : 'Accept');
+  return `<svg viewBox="0 0 36 36" width="${size}" height="${size}">
+    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" stroke-width="3.2"/>
+    <circle cx="18" cy="18" r="15.9" fill="none" stroke="${color}" stroke-width="3.2"
+      stroke-dasharray="${filled.toFixed(1)} ${(100-filled).toFixed(1)}"
+      stroke-dashoffset="25" stroke-linecap="round"/>
+    <text x="18" y="20" text-anchor="middle" font-size="8" font-weight="bold" fill="${color}">${rate}%</text>
+    <text x="18" y="27" text-anchor="middle" font-size="4" fill="#94a3b8">${label}</text>
+  </svg>`;
+}
+
+function riderPerfCard(r, rank) {
+  const nameShort = (r.riderName || 'Unknown').split(' ').slice(0,2).join(' ');
+  const rankColor = rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : rank === 3 ? '#cd7c2f' : '#cbd5e1';
+  return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;min-width:160px;max-width:185px;box-shadow:0 2px 6px rgba(0,0,0,0.05);flex:1;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div style="width:24px;height:24px;border-radius:50%;background:${rankColor};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">${rank}</div>
+      <div style="overflow:hidden;">
+        <div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.riderName||'–'}">${nameShort||'–'}</div>
+        <div style="font-size:.7rem;color:#94a3b8;font-family:monospace;">${r.total} jobs</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:10px;">
+      ${donutRing(r.acceptRate, false, 58)}
+      ${donutRing(r.cancelRate, true, 58)}
+    </div>
+  </div>`;
+}
+
 function renderRiderPerfTable() {
-  const thead = document.getElementById('thead-riderperf');
-  const tbody = document.getElementById('tbody-riderperf');
   const q = state.riderperf.search;
   let data = state.riderperf.data;
   if (q) data = data.filter(r => JSON.stringify(r).toLowerCase().includes(q));
 
   const { page, pageSize, sortCol, sortDir } = state.riderperf;
-  if (sortCol) {
-    data = [...data].sort((a, b) => {
-      const av = a[sortCol] ?? 0, bv = b[sortCol] ?? 0;
-      return sortDir === 'asc' ? av - bv : bv - av;
-    });
+  const sorted = sortCol
+    ? [...data].sort((a, b) => {
+        const av = a[sortCol] ?? 0, bv = b[sortCol] ?? 0;
+        return sortDir === 'asc' ? av - bv : bv - av;
+      })
+    : [...data].sort((a, b) => b.acceptRate - a.acceptRate);  // default: best accept rate first
+
+  if (rpView === 'ring') {
+    const grid = document.getElementById('rp-ring-grid');
+    if (!sorted.length) {
+      grid.innerHTML = `<div class="text-muted py-4 w-100 text-center">${state.riderperf.data.length ? t('noData') : t('pressGetPerf')}</div>`;
+      return;
+    }
+    grid.innerHTML = sorted.map((r, i) => riderPerfCard(r, i + 1)).join('');
+    return;
   }
 
+  // table view
+  const thead = document.getElementById('thead-riderperf');
+  const tbody = document.getElementById('tbody-riderperf');
   const cols = [
-    { label: t('col_rider'), sk: null,          r: r => `<div class="fw-semibold">${r.riderName||'–'}</div><small class="text-muted font-monospace">${r.riderId||'–'}</small>` },
+    { label: '#',                sk: null,          r: (r, i) => `<span class="text-muted">${i+1}</span>` },
+    { label: t('col_rider'),     sk: null,          r: r => `<div class="fw-semibold">${r.riderName||'–'}</div><small class="text-muted font-monospace">${r.riderId||'–'}</small>` },
     { label: t('rp_total'),      sk: 'total',       r: r => `<span class="badge bg-secondary">${r.total}</span>` },
     { label: t('rp_accepted'),   sk: 'accepted',    r: r => `<span class="badge" style="background:#0284c7;">${r.accepted}</span>` },
     { label: t('rp_cancelled'),  sk: 'cancelled',   r: r => `<span class="badge bg-danger">${r.cancelled}</span>` },
@@ -1772,22 +1843,20 @@ function renderRiderPerfTable() {
   ];
 
   const sortTh = (label, sk) => sk
-    ? `<th class="sort-th" onclick="sortRiderPerf('${sk}')" style="cursor:pointer;user-select:none;">${label}${state.riderperf.sortCol===sk?(state.riderperf.sortDir==='asc'?' ▲':' ▼'):' <span style="opacity:.4">⇅</span>'}</th>`
+    ? `<th class="sort-th" onclick="sortRiderPerf('${sk}')" style="cursor:pointer;user-select:none;">${label}${sortCol===sk?(sortDir==='asc'?' ▲':' ▼'):' <span style="opacity:.4">⇅</span>'}</th>`
     : `<th>${label}</th>`;
-
   thead.innerHTML = '<tr>' + cols.map(c => sortTh(c.label, c.sk)).join('') + '</tr>';
 
-  if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="${cols.length}" class="text-center py-3 text-muted">${t('noData')}</td></tr>`;
-    renderPagination('riderperf', 0);
-    return;
+  if (!sorted.length) {
+    tbody.innerHTML = `<tr><td colspan="${cols.length}" class="text-center py-3 text-muted">${state.riderperf.data.length ? t('noData') : t('pressGetPerf')}</td></tr>`;
+    renderPagination('riderperf', 0); return;
   }
 
-  const pageData = data.slice((page - 1) * pageSize, page * pageSize);
-  tbody.innerHTML = pageData.map(r =>
-    `<tr>${cols.map(c => `<td>${c.r(r)}</td>`).join('')}</tr>`
+  const pageData = sorted.slice((page - 1) * pageSize, page * pageSize);
+  tbody.innerHTML = pageData.map((r, i) =>
+    `<tr>${cols.map(c => `<td>${c.r(r, (page-1)*pageSize + i)}</td>`).join('')}</tr>`
   ).join('');
-  renderPagination('riderperf', data.length);
+  renderPagination('riderperf', sorted.length);
 }
 
 function sortRiderPerf(sk) {

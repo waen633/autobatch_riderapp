@@ -2093,7 +2093,7 @@ function renderRiderPerfTable() {
 
         // Rider Share — sorted largest → smallest
         const rSorted = [...riders].sort((a,b) => b.total - a.total);
-        const names = rSorted.map(r => _riderShortName(r.riderName, r.riderId));
+        const names = rSorted.map(r => r.riderName || r.riderId);
         _mkDonut(`rpc-riders-${sc}`, {
           labels: names,
           datasets:[{ data: rSorted.map(r=>r.total),
@@ -2109,7 +2109,7 @@ function renderRiderPerfTable() {
           rLegEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;">' +
             rSorted.map((r, i) => {
               const col  = RIDER_PALETTE[i%RIDER_PALETTE.length];
-              const name = _riderCleanName(r.riderName, r.riderId);
+              const name = r.riderName || r.riderId;
               const pct  = totJobs > 0 ? ((r.total/totJobs)*100).toFixed(0) : 0;
               return `<div style="display:flex;align-items:flex-start;gap:5px;min-width:0;">
                 <span style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;margin-top:3px;"></span>

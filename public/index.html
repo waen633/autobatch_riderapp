@@ -859,18 +859,28 @@ function setLoading(section, bool) {
   if (el) el.style.display = bool ? 'flex' : 'none';
 }
 function copyToClip(btn) {
-  const outerDiv = btn.closest('.d-flex.align-items-start.justify-content-between');
-  if (!outerDiv) return;
-  const container = outerDiv.querySelector(':scope > div:first-child');
-  const spans = container.querySelectorAll('.order-id-val');
-  const texts = Array.from(spans).map(s => s.textContent.trim()).filter(Boolean);
-  const text = texts.join(', ');
-
-  navigator.clipboard.writeText(text).then(() => {
+  const text = btn.dataset.text || '';
+  if (!text) return;
+  function flash() {
     const orig = btn.innerHTML;
     btn.innerHTML = '<i class="bi bi-check"></i>';
     setTimeout(() => { btn.innerHTML = orig; }, 2000);
-  });
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(flash).catch(() => fallbackCopy(text, flash));
+  } else {
+    fallbackCopy(text, flash);
+  }
+}
+function fallbackCopy(text, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); if (cb) cb(); } catch(e) {}
+  document.body.removeChild(ta);
 }
 function toBkk(d) {
   if (!d) return null;
@@ -1673,12 +1683,16 @@ function copyBatchDisplay(btn) {
   const displaySpan = btn.closest('.d-flex').previousElementSibling.querySelector('.batch-ids-display');
   if (!displaySpan) return;
   const text = Array.from(displaySpan.querySelectorAll('.d-block')).map(el => el.textContent.trim()).join(', ');
-
-  navigator.clipboard.writeText(text).then(() => {
+  function flash() {
     const orig = btn.innerHTML;
     btn.innerHTML = '<i class="bi bi-check"></i>';
     setTimeout(() => { btn.innerHTML = orig; }, 2000);
-  });
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(flash).catch(() => fallbackCopy(text, flash));
+  } else {
+    fallbackCopy(text, flash);
+  }
 }
 
 // ─── EXPORT CSV ─────────────────────────────────────────────────────────────────

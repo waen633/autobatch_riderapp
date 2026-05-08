@@ -1990,8 +1990,12 @@ function renderRiderPerfTable() {
     //      "(LT) [SVD] 1104 4 เสนานิคม"   → "เสนานิคม"
     const _riderCleanName = (full, id) => {
       let s = (full||'').trim();
-      s = s.replace(/^([\(\[][^\)\]]*[\)\]]\s*)+/, ''); // strip (LT) [SVD] etc.
-      s = s.replace(/^(\d+\s*)+/, '').trim();             // strip all leading numbers
+      s = s.replace(/^([\(\[][^\)\]]*[\)\]]\s*)+/, '').trim(); // strip (LT) [SVD]
+      s = s.replace(/^\d{3,}\s*/, '').trim();                  // strip store code (3+ digits)
+      const m1 = s.match(/^(\d+)\s+(\S+)$/);   // seq# + single-word name
+      if (m1) return m1[2] + ' #' + m1[1];     // → "เสนานิคม #4"
+      const m2 = s.match(/^(\d+)\s+(.+)$/);    // seq# + full name (2+ words)
+      if (m2) return m2[2];                     // → drop number, show full name
       return s || (id||'').slice(-6) || '?';
     };
     const _riderShortName = (full, id) => _riderCleanName(full, id);

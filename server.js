@@ -314,7 +314,7 @@ app.get('/api/riders', async (req, res) => {
       });
     }
 
-    const readyCount = finalResult.filter(r => r.ready_for_auto_assign).length;
+    const readyCount = finalResult.filter(r => r.ready_for_auto_assign && r.queue !== 'not_in_pool').length;
     res.json({ count: finalResult.length, readyCount, data: finalResult });
   } catch (e) {
     console.error('[/api/riders]', e.message);

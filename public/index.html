@@ -859,7 +859,11 @@ function setLoading(section, bool) {
   if (el) el.style.display = bool ? 'flex' : 'none';
 }
 function copyToClip(btn) {
-  const text = btn.dataset.text || '';
+  const outerDiv = btn.closest('.d-flex.align-items-start.justify-content-between');
+  const spans = outerDiv ? outerDiv.querySelectorAll('.order-id-val') : [];
+  const text = spans.length
+    ? Array.from(spans).map(s => s.textContent.trim()).filter(Boolean).join(', ')
+    : (btn.dataset.text || '');
   if (!text) return;
   function flash() {
     const orig = btn.innerHTML;

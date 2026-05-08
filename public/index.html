@@ -117,7 +117,11 @@
     .map-header-clickable { cursor: pointer; }
     .map-header-clickable:hover { background: #f8fafc; }
 
-    /* GridStack layout */
+    /* GridStack layout — drag handle via card-header */
+    .grid-stack .card-header { cursor: grab; user-select: none; }
+    .grid-stack .card-header:active { cursor: grabbing; }
+    /* Override map header so it still shows grab cursor */
+    .map-header-clickable { cursor: grab !important; }
     .grid-stack { background: transparent; }
     .grid-stack-item-content { overflow: hidden !important; border-radius: 0; }
     .grid-stack-item-content > .card { height: 100%; overflow: hidden; }
@@ -2648,6 +2652,7 @@ const _grid = GridStack.init({
   margin: 8,
   animate: true,
   float: false,
+  handle: '.card-header',
   resizable: { handles: 'all' },
   minRow: 1,
 });

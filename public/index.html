@@ -1123,67 +1123,43 @@ function setError(sec, msg) {
 function toInputLocal(d) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+// Clear both date pickers and remove all min/max restrictions
 function resetDates() {
-  const now = new Date(), start = new Date(now);
-  start.setHours(0,0,0,0);
-  const fromEl = document.getElementById('fromDate');
-  const toEl = document.getElementById('toDate');
-  fromEl.value = toInputLocal(start);
-  toEl.value = toInputLocal(now);
-  
-  if (fromEl._flatpickr && toEl._flatpickr) {
-    fromEl._flatpickr.setDate(start);
-    toEl._flatpickr.setDate(now);
-    
-    // Set 7-day limits
-    const maxDate = new Date(start);
-    maxDate.setDate(maxDate.getDate() + 7);
-    toEl._flatpickr.set('minDate', start);
-    toEl._flatpickr.set('maxDate', maxDate);
-    
-    const minDate = new Date(now);
-    minDate.setDate(minDate.getDate() - 7);
-    fromEl._flatpickr.set('minDate', minDate);
-    fromEl._flatpickr.set('maxDate', now);
-  } else if (fromEl._flatpickr) {
-    fromEl._flatpickr.setDate(start);
-  } else if (toEl._flatpickr) {
-    toEl._flatpickr.setDate(now);
+  if (typeof fpFrom !== 'undefined') {
+    fpFrom.clear();
+    fpFrom.set('minDate', null);
+    fpFrom.set('maxDate', null);
+  } else {
+    document.getElementById('fromDate').value = '';
+  }
+  if (typeof fpTo !== 'undefined') {
+    fpTo.clear();
+    fpTo.set('minDate', null);
+    fpTo.set('maxDate', null);
+  } else {
+    document.getElementById('toDate').value = '';
   }
 }
-resetDates();
 
+// Set a preset date range (0 = today, N = last N days); enforces 7-day max on To
 function setDateRange(days) {
   const now = new Date(), start = new Date(now);
-  if (days === 0) {
-    start.setHours(0,0,0,0);
+  if (days === 0) start.setHours(0,0,0,0);
+  else start.setDate(now.getDate() - days);
+
+  if (typeof fpFrom !== 'undefined' && typeof fpTo !== 'undefined') {
+    // Set dates without triggering onChange (false = no triggerChange)
+    fpFrom.setDate(start, false);
+    fpFrom.set('minDate', null);
+    fpFrom.set('maxDate', null);
+    const maxTo = new Date(start);
+    maxTo.setDate(maxTo.getDate() + 7);
+    fpTo.set('minDate', start);
+    fpTo.set('maxDate', maxTo);
+    fpTo.setDate(now, false);
   } else {
-    start.setDate(now.getDate() - days);
-  }
-  
-  const fromEl = document.getElementById('fromDate');
-  const toEl = document.getElementById('toDate');
-  fromEl.value = toInputLocal(start);
-  toEl.value = toInputLocal(now);
-  
-  if (fromEl._flatpickr && toEl._flatpickr) {
-    fromEl._flatpickr.setDate(start);
-    toEl._flatpickr.setDate(now);
-    
-    // Set 7-day limits
-    const maxDate = new Date(start);
-    maxDate.setDate(maxDate.getDate() + 7);
-    toEl._flatpickr.set('minDate', start);
-    toEl._flatpickr.set('maxDate', maxDate);
-    
-    const minDate = new Date(now);
-    minDate.setDate(minDate.getDate() - 7);
-    fromEl._flatpickr.set('minDate', minDate);
-    fromEl._flatpickr.set('maxDate', now);
-  } else if (fromEl._flatpickr) {
-    fromEl._flatpickr.setDate(start);
-  } else if (toEl._flatpickr) {
-    toEl._flatpickr.setDate(now);
+    document.getElementById('fromDate').value = toInputLocal(start);
+    document.getElementById('toDate').value = toInputLocal(now);
   }
 }
 
@@ -2579,39 +2555,38 @@ function toggleMapCollapse() {
 let fpFrom = flatpickr("#fromDate", {
   enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true,
   onChange: function(selectedDates) {
-    if (selectedDates[0] && fpTo) {
-      const maxDate = new Date(selectedDates[0]);
-      maxDate.setDate(maxDate.getDate() + 7);
-      fpTo.set('minDate', selectedDates[0]);
-      fpTo.set('maxDate', maxDate);
+    if (!selectedDates[0]) return;
+    // When From changes: constrain To to [From, From+7]
+    const maxTo = new Date(selectedDates[0]);
+    maxTo.setDate(maxTo.getDate() + 7);
+    fpTo.set('minDate', selectedDates[0]);
+    fpTo.set('maxDate', maxTo);
+    // If existing To is now out of range, clear it
+    if (fpTo.selectedDates[0]) {
+      const td = fpTo.selectedDates[0];
+      if (td < selectedDates[0] || td > maxTo) fpTo.clear();
     }
+    // From itself is free — remove any old constraints
+    fpFrom.set('minDate', null);
+    fpFrom.set('maxDate', null);
   }
 });
 let fpTo = flatpickr("#toDate", {
   enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true,
   onChange: function(selectedDates) {
-    if (selectedDates[0] && fpFrom) {
-      const minDate = new Date(selectedDates[0]);
-      minDate.setDate(minDate.getDate() - 7);
-      fpFrom.set('minDate', minDate);
+    if (!selectedDates[0]) return;
+    // Only constrain From if From is not yet set (user picked To first)
+    if (fpFrom.selectedDates.length === 0) {
+      const minFrom = new Date(selectedDates[0]);
+      minFrom.setDate(minFrom.getDate() - 7);
+      fpFrom.set('minDate', minFrom);
       fpFrom.set('maxDate', selectedDates[0]);
     }
   }
 });
 
-// Setup initial limits if dates are already set
-if (document.getElementById('fromDate').value && document.getElementById('toDate').value) {
-  const initFrom = new Date(document.getElementById('fromDate').value);
-  const initTo = new Date(document.getElementById('toDate').value);
-  const maxDate = new Date(initFrom);
-  maxDate.setDate(maxDate.getDate() + 7);
-  fpTo.set('minDate', initFrom);
-  fpTo.set('maxDate', maxDate);
-  const minDate = new Date(initTo);
-  minDate.setDate(minDate.getDate() - 7);
-  fpFrom.set('minDate', minDate);
-  fpFrom.set('maxDate', initTo);
-}
+// Default to today on page load
+setDateRange(0);
 
 renderInputHistory('storeCode');
 renderInputHistory('orderValues');

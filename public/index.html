@@ -14,7 +14,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/material_green.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack.min.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body { background: #f8fafc; font-family: 'Inter', 'Prompt', sans-serif; font-size: 13.5px; color: #1e293b; }
@@ -116,27 +115,6 @@
     }
     .map-header-clickable { cursor: pointer; }
     .map-header-clickable:hover { background: #f8fafc; }
-
-    /* GridStack layout */
-    .grid-stack { background: transparent; }
-    .grid-stack-item-content { overflow: hidden !important; border-radius: 0; }
-    .grid-stack-item-content > .card { height: 100%; overflow: hidden; }
-    .grid-stack-item > .ui-resizable-se,
-    .grid-stack-item > .ui-resizable-sw,
-    .grid-stack-item > .ui-resizable-ne,
-    .grid-stack-item > .ui-resizable-nw,
-    .grid-stack-item > .ui-resizable-e,
-    .grid-stack-item > .ui-resizable-w,
-    .grid-stack-item > .ui-resizable-n,
-    .grid-stack-item > .ui-resizable-s { opacity: 0; transition: opacity .15s; }
-    .grid-stack-item:hover > .ui-resizable-se,
-    .grid-stack-item:hover > .ui-resizable-sw,
-    .grid-stack-item:hover > .ui-resizable-ne,
-    .grid-stack-item:hover > .ui-resizable-nw,
-    .grid-stack-item:hover > .ui-resizable-e,
-    .grid-stack-item:hover > .ui-resizable-w,
-    .grid-stack-item:hover > .ui-resizable-n,
-    .grid-stack-item:hover > .ui-resizable-s { opacity: 0.5; }
   </style>
 </head>
 <body>
@@ -147,7 +125,6 @@
     <span class="navbar-brand navbar-brand-text"><i class="bi bi-speedometer2 me-2 text-success"></i><span data-i18n="navTitle">Lotus Auto-Batching Dashboard</span></span>
     <div class="d-flex align-items-center gap-3">
       <span class="text-muted fw-medium" id="last-updated" style="font-size: 0.8rem;"></span>
-      <button class="btn btn-outline-secondary btn-sm" onclick="resetLayout()" title="Reset Layout"><i class="bi bi-grid-3x3-gap me-1"></i>Layout</button>
       <button class="btn btn-outline-secondary btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
     </div>
   </div>
@@ -191,12 +168,11 @@
   </div>
 
   <!-- 2x2 GRID -->
-  <div class="grid-stack">
+  <div class="row g-3">
 
     <!-- SECTION 0: LIVE MAP -->
-    <div class="grid-stack-item" gs-x="0" gs-y="0" gs-w="4" gs-h="9" gs-id="map">
-    <div class="grid-stack-item-content">
-      <div class="card d-flex flex-column h-100" id="live-map-card">
+    <div class="col-12 col-lg-4 d-flex flex-column">
+      <div class="card flex-grow-1 d-flex flex-column" id="live-map-card">
         <div class="card-header map-header-clickable d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-top: 3px solid #16a34a;" onclick="toggleMapCollapse()">
           <span><i class="bi bi-geo-alt-fill me-2 text-success"></i><span data-i18n="liveMap">Live Rider Map</span></span>
           <div class="d-flex align-items-center gap-3 flex-wrap" onclick="event.stopPropagation()">
@@ -230,7 +206,7 @@
               </div>
               <div id="error-map" class="alert alert-danger py-1 d-none small mb-0" style="max-width:400px;"></div>
             </div>
-            <div id="live-map" style="flex:1;min-height:0; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
+            <div id="live-map" style="flex:1;min-height:200px; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
               <div class="text-center text-muted">
                 <i class="bi bi-geo-alt" style="font-size:2rem;"></i>
                 <div class="mt-1 small" data-i18n="mapPlaceholder">กด Get + Map เพื่อโหลด</div>
@@ -239,12 +215,10 @@
           </div>
         </div>
       </div>
-    </div><!-- /grid-stack-item-content -->
-    </div><!-- /grid-stack-item map -->
+    </div>
 
     <!-- STORE PERFORMANCE MONITOR -->
-    <div class="grid-stack-item" gs-x="4" gs-y="0" gs-w="8" gs-h="9" gs-id="storeperf">
-    <div class="grid-stack-item-content">
+    <div class="col-12 col-lg-8">
       <div class="card h-100" style="border-top: 3px solid #0d9488;">
         <div class="card-header d-flex justify-content-between align-items-center py-2">
           <span><i class="bi bi-bar-chart-fill me-2" style="color:#0d9488;"></i><span data-i18n="sectionRiderPerf">Store Performance</span> <span class="badge ms-1" style="background:#0d9488;" id="count-riderperf">–</span></span>
@@ -281,12 +255,10 @@
           </div>
         </div>
       </div>
-    </div><!-- /grid-stack-item-content -->
-    </div><!-- /grid-stack-item storeperf -->
+    </div>
 
     <!-- SECTION 1: PENDING ORDERS -->
-    <div class="grid-stack-item" gs-x="0" gs-y="9" gs-w="6" gs-h="7" gs-id="pending">
-    <div class="grid-stack-item-content">
+    <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header card-pending d-flex justify-content-between align-items-center">
           <span><i class="bi bi-box-seam me-2 text-warning"></i><span data-i18n="sectionPending">Pending Orders</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionPendingDesc">รอสร้าง Job</span>)</small></span>
@@ -318,12 +290,10 @@
           <div id="pagination-pending" class="pagination-bar"></div>
         </div>
       </div>
-    </div><!-- /grid-stack-item-content -->
-    </div><!-- /grid-stack-item pending -->
+    </div>
 
     <!-- SECTION 2: RIDER POOL -->
-    <div class="grid-stack-item" gs-x="6" gs-y="9" gs-w="6" gs-h="7" gs-id="riders">
-    <div class="grid-stack-item-content">
+    <div class="col-12 col-xl-6">
       <div class="card h-100">
         <div class="card-header card-riders d-flex justify-content-between align-items-center">
           <span><i class="bi bi-person-badge me-2 text-info"></i><span data-i18n="sectionRiders">Rider Pool</span> <small class="text-muted fw-normal ms-1">Ready: <span id="ready-count" class="fw-bold text-success">–</span></small></span>
@@ -355,12 +325,10 @@
           <div id="pagination-riders" class="pagination-bar"></div>
         </div>
       </div>
-    </div><!-- /grid-stack-item-content -->
-    </div><!-- /grid-stack-item riders -->
+    </div>
 
     <!-- SECTION 3: JOBS -->
-    <div class="grid-stack-item" gs-x="0" gs-y="16" gs-w="12" gs-h="8" gs-id="jobs">
-    <div class="grid-stack-item-content">
+    <div class="col-12">
       <div class="card h-100">
         <div class="card-header card-jobs d-flex justify-content-between align-items-center">
           <span><i class="bi bi-clipboard-data me-2 text-primary"></i><span data-i18n="sectionJobs">Jobs</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionJobsDesc">ตามช่วงเวลา</span>)</small></span>
@@ -402,14 +370,12 @@
           <div id="pagination-jobs" class="pagination-bar"></div>
         </div>
       </div>
-    </div><!-- /grid-stack-item-content -->
-    </div><!-- /grid-stack-item jobs -->
+    </div>
 
 
     <!-- SECTION 5: ORDER QUERY -->
-    <div class="grid-stack-item" gs-x="0" gs-y="24" gs-w="12" gs-h="6" gs-id="orders">
-    <div class="grid-stack-item-content">
-      <div class="card h-100">
+    <div class="col-12">
+      <div class="card">
         <div class="card-header card-orders d-flex justify-content-between align-items-center">
           <span><i class="bi bi-search me-2" style="color:var(--accent-orders);"></i><span data-i18n="sectionOrders">Order Query</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionOrdersDesc">ค้นหา Order ด้วย Consignment / Order ID</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
@@ -460,13 +426,11 @@
           </div>
         </div>
       </div>
-    </div><!-- /grid-stack-item-content -->
-    </div><!-- /grid-stack-item orders -->
+    </div>
 
     <!-- SECTION 6: BATCH QUERY -->
-    <div class="grid-stack-item" gs-x="0" gs-y="30" gs-w="12" gs-h="6" gs-id="batches">
-    <div class="grid-stack-item-content">
-      <div class="card h-100">
+    <div class="col-12">
+      <div class="card">
         <div class="card-header card-batches d-flex justify-content-between align-items-center">
           <span><i class="bi bi-collection me-2 text-warning"></i><span data-i18n="sectionBatches">Batch Query</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionBatchesDesc">ค้นหา Batch ที่มี Order ID นี้</span>)</small></span>
           <div class="d-flex align-items-center gap-2">
@@ -499,10 +463,9 @@
           <div id="pagination-batches" class="pagination-bar"></div>
         </div>
       </div>
-    </div><!-- /grid-stack-item-content -->
-    </div><!-- /grid-stack-item batches -->
+    </div>
 
-  </div><!-- /grid-stack -->
+  </div><!-- /row -->
 </div><!-- /container -->
 
 <!-- COLUMN SELECTOR MODAL -->
@@ -556,7 +519,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack-all.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
@@ -2630,48 +2592,6 @@ renderInputHistory('storeCode');
 renderInputHistory('orderValues');
 
 ALL_TBLS.forEach(tbl => renderSection(tbl));
-
-// ─── GRIDSTACK ────────────────────────────────────────────────────────────────
-const GS_DEFAULT = [
-  { id: 'map',       x: 0, y: 0,  w: 4,  h: 9 },
-  { id: 'storeperf', x: 4, y: 0,  w: 8,  h: 9 },
-  { id: 'pending',   x: 0, y: 9,  w: 6,  h: 7 },
-  { id: 'riders',    x: 6, y: 9,  w: 6,  h: 7 },
-  { id: 'jobs',      x: 0, y: 16, w: 12, h: 8 },
-  { id: 'orders',    x: 0, y: 24, w: 12, h: 6 },
-  { id: 'batches',   x: 0, y: 30, w: 12, h: 6 },
-];
-
-const _grid = GridStack.init({
-  column: 12,
-  cellHeight: 60,
-  margin: 8,
-  animate: true,
-  float: false,
-  resizable: { handles: 'all' },
-  minRow: 1,
-});
-
-// Load saved layout
-try {
-  const saved = localStorage.getItem('gs-layout');
-  if (saved) _grid.load(JSON.parse(saved), false);
-} catch(e) { localStorage.removeItem('gs-layout'); }
-
-// Save on drag/resize stop
-_grid.on('dragstop resizestop', () => {
-  localStorage.setItem('gs-layout', JSON.stringify(_grid.save(false)));
-  if (typeof liveMap !== 'undefined' && liveMap) setTimeout(() => liveMap.invalidateSize(), 150);
-});
-
-function resetLayout() {
-  localStorage.removeItem('gs-layout');
-  GS_DEFAULT.forEach(({ id, x, y, w, h }) => {
-    const el = document.querySelector(`.grid-stack-item[gs-id="${id}"]`);
-    if (el) _grid.update(el, { x, y, w, h });
-  });
-}
-
 applyLang();
 </script>
 </body>

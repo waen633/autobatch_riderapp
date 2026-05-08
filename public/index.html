@@ -2067,7 +2067,7 @@ function renderRiderPerfTable() {
 
         // Jobs Overview
         _mkDonut(`rpc-jobs-${sc}`, {
-          labels: ['🏍️ Active','✅ Done','❌ Cancel','⏳ Other'],
+          labels: ['job_active','job_delivered','job_cancelled','job_other'],
           datasets:[{ data:[totActive,totDone,totCancel,totOther],
             backgroundColor:['#3b82f6','#22c55e','#ef4444','#cbd5e1'],
             borderWidth:2, borderColor:'#fff' }]
@@ -2116,9 +2116,9 @@ function renderRiderPerfTable() {
     { label: t('col_store'),    sk: 'storeCode',   r: r => `<span class="badge bg-secondary">${r.storeCode||'–'}</span>` },
     { label: t('col_rider'),    sk: null,          r: r => `<div class="fw-semibold">${r.riderName||'–'}</div><small class="text-muted font-monospace">${r.riderId||'–'}</small>` },
     { label: t('rp_total'),     sk: 'total',       r: r => `<span class="badge bg-secondary">${r.total}</span>` },
-    { label: '🏍️ Active',       sk: 'active',      r: r => `<span class="badge" style="background:#1d4ed8;">${r.active}</span>` },
-    { label: '✅ Done',          sk: 'completed',   r: r => `<span class="badge bg-success">${r.completed}</span>` },
-    { label: '❌ Cancel',        sk: 'cancelled',   r: r => `<span class="badge bg-danger">${r.cancelled}</span>` },
+    { label: 'job_active',       sk: 'active',      r: r => `<span class="badge" style="background:#1d4ed8;">${r.active}</span>` },
+    { label: 'job_delivered',    sk: 'completed',   r: r => `<span class="badge bg-success">${r.completed}</span>` },
+    { label: 'job_cancelled',    sk: 'cancelled',   r: r => `<span class="badge bg-danger">${r.cancelled}</span>` },
     { label: t('rp_acceptRate'),sk: 'acceptRate',  r: r => rateBar(r.acceptRate, false) },
     { label: t('rp_cancelRate'),sk: 'cancelRate',  r: r => rateBar(r.cancelRate, true) },
   ];

@@ -171,7 +171,7 @@
   <div class="row g-3">
 
     <!-- SECTION 0: LIVE MAP -->
-    <div class="col-12">
+    <div class="col-12 col-lg-4">
       <div class="card" id="live-map-card">
         <div class="card-header map-header-clickable d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-top: 3px solid #16a34a;" onclick="toggleMapCollapse()">
           <span><i class="bi bi-geo-alt-fill me-2 text-success"></i><span data-i18n="liveMap">Live Rider Map</span></span>
@@ -200,7 +200,7 @@
               </div>
               <div id="error-map" class="alert alert-danger py-1 d-none small mb-0" style="max-width:400px;"></div>
             </div>
-            <div id="live-map" style="height:310px; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
+            <div id="live-map" style="height:240px; border-radius:8px; border:1px solid #e2e8f0; background:#f1f5f9; display:flex; align-items:center; justify-content:center;">
               <div class="text-center text-muted">
                 <i class="bi bi-geo-alt" style="font-size:2rem;"></i>
                 <div class="mt-1 small" data-i18n="mapPlaceholder">กด Get + Map เพื่อโหลด</div>
@@ -211,11 +211,11 @@
       </div>
     </div>
 
-    <!-- RIDER PERFORMANCE MONITOR -->
-    <div class="col-12">
+    <!-- STORE PERFORMANCE MONITOR -->
+    <div class="col-12 col-lg-8">
       <div class="card h-100" style="border-top: 3px solid #0d9488;">
         <div class="card-header d-flex justify-content-between align-items-center py-2">
-          <span><i class="bi bi-bar-chart-fill me-2" style="color:#0d9488;"></i><span data-i18n="sectionRiderPerf">Rider Performance</span> <span class="badge ms-1" style="background:#0d9488;" id="count-riderperf">–</span></span>
+          <span><i class="bi bi-bar-chart-fill me-2" style="color:#0d9488;"></i><span data-i18n="sectionRiderPerf">Store Performance</span> <span class="badge ms-1" style="background:#0d9488;" id="count-riderperf">–</span></span>
           <div class="d-flex align-items-center gap-2">
             <button class="btn btn-outline-secondary btn-sm active" id="rp-view-ring" onclick="setRpView('ring')"><i class="bi bi-circle-half"></i></button>
             <button class="btn btn-outline-secondary btn-sm" id="rp-view-table" onclick="setRpView('table')"><i class="bi bi-table"></i></button>
@@ -496,14 +496,16 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
 const API_BASE = (() => {
   const l = window.location;
   return (l.protocol === 'http:' || l.protocol === 'https:') ? l.origin : 'http://localhost:3000';
 })();
 
-// ─── CHART.JS CENTER-TEXT PLUGIN ─────────────────────────────────────────────
+// ─── CHART.JS PLUGINS ────────────────────────────────────────────────────────
 if (window.Chart) {
+  if (window.ChartDataLabels) Chart.register(ChartDataLabels);
   Chart.register({
     id: 'centerText',
     beforeDraw(chart) {
@@ -1731,7 +1733,7 @@ const RIDER_PALETTE = [
   '#fb923c','#22d3ee','#4ade80','#fbbf24','#f43f5e','#818cf8'
 ];
 
-function _mkDonut(canvasId, chartData, ctOpts, legendEl) {
+function _mkDonut(canvasId, chartData, ctOpts, legendEl, dlabels) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   if (_rpCharts[canvasId]) { try { _rpCharts[canvasId].destroy(); } catch {} }
@@ -1739,31 +1741,34 @@ function _mkDonut(canvasId, chartData, ctOpts, legendEl) {
     type: 'doughnut',
     data: chartData,
     options: {
-      cutout: '70%',
-      animation: { duration: 600 },
+      cutout: '68%',
+      animation: { duration: 700 },
+      layout: { padding: 4 },
       plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false },   // stats shown inline — no hover needed
-        centerText: ctOpts
+        legend:     { display: false },
+        tooltip:    { enabled: false },
+        centerText: ctOpts,
+        datalabels: dlabels || { display: false }
       }
     }
   });
-  // always-visible stats legend
+  // chip-style always-visible legend
   if (legendEl) {
     const total = chartData.datasets[0].data.reduce((a,b)=>a+b,0);
-    legendEl.innerHTML = chartData.labels.map((lbl, i) => {
-      const val = chartData.datasets[0].data[i];
-      if (val === 0) return '';
-      const pct = total ? ((val/total)*100).toFixed(1) : '0.0';
-      const col = Array.isArray(chartData.datasets[0].backgroundColor)
-        ? chartData.datasets[0].backgroundColor[i] : chartData.datasets[0].backgroundColor;
-      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f1f5f9;">
-        <span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0;"></span>
-        <span style="font-size:.75rem;color:#334155;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${lbl}">${lbl}</span>
-        <span style="font-size:.78rem;font-weight:700;color:#1e293b;flex-shrink:0;">${val}</span>
-        <span style="font-size:.72rem;color:#94a3b8;min-width:38px;text-align:right;">${pct}%</span>
-      </div>`;
-    }).filter(Boolean).join('');
+    legendEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;">' +
+      chartData.labels.map((lbl, i) => {
+        const val = chartData.datasets[0].data[i];
+        if (val === 0) return '';
+        const pct = total ? ((val/total)*100).toFixed(1) : '0.0';
+        const col = Array.isArray(chartData.datasets[0].backgroundColor)
+          ? chartData.datasets[0].backgroundColor[i] : chartData.datasets[0].backgroundColor;
+        return `<span style="display:inline-flex;align-items:center;gap:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:3px 9px;font-size:.72rem;">
+          <span style="width:8px;height:8px;border-radius:2px;background:${col};flex-shrink:0;"></span>
+          <span style="color:#64748b;">${lbl}</span>
+          <b style="color:#0f172a;">${val}</b>
+          <span style="color:#94a3b8;">${pct}%</span>
+        </span>`;
+      }).filter(Boolean).join('') + '</div>';
   }
 }
 
@@ -1900,7 +1905,27 @@ function renderRiderPerfTable() {
     const byStore = {};
     sorted.forEach(r => { const sc = r.storeCode||'–'; if(!byStore[sc]) byStore[sc]=[]; byStore[sc].push(r); });
 
-    const SZ = 170;
+    const SZ = 185;
+    // datalabels config: % inside each slice
+    const DL_JOBS = {
+      display: ctx => { const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return t>0 && ctx.dataset.data[ctx.dataIndex]/t > 0.04; },
+      color: '#fff', font: { size: 11, weight: 'bold' },
+      textShadowColor: 'rgba(0,0,0,0.35)', textShadowBlur: 4,
+      formatter: (v, ctx) => { const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return t>0 ? Math.round(v/t*100)+'%' : ''; }
+    };
+    const DL_RIDER = {
+      display: ctx => { const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return t>0 && ctx.dataset.data[ctx.dataIndex]/t > 0.05; },
+      color: '#fff', font: { size: 9.5, weight: 'bold' },
+      textShadowColor: 'rgba(0,0,0,0.35)', textShadowBlur: 3,
+      formatter: (v, ctx) => {
+        const t = ctx.dataset.data.reduce((a,b)=>a+b,0);
+        if (!t) return '';
+        const pct  = Math.round(v/t*100);
+        const name = (ctx.chart.data.labels[ctx.dataIndex]||'').split(' ')[0];
+        return pct+'%\n'+name;
+      }
+    };
+
     grid.innerHTML = Object.entries(byStore).map(([sc, riders]) => {
       const totJobs   = riders.reduce((s,r)=>s+r.total,0);
       const totActive = riders.reduce((s,r)=>s+r.active,0);
@@ -1910,35 +1935,27 @@ function renderRiderPerfTable() {
       const jId=`rpc-jobs-${sc}`, rId=`rpc-riders-${sc}`;
       const jLeg=`rpc-jleg-${sc}`, rLeg=`rpc-rleg-${sc}`;
       return `
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px 20px;margin-bottom:20px;">
-        <!-- store header -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-          <span style="font-size:.9rem;font-weight:700;color:#0d9488;background:#f0fdf9;border:1px solid #5eead4;border-radius:8px;padding:5px 14px;">
-            <i class="bi bi-shop me-1"></i>สาขา ${sc}
-          </span>
-          <span style="font-size:.82rem;color:#475569;">${riders.length} riders · ${totJobs} jobs</span>
-          <span style="font-size:.8rem;background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:3px 10px;font-weight:600;">🏍️ Active ${totActive}</span>
-          <span style="font-size:.8rem;background:#dcfce7;color:#15803d;border-radius:6px;padding:3px 10px;font-weight:600;">✅ Done ${totDone}</span>
-          <span style="font-size:.8rem;background:#fee2e2;color:#b91c1c;border-radius:6px;padding:3px 10px;font-weight:600;">❌ Cancel ${totCancel}</span>
-          ${totOther>0?`<span style="font-size:.8rem;background:#f1f5f9;color:#64748b;border-radius:6px;padding:3px 10px;">⏳ Other ${totOther}</span>`:''}
-        </div>
-        <!-- two chart cards side by side -->
-        <div style="display:grid;grid-template-columns:360px 1fr;gap:16px;">
-          <!-- Jobs donut -->
-          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-size:.82rem;font-weight:700;color:#3b82f6;margin-bottom:12px;"><i class="bi bi-clipboard-data me-1"></i>Jobs Overview</div>
-            <div style="display:flex;align-items:center;gap:20px;">
-              <canvas id="${jId}" width="${SZ}" height="${SZ}" style="flex-shrink:0;"></canvas>
-              <div id="${jLeg}" style="flex:1;min-width:0;"></div>
-            </div>
+      <div style="background:linear-gradient(145deg,#f8fafc,#f0f9ff);border:1px solid #e2e8f0;border-radius:20px;padding:18px 22px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.07);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#0f766e,#0d9488);color:#fff;border-radius:10px;padding:7px 16px;box-shadow:0 2px 8px rgba(13,148,136,.3);">
+            <i class="bi bi-shop"></i>
+            <span style="font-size:.92rem;font-weight:800;letter-spacing:.5px;">สาขา ${sc}</span>
           </div>
-          <!-- Riders donut -->
-          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-size:.82rem;font-weight:700;color:#0ea5e9;margin-bottom:12px;"><i class="bi bi-people-fill me-1"></i>Rider Share — งานต่อคน</div>
-            <div style="display:flex;align-items:flex-start;gap:20px;">
-              <canvas id="${rId}" width="${SZ}" height="${SZ}" style="flex-shrink:0;"></canvas>
-              <div id="${rLeg}" style="flex:1;min-width:0;columns:2;gap:8px;"></div>
-            </div>
+          <span style="font-size:.78rem;color:#64748b;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:4px 11px;">${riders.length} riders · ${totJobs} jobs</span>
+          <span style="font-size:.76rem;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:4px 10px;font-weight:700;border:1px solid #bfdbfe;">🏍️ ${totActive}</span>
+          <span style="font-size:.76rem;background:#dcfce7;color:#15803d;border-radius:8px;padding:4px 10px;font-weight:700;border:1px solid #bbf7d0;">✅ ${totDone}</span>
+          <span style="font-size:.76rem;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:4px 10px;font-weight:700;border:1px solid #fecaca;">❌ ${totCancel}</span>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:210px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+            <div style="font-size:.69rem;font-weight:800;color:#3b82f6;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;"><i class="bi bi-pie-chart-fill me-1"></i>Jobs Overview</div>
+            <div style="display:flex;justify-content:center;"><canvas id="${jId}" width="${SZ}" height="${SZ}"></canvas></div>
+            <div id="${jLeg}" style="margin-top:10px;"></div>
+          </div>
+          <div style="flex:1;min-width:210px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+            <div style="font-size:.69rem;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;"><i class="bi bi-people-fill me-1"></i>Rider Share</div>
+            <div style="display:flex;justify-content:center;"><canvas id="${rId}" width="${SZ}" height="${SZ}"></canvas></div>
+            <div id="${rLeg}" style="margin-top:10px;"></div>
           </div>
         </div>
       </div>`;
@@ -1953,28 +1970,41 @@ function renderRiderPerfTable() {
         const totCancel = riders.reduce((s,r)=>s+r.cancelled,0);
         const totOther  = Math.max(0, totJobs - totActive - totDone - totCancel);
 
-        const jData = {
+        // Jobs Overview
+        _mkDonut(`rpc-jobs-${sc}`, {
           labels: ['🏍️ Active','✅ Done','❌ Cancel','⏳ Other'],
           datasets:[{ data:[totActive,totDone,totCancel,totOther],
-            backgroundColor:['#3b82f6','#22c55e','#ef4444','#e2e8f0'],
-            borderWidth:3, borderColor:'#fff', hoverOffset:4 }]
-        };
-        _mkDonut(`rpc-jobs-${sc}`, jData,
-          { line1:String(totJobs), line2:'Total Jobs', color1:'#1e293b', color2:'#94a3b8', size1:22, size2:11 },
-          document.getElementById(`rpc-jleg-${sc}`)
-        );
+            backgroundColor:['#3b82f6','#22c55e','#ef4444','#cbd5e1'],
+            borderWidth:2, borderColor:'#fff' }]
+        }, { line1:String(totJobs), line2:'Total Jobs', color1:'#1e293b', color2:'#94a3b8', size1:26, size2:11 },
+        document.getElementById(`rpc-jleg-${sc}`), DL_JOBS);
 
+        // Rider Share
         const names = riders.map(r => (r.riderName||'–').split(' ').slice(0,2).join(' '));
-        const rData = {
+        _mkDonut(`rpc-riders-${sc}`, {
           labels: names,
-          datasets:[{ data:riders.map(r=>r.total),
-            backgroundColor:riders.map((_,i)=>RIDER_PALETTE[i%RIDER_PALETTE.length]),
-            borderWidth:3, borderColor:'#fff', hoverOffset:4 }]
-        };
-        _mkDonut(`rpc-riders-${sc}`, rData,
-          { line1:String(riders.length), line2:'Riders', color1:'#1e293b', color2:'#94a3b8', size1:22, size2:11 },
-          document.getElementById(`rpc-rleg-${sc}`)
-        );
+          datasets:[{ data: riders.map(r=>r.total),
+            backgroundColor: riders.map((_,i)=>RIDER_PALETTE[i%RIDER_PALETTE.length]),
+            borderWidth:2, borderColor:'#fff' }]
+        }, { line1:String(riders.length), line2:'Riders', color1:'#1e293b', color2:'#94a3b8', size1:26, size2:11 },
+        null, DL_RIDER);
+
+        // Compact rider legend below rider donut
+        const rLegEl = document.getElementById(`rpc-rleg-${sc}`);
+        if (rLegEl) {
+          rLegEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;">' +
+            riders.map((r, i) => {
+              const col  = RIDER_PALETTE[i%RIDER_PALETTE.length];
+              const name = (r.riderName||'–').split(' ')[0];
+              const pct  = totJobs > 0 ? ((r.total/totJobs)*100).toFixed(0) : 0;
+              return `<div style="display:flex;align-items:center;gap:5px;min-width:0;">
+                <span style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;"></span>
+                <span style="font-size:.68rem;color:#334155;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;" title="${r.riderName}">${name}</span>
+                <span style="font-size:.7rem;font-weight:700;color:#0f172a;flex-shrink:0;">${pct}%</span>
+                <span style="font-size:.65rem;color:#94a3b8;flex-shrink:0;">(${r.total})</span>
+              </div>`;
+            }).join('') + '</div>';
+        }
       });
     });
     return;

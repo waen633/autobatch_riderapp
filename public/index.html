@@ -1558,9 +1558,10 @@ async function fetchRiders(btn) {
   try {
     const r = await fetch(`${API_BASE}/api/riders?storeCode=${encodeURIComponent(storeCode)}`);
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
-    document.getElementById('count-riders').textContent = j.count;
-    document.getElementById('ready-count').textContent = j.readyCount;
     state.riders.data = j.data; state.riders.page = 1;
+    document.getElementById('count-riders').textContent = j.count;
+    const readyCount = (j.data || []).filter(r => r.ready_for_auto_assign && r.queue !== 'not_in_pool').length;
+    document.getElementById('ready-count').textContent = readyCount;
     renderSection('riders'); markUpdated();
   } catch(e) { setError('riders', e.message); } finally { setLoading('riders', false); }
 }

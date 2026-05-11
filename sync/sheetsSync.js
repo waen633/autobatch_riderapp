@@ -186,7 +186,6 @@ async function syncRidersToSheet() {
       await ensureSheetTab(sheets, sheetId, tabName);
 
       const rows = riders.map(r => [
-        timestamp,
         r.queue,
         r.name,
         r.username,
@@ -201,12 +200,16 @@ async function syncRidersToSheet() {
         r.mapUrl || ''
       ]);
 
+      // row 1 = updated timestamp, row 2 = headers, row 3+ = data
+      const updatedRow = [`🕐 Updated: ${timestamp}`, '', '', '', '', '', '', '', '', '', '', ''];
+      const headerRow = HEADERS.filter(h => h !== 'อัพเดตล่าสุด');
+
       await sheets.spreadsheets.values.clear({ spreadsheetId: sheetId, range: `${tabName}!A:Z` });
       await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,
         range: `${tabName}!A1`,
         valueInputOption: 'RAW',
-        requestBody: { values: [HEADERS, ...rows] }
+        requestBody: { values: [updatedRow, headerRow, ...rows] }
       });
 
       totalRows += rows.length;
@@ -224,9 +227,24 @@ function startSyncScheduler() {
     console.log('[Sheet Sync] disabled — SYNC_STORE_CODES or GOOGLE_SHEET_ID not set');
     return;
   }
+
+  // รันทันทีตอน start
   syncRidersToSheet();
-  setInterval(syncRidersToSheet, 60 * 60 * 1000);
-  console.log('[Sheet Sync] scheduler started — every 1 hour');
+
+  // รอจนถึง :00 นาทีถัดไป แล้วค่อย setInterval ทุก 1 ชม.
+  const now = new Date();
+  const msUntilNextHour =
+    (60 - now.getMinutes()) * 60 * 1000
+    - now.getSeconds() * 1000
+    - now.getMilliseconds();
+
+  const nextHour = new Date(now.getTime() + msUntilNextHour);
+  console.log(`[Sheet Sync] scheduler started — next sync at ${nextHour.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })} (ทุก :00)`);
+
+  setTimeout(() => {
+    syncRidersToSheet();
+    setInterval(syncRidersToSheet, 60 * 60 * 1000);
+  }, msUntilNextHour);
 }
 
 module.exports = { startSyncScheduler };

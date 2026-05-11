@@ -11,6 +11,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mongodb": "^6.7.0",
-    "polyline": "^0.2.0"
+    "polyline": "^0.2.0",
+    "tencentcloud-sdk-nodejs-cls": "^4.1.228"
   }
 }

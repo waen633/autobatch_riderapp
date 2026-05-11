@@ -45,9 +45,10 @@
 ## 🛠️ Tech Stack
 
 - **Backend**: Node.js + Express.js
-- **Database**: MongoDB (`4pl-oms`, `4pl-fleet`, `lastmile`)
+- **Database**: MongoDB (`4pl-oms`, `4pl-fleet`, `lastmile`, `4pl-address-and-zoning`)
 - **Frontend**: HTML / CSS / JavaScript (Vanilla) + **Leaflet.js** (Maps) + **Chart.js v4** (Donuts)
-- **Libraries**: Bootstrap 5, flatpickr, chartjs-plugin-datalabels
+- **Libraries**: Bootstrap 5, flatpickr, chartjs-plugin-datalabels, googleapis
+- **Auto-sync**: Google Sheets API — push rider queue ทุก 1 ชม. ตรง :00
 
 ---
 
@@ -65,10 +66,28 @@ npm install
 ```
 
 ### 3. สร้างไฟล์ `.env`
-สร้างไฟล์ `.env` ที่ root ของโปรเจค แล้วใส่:
+copy จาก `.env.example` แล้วใส่ค่าจริง:
+```bash
+cp .env.example .env
+```
+
 ```env
-MONGO_URI=mongodb+srv://your-username:your-password@your-cluster.mongodb.net/your-db
-PORT=3000
+# MongoDB
+MONGO_URI=mongodb://user:pass@host:27017/...
+
+# Tencent CLS (job diagnostics)
+CLS_SECRET_ID=...
+CLS_SECRET_KEY=...
+CLS_REGION=ap-singapore
+CLS_TOPIC_NAME=allnow-prod-log
+CLS_TOPIC_ID=...
+
+# Google Sheets Auto-sync
+SYNC_STORE_CODES=1104,5022,6403
+GOOGLE_SHEET_ID=...
+SYNC_SHEET_NAME=rider_queue
+GOOGLE_SERVICE_ACCOUNT_EMAIL=...@....iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
 > ⚠️ **สำคัญ**: ไฟล์ `.env` จะไม่ถูก push ขึ้น GitHub เพื่อความปลอดภัย ต้องสร้างเองทุกเครื่อง
@@ -91,11 +110,25 @@ pm2 start server.js --name dashboard
 ```
 autobatch_riderapp/
 ├── public/
-│   ├── index.html          # Frontend Dashboard หลัก
-│   └── route-viewer.html   # ระบบวาดแผนที่เส้นทาง (Leaflet)
-├── server.js               # Backend API (Express)
+│   ├── index.html              # Frontend Dashboard หลัก
+│   └── route-viewer.html       # ระบบวาดแผนที่เส้นทาง (Leaflet)
+├── lib/
+│   ├── db.js                   # MongoDB client singleton
+│   ├── helpers.js              # safeStr, splitCodes
+│   └── eligibility.js          # evalEligibility, buildMapUrl
+├── routes/
+│   ├── pending.js              # GET /api/pending
+│   ├── jobs.js                 # GET /api/jobs, stuck, job-route, jobs-km
+│   ├── orders.js               # GET /api/orders, batches
+│   ├── riders.js               # GET /api/riders, live
+│   ├── performance.js          # GET /api/rider-performance
+│   └── diagnostics.js          # GET /api/job-diagnostics (Tencent CLS)
+├── sync/
+│   └── sheetsSync.js           # Auto-sync rider queue → Google Sheets ทุก 1 ชม.
+├── server.js                   # Express setup + mount routes
 ├── package.json
-├── .env                    # ⚠️ ต้องสร้างเอง (ไม่อยู่ใน repo)
+├── .env.example                # Template env vars
+├── .env                        # ⚠️ ต้องสร้างเอง (ไม่อยู่ใน repo)
 └── README.md
 ```
 
@@ -107,12 +140,23 @@ autobatch_riderapp/
 |--------|----------|-------------|
 | GET | `/api/pending` | ดึง Pending Orders |
 | GET | `/api/jobs` | ดึง Jobs ตามช่วงเวลา |
-| GET | `/api/riders` | ดึงสถานะ Rider Pool |
+| GET | `/api/stuck` | ดึง Stuck Jobs |
+| GET | `/api/job-route` | ดึง Route ของ Job |
+| GET | `/api/jobs-km` | ดึงระยะทาง (km) ของ Job |
+| GET | `/api/riders` | ดึงสถานะ Rider Pool + Eligibility |
 | GET | `/api/live` | ดึงตำแหน่ง Rider + Store สำหรับ Live Map |
-| GET | `/api/riderperf` | ดึงข้อมูล Store Performance (Jobs + Workload Share per Rider) |
+| GET | `/api/rider-performance` | ดึงข้อมูล Store Performance (Jobs + Workload Share per Rider) |
 | GET | `/api/job-diagnostics` | ดึง Auto-Assign Diagnostic log จาก Tencent CLS (`?jobId=`, `?hours=`) |
 | GET | `/api/orders` | ค้นหา Order |
 | GET | `/api/batches` | ค้นหา Batch |
+
+## 📊 Google Sheets Auto-sync
+
+ระบบ push ข้อมูล Rider Queue ขึ้น Google Sheets อัตโนมัติ **ทุก 1 ชั่วโมงที่ :00**
+
+- แยก tab ต่อ Store (`Store 1104`, `Store 5022`, `Store 6403`)
+- แสดง `🕐 Updated:` timestamp ที่ row บนสุดของแต่ละ tab
+- Columns: ลำดับคิว, ชื่อ Rider, พร้อม Auto-Assign, ไม่โดน Ban, ไม่มีงานในมือ, ไม่ได้พัก, Job ปัจจุบัน, สถานะ Job, แผนที่
 
 ---
 
@@ -136,6 +180,7 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 1.5.0 | **Refactor + Google Sheets Sync**: แยก `server.js` เป็น `lib/`, `routes/`, `sync/` — เพิ่ม `sync/sheetsSync.js` push rider queue ขึ้น Google Sheets แยก tab ต่อ Store ทุก 1 ชม. ตรง :00 |
 | 1.4.0 | เพิ่ม **Auto-Assign Diagnostic**: ปุ่ม 📋 ใน column SEE ROUTE เปิด modal วิเคราะห์รอบ scan ทั้งหมดของ job, แสดงสถานะ rider แต่ละคน (not_in_pool / offline / shift_inactive / on_break), แสดงชื่อ rider ที่ assigned สำเร็จ (ดึงจาก DB), pagination 10 รอบ/หน้า พร้อม dropdown เลือกหน้า + ปุ่มหน้าแรก/สุดท้าย; เพิ่ม API `/api/job-diagnostics` (Tencent CLS); install `tencentcloud-sdk-nodejs-cls` |
 | 1.3.0 | เพิ่ม **Store Performance**: Donut 2 ชุดต่อสาขา (Jobs Overview + Workload Share), layout Map 1/3 / Store Perf 2/3, pizza hover effect, collapse/expand ต่อสาขา; เพิ่ม **Auto-Refresh** dropdown 4 sections; Date picker reset ล้างวันได้อิสระ + 7-day max cap; แก้ Rider name ตัด prefix (LT)/(SVD); เปลี่ยน label เป็น job status จริง |
 | 1.2.0 | เพิ่ม API `/api/riderperf`; Rider Performance table แยกตามสาขา; แสดง Accept Rate / Cancel Rate bar |

@@ -379,6 +379,12 @@
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-primary btn-sm" onclick="fetchJobs(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getJobs">Get Jobs</span></button>
             <button class="btn btn-outline-success btn-sm" onclick="exportJobsCSV()"><i class="bi bi-filetype-csv me-1"></i><span data-i18n="exportCsv">Export CSV</span></button>
+            <select id="ar-sel-jobs" class="form-select form-select-sm" style="width:auto;font-size:.72rem;cursor:pointer;" onchange="setAutoRefresh('jobs',+this.value)" title="Auto-refresh Jobs">
+              <option value="0">⏱ ปิด Auto-refresh</option>
+              <option value="5">🔄 ทุก 5 นาที / 5 min</option>
+              <option value="10">🔄 ทุก 10 นาที / 10 min</option>
+              <option value="30">🔄 ทุก 30 นาที / 30 min</option>
+            </select>
             <select id="jobs-status-filter" class="form-select form-select-sm" style="width:150px" onchange="state.jobs.statusFilter=this.value;state.jobs.page=1;renderSection('jobs')">
               <option value="" data-i18n="allStatus">All Status</option>
               <option value="job_created">job_created</option>
@@ -1842,6 +1848,7 @@ function setAutoRefresh(section, mins) {
     pending:   () => fetchPending(null),
     riders:    () => fetchRiders(null),
     riderperf: () => fetchRiderPerf(null),
+    jobs:      () => fetchJobs(null),
   };
   if (!fns[section]) return;
   _arTimers[section] = setInterval(fns[section], mins * 60000);

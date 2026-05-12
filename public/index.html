@@ -142,6 +142,76 @@
     .grid-stack-item:hover > .ui-resizable-w,
     .grid-stack-item:hover > .ui-resizable-n,
     .grid-stack-item:hover > .ui-resizable-s { opacity: 0.5; }
+
+    /* ── Mobile / Tablet Responsive ─────────────────────────────── */
+    @media (max-width: 767px) {
+      body { font-size: 12.5px; }
+
+      /* Navbar: stack on very small */
+      .navbar-custom .container-fluid { flex-wrap: wrap; gap: .4rem; }
+      .navbar-brand-text { font-size: 1rem; }
+
+      /* Filter bar: stack all items */
+      .card-body .row.g-2 > [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
+      .card-body .row.g-2 .btn-group { width: 100%; }
+      .card-body .row.g-2 .btn-group .btn { flex: 1; }
+      #storeCode { width: 100% !important; }
+
+      /* Card headers: allow wrap */
+      .card-header { flex-wrap: wrap !important; row-gap: .4rem; }
+      .card-header > div.d-flex { flex-wrap: wrap !important; gap: .3rem !important; }
+
+      /* Dot legend in map header: hide on mobile */
+      .card-header .d-flex > span[style*="0.71rem"] { display: none !important; }
+      #store-legend { display: none !important; }
+
+      /* Tables: horizontal scroll */
+      .scroll-table { overflow-x: auto; max-height: 260px !important; }
+      .table { min-width: 600px; }
+
+      /* Override GridStack to normal flow on mobile */
+      .grid-stack { display: flex !important; flex-direction: column !important; }
+      .grid-stack > .grid-stack-item {
+        position: relative !important;
+        width: 100% !important;
+        left: 0 !important;
+        top: auto !important;
+        height: auto !important;
+        transform: none !important;
+        margin-bottom: 8px;
+      }
+      .grid-stack-item-content {
+        position: relative !important;
+        inset: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      .grid-stack-item-content > .card {
+        height: auto !important;
+        min-height: 280px;
+      }
+      /* Map takes natural height on mobile */
+      #live-map { height: 240px !important; flex: none !important; }
+      .card-fullscreen { top: 1vh !important; left: 1vw !important; width: 98vw !important; height: 98vh !important; }
+
+      /* Performance ring: single column */
+      #rp-ring-grid { display: block !important; }
+      #rp-ring-grid > div { width: 100% !important; }
+
+      /* Buttons in table cells: smaller */
+      .table .btn-sm { padding: .15rem .35rem; font-size: .72rem; }
+      .status-badge { font-size: .65rem; }
+
+      /* Auto-refresh selects: full width */
+      select[id^="ar-sel-"] { width: 100% !important; }
+    }
+
+    @media (min-width: 768px) and (max-width: 1024px) {
+      /* Tablet: keep GridStack but reduce cell height */
+      .card-header { flex-wrap: wrap !important; row-gap: .3rem; }
+      .scroll-table { overflow-x: auto; }
+      .table { min-width: 560px; }
+    }
   </style>
 </head>
 <body>
@@ -673,7 +743,8 @@ const i18n = {
     col_roStatus: 'RO Status', col_roStart: 'RO เริ่ม', col_roEnd: 'RO สิ้นสุด',
     sectionRiderPerf: 'Rider Performance', sectionRiderPerfDesc: '% รับงาน / % ยกเลิก ตามช่วงเวลา',
     getRiderPerf: 'Get Performance', pressGetPerf: 'กด Get Performance เพื่อดูสถิติ Rider',
-    rp_total: 'งาน', rp_accepted: 'รับ', rp_cancelled: 'ยกเลิก', rp_acceptRate: '% รับ', rp_cancelRate: '% ยกเลิก'
+    rp_total: 'งาน', rp_accepted: 'รับ', rp_cancelled: 'ยกเลิก', rp_acceptRate: '% รับ', rp_cancelRate: '% ยกเลิก',
+    col_checkConfirm: 'เช็ค Log', confirmFound: 'ยืนยันแล้ว (Lotus\'s)', confirmNotFound: 'ไม่พบ Log', confirmError: 'Error', confirmChecking: 'กำลังเช็ค…'
   },
   en: {
     navTitle: 'Lotus Auto-Batching Dashboard',
@@ -724,7 +795,8 @@ const i18n = {
     col_roStatus: 'RO Status', col_roStart: 'RO Start', col_roEnd: 'RO End',
     sectionRiderPerf: 'Rider Performance', sectionRiderPerfDesc: '% Accept / % Cancel by Date Range',
     getRiderPerf: 'Get Performance', pressGetPerf: 'Click Get Performance to load rider stats',
-    rp_total: 'Jobs', rp_accepted: 'Accepted', rp_cancelled: 'Cancelled', rp_acceptRate: '% Accept', rp_cancelRate: '% Cancel'
+    rp_total: 'Jobs', rp_accepted: 'Accepted', rp_cancelled: 'Cancelled', rp_acceptRate: '% Accept', rp_cancelRate: '% Cancel',
+    col_checkConfirm: 'Check Log', confirmFound: 'Already confirmed Lotus\'s', confirmNotFound: 'No log found', confirmError: 'Error', confirmChecking: 'Checking…'
   }
 };
 function t(key) { return i18n[lang][key] || key; }
@@ -946,7 +1018,22 @@ const COLS = {
       if (d.codAmount) parts.push(`<small class="text-danger fw-bold">฿${d.codAmount}</small>`);
       return parts.join(' ') || '–';
     }},
-    { id:'itemsConfirm',      lk:'col_itemsConfirm', sk:'isOrderItemsConfirmation', r: d => (d.isOrderItemsConfirmation === true || d.isOrderItemsConfirmation === 'true') ? '<span class="badge bg-success">True</span>' : ((d.isOrderItemsConfirmation === false || d.isOrderItemsConfirmation === 'false') ? '<span class="badge bg-danger">False</span>' : '–') },
+    { id:'itemsConfirm', lk:'col_itemsConfirm', sk:'isOrderItemsConfirmation', r: d => {
+      const val = d.isOrderItemsConfirmation;
+      const badge = (val === true || val === 'true')
+        ? '<span class="badge bg-success">True</span>'
+        : (val === false || val === 'false')
+          ? '<span class="badge bg-danger">False</span>'
+          : '<span class="text-muted">–</span>';
+      const oid = d.internalOrderId || d.orderId || '';
+      if (!oid) return badge;
+      const safeId = oid.replace(/[^a-zA-Z0-9]/g, '-');
+      return `<div class="d-flex align-items-center gap-1 flex-wrap">
+        ${badge}
+        <button class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:.72rem;white-space:nowrap;" onclick="event.stopPropagation();checkOrderConfirm('${oid}','confirm-res-${safeId}',this)"><i class="bi bi-cloud-check me-1"></i>${t('col_checkConfirm')}</button>
+        <span id="confirm-res-${safeId}"></span>
+      </div>`;
+    }},
     { id:'currentOrderStatus',lk:'col_status',       sk:'currentOrderStatus',    r: d =>
       d.isNotFound
         ? `<span class="badge bg-secondary opacity-50">No data</span>`
@@ -1912,6 +1999,28 @@ async function fetchJobs(btn) {
 
 
 
+async function checkOrderConfirm(orderId, resultElId, btn) {
+  const resultEl = document.getElementById(resultElId);
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" style="width:.75rem;height:.75rem;"></span> ${t('confirmChecking')}`;
+  if (resultEl) resultEl.innerHTML = '';
+  try {
+    const r = await fetch(`${API_BASE}/api/order-confirm-check?orderId=${encodeURIComponent(orderId)}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    if (resultEl) {
+      resultEl.innerHTML = data.found
+        ? `<span class="badge bg-success" style="font-size:.7rem;">${t('confirmFound')}</span>`
+        : `<span class="badge bg-secondary" style="font-size:.7rem;">${t('confirmNotFound')}</span>`;
+    }
+  } catch(e) {
+    if (resultEl) resultEl.innerHTML = `<span class="badge bg-danger" style="font-size:.7rem;">${t('confirmError')}: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="bi bi-cloud-check me-1"></i>${t('col_checkConfirm')}`;
+  }
+}
+
 async function fetchOrders(btn) {
   applyCooldown(btn);
   const type = document.querySelector('input[name="orderType"]:checked').value;
@@ -2834,17 +2943,20 @@ const GS_DEFAULT = [
   { id: 'batches',   x: 0, y: 30, w: 12, h: 6 },
 ];
 
+const _isMobile = window.innerWidth < 768;
 const _grid = GridStack.init({
-  column: 12,
-  cellHeight: 60,
+  column: _isMobile ? 1 : 12,
+  cellHeight: _isMobile ? 'auto' : 60,
   margin: 8,
-  animate: true,
+  animate: !_isMobile,
   float: false,
   handle: '.gs-drag-handle',
   handleClass: 'gs-drag-handle',
   noDragClass: 'no-drag',
-  resizable: { handles: 'all' },
+  resizable: _isMobile ? false : { handles: 'all' },
+  draggable: _isMobile ? false : undefined,
   minRow: 1,
+  staticGrid: _isMobile,
 });
 
 // Load saved layout

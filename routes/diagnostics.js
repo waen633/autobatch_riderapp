@@ -115,4 +115,36 @@ router.get('/job-diagnostics', async (req, res) => {
   }
 });
 
+router.get('/order-confirm-check', async (req, res) => {
+  try {
+    const { orderId } = req.query;
+    if (!orderId) return res.status(400).json({ error: 'orderId required' });
+    if (!process.env.CLS_SECRET_ID) return res.status(503).json({ error: 'CLS not configured' });
+
+    const days30Ms = 30 * 24 * 3600 * 1000;
+    const now = Date.now();
+
+    const [client, topicId] = await Promise.all([
+      Promise.resolve(getClsClient()),
+      getClsTopicId(),
+    ]);
+
+    const result = await client.SearchLog({
+      TopicId: topicId,
+      From: now - days30Ms,
+      To: now,
+      Query: `event:"customer_update_order_items" AND orderId:"${orderId}"`,
+      Limit: 1,
+      Sort: 'desc',
+      SyntaxRule: 1,
+    });
+
+    const found = (result.Results || []).length > 0;
+    res.json({ orderId, found, count: result.Results?.length ?? 0 });
+  } catch (e) {
+    console.error('[/api/order-confirm-check]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

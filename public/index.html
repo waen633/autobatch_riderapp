@@ -1891,28 +1891,53 @@ function _fmtDuration(ms) {
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
+// Milestone statuses ที่ Allnow tracking แสดง (เรียงตาม flow)
+const TRACKING_MILESTONES = [
+  'ORDER_CREATED',
+  'DISPATCHER.RECEIVED.PENDING',
+  'ACCEPT_TRIP.ACCEPT_TRIP.DOING',
+  'ONDEMAND_PICKUP.SET_OFF.DOING',
+  'ONDEMAND_PICKUP.PICKED_UP.DOING',
+  'ONDEMAND_DELIVERY_WITH_COD.SET_OFF.DOING',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.SET_OFF.DOING',
+  'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE',
+  'DELIVERED',
+  'ORDER_CANCELLED',
+  'COMBINE_CANCELLED',
+  'ORDER_FAILED',
+  'ORDER_REJECTED',
+  'NO_DRIVER',
+  'DRIVER_REJECTED',
+  'PARTIAL_DELIVERED',
+];
+const TRACKING_MILESTONE_SET = new Set(TRACKING_MILESTONES);
+
 function renderTrackingView(oid) {
   const d = state.orders.data.find(o => o._id === oid);
   if (!d) return '<em class="text-muted">ไม่มีข้อมูล</em>';
-  const history = d.statusHistory || [];
-  const last = history.length - 1;
+
+  // Filter เฉพาะ milestone statuses
+  const history = (d.statusHistory || []).filter(s => TRACKING_MILESTONE_SET.has(s.status));
   if (!history.length) return '<em class="text-muted">ไม่มีข้อมูล</em>';
 
-  const isDoneStatus = s => ['DELIVERED','ORDER_CANCELLED','ORDER_FAILED','COMBINE_CANCELLED',
-    'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE','ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE'].includes(s);
+  const last = history.length - 1;
+  const DONE_SET = new Set(['DELIVERED','ORDER_CANCELLED','ORDER_FAILED','COMBINE_CANCELLED','ORDER_REJECTED',
+    'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE','ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE']);
 
   return history.map((s, i) => {
-    const name  = TRACKING_NAME[s.status] || s.status;
-    const desc  = TRACKING_DESC[s.status] || '';
-    const color = _trackingDotColor(s.status);
-    const cons  = d.consignment || d.internalOrderId || '';
-    const label = cons ? `${name} (${cons})` : name;
-    const isDone = isDoneStatus(s.status);
+    const name   = TRACKING_NAME[s.status] || s.status;
+    const desc   = TRACKING_DESC[s.status] || '';
+    const color  = _trackingDotColor(s.status);
+    const taskId = s.taskId || null;
+    // ORDER_CREATED ไม่ต้องแสดง taskId
+    const label  = (taskId && s.status !== 'ORDER_CREATED') ? `${name} (${taskId})` : name;
+    const isDone = DONE_SET.has(s.status);
 
     let durMs = null;
-    if (i < last)       durMs = new Date(history[i+1].updatedAt) - new Date(s.updatedAt);
-    else if (!isDone)   durMs = Date.now()                       - new Date(s.updatedAt);
-    else                durMs = 0;
+    if (i < last)     durMs = new Date(history[i+1].updatedAt) - new Date(s.updatedAt);
+    else if (!isDone) durMs = Date.now()                       - new Date(s.updatedAt);
+    else              durMs = 0;
 
     return `
       <div class="d-flex gap-3 mb-3">

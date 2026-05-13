@@ -1334,10 +1334,22 @@ function jobBadge(s) {
 
 function orderStatusBadge(s) {
   if (!s) return '–';
-  const map = { DELIVERED:'success', ORDER_CANCELLED:'danger',
-    ACCEPT_TRIP:'primary', DISPATCHING:'warning text-dark', ORDER_CREATED:'secondary',
-    ORDER_FAILED:'danger', NO_DRIVER:'warning text-dark' };
-  return `<span class="badge bg-${map[s]||'secondary'} status-badge">${s}</span>`;
+  // สีตาม tracking name
+  const name = TRACKING_NAME[s] || null;
+  let cls = 'secondary';
+  if (name === 'Delivered')                                           cls = 'success';
+  else if (name === 'Delivering')                                     cls = 'primary';
+  else if (name === 'Picked up')                                      cls = 'info text-dark';
+  else if (name === 'Picking up')                                     cls = 'warning text-dark';
+  else if (name === 'Assigned')                                       cls = 'primary';
+  else if (name === 'In progress')                                    cls = 'secondary';
+  else if (name === 'Created')                                        cls = 'light text-dark border';
+  else if (name && (name.includes('Cancel') || name === 'Failed' ||
+           name === 'Rejected' || name === 'No driver found' ||
+           name === 'Driver rejected'))                               cls = 'danger';
+  // label: friendly name ถ้า map ได้ ไม่งั้นใช้ raw status
+  const label = name || s;
+  return `<span class="badge bg-${cls} status-badge" title="${s}">${label}</span>`;
 }
 
 function markUpdated() {

@@ -2,7 +2,7 @@
 
 > Dashboard สำหรับ monitor และจัดการกระบวนการ Auto-Batching, Rider Assignment และ Order Status แบบ Real-time
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.x-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -21,6 +21,7 @@
 | 📊 **Store Performance** | Donut chart สรุปงานและ Workload Share ต่อ Rider แยกตามสาขา พร้อม collapse/expand |
 | 🔄 **Auto-Refresh** | ตั้งเวลา refresh อัตโนมัติแยกต่อหัวข้อ (Off / 5 / 10 / 30 นาที) |
 | 🔎 **Auto-Assign Diagnostic** | วิเคราะห์ทุกรอบ scan ของ job ว่าทำไมถึง assign ไม่ได้ — แสดงสถานะ rider แต่ละคน, ชื่อ rider ที่ assigned สำเร็จ, พร้อม pagination 10 รอบ/หน้า |
+| ☕ **Break Log** | กดไอคอนกาแฟบน Rider → Modal แสดงประวัติ break ตาม date range ที่เลือก (จำนวนครั้ง, Start/End, Duration, Created At) |
 | 🛠️ **UI/UX** | Fullscreen, collapse, Raw Data expand, Dual-language (TH/EN) |
 
 ---
@@ -115,12 +116,13 @@ autobatch_riderapp/
 ├── lib/
 │   ├── db.js                   # MongoDB client singleton
 │   ├── helpers.js              # safeStr, splitCodes
-│   └── eligibility.js          # evalEligibility, buildMapUrl
+│   ├── eligibility.js          # evalEligibility, buildMapUrl
+│   └── cls.js                  # Tencent CLS client (getClsClient, getClsTopicId)
 ├── routes/
 │   ├── pending.js              # GET /api/pending
 │   ├── jobs.js                 # GET /api/jobs, stuck, job-route, jobs-km
 │   ├── orders.js               # GET /api/orders, batches
-│   ├── riders.js               # GET /api/riders, live
+│   ├── riders.js               # GET /api/riders, live, rider-breaks
 │   ├── performance.js          # GET /api/rider-performance
 │   └── diagnostics.js          # GET /api/job-diagnostics (Tencent CLS)
 ├── sync/
@@ -149,6 +151,7 @@ autobatch_riderapp/
 | GET | `/api/job-diagnostics` | ดึง Auto-Assign Diagnostic log จาก Tencent CLS (`?jobId=`, `?hours=`) |
 | GET | `/api/orders` | ค้นหา Order |
 | GET | `/api/batches` | ค้นหา Batch |
+| GET | `/api/rider-breaks` | ดึงประวัติ Break ของ Rider (`?userId=`, `?from=`, `?to=`) จาก `4pl-fleet.riderbreaklogs` |
 
 ## 📊 Google Sheets Auto-sync
 
@@ -180,6 +183,7 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 1.6.0 | เพิ่ม **Break Log Modal**: กดไอคอน ☕ บน Rider → Modal แสดงประวัติ break ตาม date range ที่เลือก (จำนวนครั้ง, Start/End, Duration, Created At); เพิ่ม API `/api/rider-breaks` ดึงข้อมูลจาก `4pl-fleet.riderbreaklogs`; เพิ่ม `lib/cls.js` Tencent CLS client |
 | 1.5.0 | **Refactor + Google Sheets Sync**: แยก `server.js` เป็น `lib/`, `routes/`, `sync/` — เพิ่ม `sync/sheetsSync.js` push rider queue ขึ้น Google Sheets แยก tab ต่อ Store ทุก 1 ชม. ตรง :00 |
 | 1.4.0 | เพิ่ม **Auto-Assign Diagnostic**: ปุ่ม 📋 ใน column SEE ROUTE เปิด modal วิเคราะห์รอบ scan ทั้งหมดของ job, แสดงสถานะ rider แต่ละคน (not_in_pool / offline / shift_inactive / on_break), แสดงชื่อ rider ที่ assigned สำเร็จ (ดึงจาก DB), pagination 10 รอบ/หน้า พร้อม dropdown เลือกหน้า + ปุ่มหน้าแรก/สุดท้าย; เพิ่ม API `/api/job-diagnostics` (Tencent CLS); install `tencentcloud-sdk-nodejs-cls` |
 | 1.3.0 | เพิ่ม **Store Performance**: Donut 2 ชุดต่อสาขา (Jobs Overview + Workload Share), layout Map 1/3 / Store Perf 2/3, pizza hover effect, collapse/expand ต่อสาขา; เพิ่ม **Auto-Refresh** dropdown 4 sections; Date picker reset ล้างวันได้อิสระ + 7-day max cap; แก้ Rider name ตัด prefix (LT)/(SVD); เปลี่ยน label เป็น job status จริง |

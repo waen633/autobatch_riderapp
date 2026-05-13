@@ -87,7 +87,7 @@ router.get('/orders', async (req, res) => {
         workingType: d.metadata?.staff?.workingType || null,
         createdAt: d.createdAt || null,
         updatedAt: d.updatedAt || null,
-        statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt })),
+        statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt, taskId: s.metadata?.taskId || null })),
         rawResults
       };
     });

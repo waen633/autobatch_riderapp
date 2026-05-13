@@ -1,43 +1,9 @@
 const { Router } = require('express');
 const { ObjectId } = require('mongodb');
-const tencentcloud = require('tencentcloud-sdk-nodejs-cls');
-const ClsClient = tencentcloud.cls.v20201016.Client;
+const { getClsClient, getClsTopicId } = require('../lib/cls');
 const { getClient } = require('../lib/db');
 
 const router = Router();
-
-let _clsClient = null;
-let _clsTopicId = null;
-
-function getClsClient() {
-  if (!_clsClient) {
-    _clsClient = new ClsClient({
-      credential: {
-        secretId: process.env.CLS_SECRET_ID,
-        secretKey: process.env.CLS_SECRET_KEY,
-      },
-      region: process.env.CLS_REGION || 'ap-singapore',
-    });
-  }
-  return _clsClient;
-}
-
-async function getClsTopicId() {
-  if (_clsTopicId) return _clsTopicId;
-  if (process.env.CLS_TOPIC_ID) {
-    _clsTopicId = process.env.CLS_TOPIC_ID;
-    return _clsTopicId;
-  }
-  const client = getClsClient();
-  const res = await client.DescribeTopics({
-    Filters: [{ Key: 'topicName', Values: [process.env.CLS_TOPIC_NAME || 'allnow-prod-log'] }],
-    Limit: 10,
-  });
-  const topic = (res.Topics || []).find(t => t.TopicName === (process.env.CLS_TOPIC_NAME || 'allnow-prod-log'));
-  if (!topic) throw new Error(`CLS topic "${process.env.CLS_TOPIC_NAME}" not found`);
-  _clsTopicId = topic.TopicId;
-  return _clsTopicId;
-}
 
 router.get('/job-diagnostics', async (req, res) => {
   try {
@@ -111,38 +77,6 @@ router.get('/job-diagnostics', async (req, res) => {
     res.json({ jobId, rounds, assignedEvent });
   } catch (e) {
     console.error('[/api/job-diagnostics]', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-router.get('/order-confirm-check', async (req, res) => {
-  try {
-    const { orderId } = req.query;
-    if (!orderId) return res.status(400).json({ error: 'orderId required' });
-    if (!process.env.CLS_SECRET_ID) return res.status(503).json({ error: 'CLS not configured' });
-
-    const days30Ms = 30 * 24 * 3600 * 1000;
-    const now = Date.now();
-
-    const [client, topicId] = await Promise.all([
-      Promise.resolve(getClsClient()),
-      getClsTopicId(),
-    ]);
-
-    const result = await client.SearchLog({
-      TopicId: topicId,
-      From: now - days30Ms,
-      To: now,
-      Query: `event:"customer_update_order_items" AND orderId:"${orderId}"`,
-      Limit: 1,
-      Sort: 'desc',
-      SyntaxRule: 1,
-    });
-
-    const found = (result.Results || []).length > 0;
-    res.json({ orderId, found, count: result.Results?.length ?? 0 });
-  } catch (e) {
-    console.error('[/api/order-confirm-check]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

@@ -627,6 +627,11 @@
     <div class="modal-content">
       <div class="modal-header py-2" style="border-bottom: 1px solid var(--border-color);">
         <h6 class="modal-title" id="timelineTitle"><i class="bi bi-clock-history me-2 text-info"></i>Status Timeline</h6>
+        <div class="d-flex align-items-center gap-2 ms-auto me-2">
+          <button class="btn btn-sm btn-outline-info py-0 px-2" id="tlToggleBtn" onclick="toggleTimelineView()" title="สลับ view">
+            <i class="bi bi-arrow-left-right me-1"></i><span id="tlToggleLabel">Tracking View</span>
+          </button>
+        </div>
         <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body py-2" id="timelineBody" style="max-height:60vh;overflow-y:auto; background:#ffffff;"></div>
@@ -1716,6 +1721,9 @@ function renderRiderPerf() {
 
 // ─── STATUS TIMELINE MODAL ───────────────────────────────────────────────────
 function showTimeline(oid) {
+  _tlOid  = oid;
+  _tlMode = 'raw';
+  document.getElementById('tlToggleLabel').textContent = 'Tracking View';
   const d = state.orders.data.find(o => o._id === oid);
   if (!d) return;
   const history = d.statusHistory || [];
@@ -1775,6 +1783,169 @@ function showTimeline(oid) {
     `<i class="bi bi-clock-history me-2"></i>${d.consignment||d.internalOrderId||'Timeline'} <span class="ms-2">${orderStatusBadge(d.currentOrderStatus)}</span>`;
   document.getElementById('timelineBody').innerHTML = bodyHtml;
   new bootstrap.Modal(document.getElementById('timelineModal')).show();
+}
+
+// ─── TRACKING VIEW ───────────────────────────────────────────────────────────
+let _tlMode = 'raw';   // 'raw' | 'tracking'
+let _tlOid  = null;
+
+const TRACKING_NAME = {
+  'ORDER_CREATED':                                    'Created',
+  'ODM_CALCULATOR_START_TIME_PROCESS_INPROGRESS':     'In progress',
+  'ODM_ORDER_DISPATCHING_INPROGRESS':                 'In progress',
+  'ODM_AUTO_ASSIGN_GET_ORDER_COMPLETED':              'In progress',
+  'FINDING_DRIVER':                                   'In progress',
+  'FINDING_NEW_DRIVER':                               'In progress',
+  'CHANGE_PICKUP_TIME_CREATED':                       'In progress',
+  'ORDER_RECEIVED':                                   'Assigned',
+  'ACCEPT_TRIP.ACCEPT_TRIP.DOING':                    'Assigned',
+  'ONDEMAND_PICKUP.SET_OFF.DOING':                    'Picking up',
+  'ONDEMAND_PICKUP.CHECK_IN.DOING':                   'Picking up',
+  'ONDEMAND_PICKUP.PACKING_ITEMS.DOING':              'Picking up',
+  'ONDEMAND_PICKUP.WAITING_CONFIRM.DOING':            'Picking up',
+  'ONDEMAND_PICKUP.RECEIVED_CONFIRM.DOING':           'Picking up',
+  'ONDEMAND_PICKUP.TAKE_A_PHOTO.DOING':               'Picking up',
+  'ONDEMAND_PICKUP.POD.DOING':                        'Picking up',
+  'ONDEMAND_PICKUP.PICKED_UP.DOING':                  'Picked up',
+  'ONDEMAND_DELIVERY_WITH_COD.SET_OFF.DOING':         'Delivering',
+  'ONDEMAND_DELIVERY_WITH_COD.CHECK_IN.DOING':        'Delivering',
+  'ONDEMAND_DELIVERY_WITH_COD.TAKE_A_PHOTO.DOING':    'Delivering',
+  'ONDEMAND_DELIVERY_WITH_COD.POD.DOING':             'Delivering',
+  'ONDEMAND_DELIVERY_WITH_COD.COLLECT_CASH.DOING':    'Delivering',
+  'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DOING':       'Delivering',
+  'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE':        'Delivered',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.SET_OFF.DOING':      'Delivering',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.CHECK_IN.DOING':     'Delivering',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.TAKE_A_PHOTO.DOING': 'Delivering',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.POD.DOING':          'Delivering',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE':     'Delivered',
+  'DELIVERED':                                        'Delivered',
+  'PARTIAL_DELIVERED':                                'Partially delivered',
+  'ORDER_CANCELLED':                                  'Cancelled',
+  'COMBINE_CANCELLED':                                'Cancelled',
+  'ORDER_FAILED':                                     'Failed',
+  'ORDER_REJECTED':                                   'Rejected',
+  'DRIVER_REJECTED':                                  'Driver rejected',
+  'NO_DRIVER':                                        'No driver found',
+  'CHANGE_COURIER':                                   'Change courier',
+};
+
+const TRACKING_DESC = {
+  'ORDER_CREATED':                                    'Order was created by the customer',
+  'ODM_CALCULATOR_START_TIME_PROCESS_INPROGRESS':     'System has automatically found a driver',
+  'ODM_ORDER_DISPATCHING_INPROGRESS':                 'System has automatically found a driver',
+  'ODM_AUTO_ASSIGN_GET_ORDER_COMPLETED':              'System has automatically found a driver',
+  'FINDING_DRIVER':                                   'System is finding a driver',
+  'FINDING_NEW_DRIVER':                               'System is finding a new driver',
+  'ORDER_RECEIVED':                                   'Driver has accepted the order',
+  'ACCEPT_TRIP.ACCEPT_TRIP.DOING':                    'Driver has accepted the order',
+  'ONDEMAND_PICKUP.SET_OFF.DOING':                    'Driver is on the way to pick up the order',
+  'ONDEMAND_PICKUP.CHECK_IN.DOING':                   'Driver arrived at the store',
+  'ONDEMAND_PICKUP.PACKING_ITEMS.DOING':              'Driver is packing items',
+  'ONDEMAND_PICKUP.WAITING_CONFIRM.DOING':            'Waiting for store confirmation',
+  'ONDEMAND_PICKUP.RECEIVED_CONFIRM.DOING':           'Store confirmed the items',
+  'ONDEMAND_PICKUP.TAKE_A_PHOTO.DOING':               'Driver is taking a photo of items',
+  'ONDEMAND_PICKUP.POD.DOING':                        'Staff signed for pickup',
+  'ONDEMAND_PICKUP.PICKED_UP.DOING':                  'Driver has picked up the order',
+  'ONDEMAND_DELIVERY_WITH_COD.SET_OFF.DOING':         'Driver is on the way to deliver the order',
+  'ONDEMAND_DELIVERY_WITH_COD.CHECK_IN.DOING':        'Driver arrived at the customer',
+  'ONDEMAND_DELIVERY_WITH_COD.TAKE_A_PHOTO.DOING':    'Driver is taking a delivery photo',
+  'ONDEMAND_DELIVERY_WITH_COD.POD.DOING':             'Customer signed for delivery',
+  'ONDEMAND_DELIVERY_WITH_COD.COLLECT_CASH.DOING':    'Collecting cash from customer',
+  'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DOING':       'Recording delivery',
+  'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE':        'Driver has delivered the order',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.SET_OFF.DOING':      'Driver is on the way to deliver the order',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.CHECK_IN.DOING':     'Driver arrived at the customer',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.POD.DOING':          'Customer signed for delivery',
+  'ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE':     'Driver has delivered the order',
+  'DELIVERED':                                        'Driver has delivered the order',
+  'PARTIAL_DELIVERED':                                'Driver partially delivered the order',
+  'ORDER_CANCELLED':                                  'Order was cancelled',
+  'COMBINE_CANCELLED':                                'Order was cancelled',
+  'ORDER_FAILED':                                     'Order has failed',
+  'ORDER_REJECTED':                                   'Order was rejected',
+  'DRIVER_REJECTED':                                  'Driver rejected the order',
+  'NO_DRIVER':                                        'No driver was found for this order',
+  'CHANGE_COURIER':                                   'Courier has been changed',
+};
+
+function _trackingDotColor(status) {
+  const name = TRACKING_NAME[status] || '';
+  if (name === 'Delivered')                         return '#22c55e';
+  if (name === 'Delivering')                        return '#f97316';
+  if (name === 'Picked up')                         return '#22c55e';
+  if (name === 'Picking up')                        return '#f97316';
+  if (name === 'Assigned')                          return '#22c55e';
+  if (name === 'In progress')                       return '#a855f7';
+  if (name === 'Created')                           return '#3b82f6';
+  if (name.includes('Cancel') || name === 'Failed' || name === 'Rejected' || name === 'No driver found') return '#ef4444';
+  return '#94a3b8';
+}
+
+function _fmtDuration(ms) {
+  if (isNaN(ms) || ms < 0) return '00:00:00';
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function renderTrackingView(oid) {
+  const d = state.orders.data.find(o => o._id === oid);
+  if (!d) return '<em class="text-muted">ไม่มีข้อมูล</em>';
+  const history = d.statusHistory || [];
+  const last = history.length - 1;
+  if (!history.length) return '<em class="text-muted">ไม่มีข้อมูล</em>';
+
+  const isDoneStatus = s => ['DELIVERED','ORDER_CANCELLED','ORDER_FAILED','COMBINE_CANCELLED',
+    'ONDEMAND_DELIVERY_WITH_COD.DELIVERED.DONE','ONDEMAND_DELIVERY_WITHOUT_COD.DELIVERED.DONE'].includes(s);
+
+  return history.map((s, i) => {
+    const name  = TRACKING_NAME[s.status] || s.status;
+    const desc  = TRACKING_DESC[s.status] || '';
+    const color = _trackingDotColor(s.status);
+    const cons  = d.consignment || d.internalOrderId || '';
+    const label = cons ? `${name} (${cons})` : name;
+    const isDone = isDoneStatus(s.status);
+
+    let durMs = null;
+    if (i < last)       durMs = new Date(history[i+1].updatedAt) - new Date(s.updatedAt);
+    else if (!isDone)   durMs = Date.now()                       - new Date(s.updatedAt);
+    else                durMs = 0;
+
+    return `
+      <div class="d-flex gap-3 mb-3">
+        <div class="d-flex flex-column align-items-center" style="width:14px;flex-shrink:0;">
+          <div style="width:12px;height:12px;border-radius:50%;background:${color};margin-top:3px;flex-shrink:0;"></div>
+          ${i < last ? `<div style="width:2px;flex:1;background:#e2e8f0;min-height:24px;margin-top:2px;"></div>` : ''}
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold" style="font-size:.9rem;">${label}</div>
+          <div class="text-muted" style="font-size:.8rem;">Duration ${_fmtDuration(durMs)}</div>
+          ${desc ? `<div class="text-muted mt-1" style="font-size:.82rem;">${desc}</div>` : ''}
+          <div class="text-muted" style="font-size:.78rem;">${fmtDt(s.updatedAt)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleTimelineView() {
+  _tlMode = _tlMode === 'raw' ? 'tracking' : 'raw';
+  document.getElementById('tlToggleLabel').textContent = _tlMode === 'raw' ? 'Tracking View' : 'Raw View';
+  if (!_tlOid) return;
+  if (_tlMode === 'tracking') {
+    document.getElementById('timelineBody').innerHTML = renderTrackingView(_tlOid);
+  } else {
+    // re-render raw view
+    const d = state.orders.data.find(o => o._id === _tlOid);
+    if (d) {
+      const tmpOid = _tlOid;
+      _tlOid = null;
+      showTimeline(tmpOid);
+      _tlOid = tmpOid;
+    }
+  }
 }
 
 function showJobTimeline(jobId) {

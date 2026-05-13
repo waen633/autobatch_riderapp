@@ -211,4 +211,50 @@ router.get('/live', async (req, res) => {
   }
 });
 
+// GET /api/rider-breaks?userId=<id>&from=<datetime>&to=<datetime>
+router.get('/rider-breaks', async (req, res) => {
+  try {
+    const { userId, from, to } = req.query;
+    if (!userId || !from) return res.status(400).json({ error: 'userId and from are required' });
+
+    const c = await getClient();
+    const fromDt = new Date(from);
+    const toDt   = to ? new Date(to) : new Date(fromDt.getTime() + 86400000); // +1 day default
+
+    const filter = {
+      userId:    new ObjectId(userId),
+      deleted:   { $ne: true },
+      createdAt: { $gte: fromDt, $lt: toDt }
+    };
+
+    const docs = await c.db('4pl-fleet')
+      .collection('riderbreaklogs')
+      .find(filter)
+      .sort({ startAt: 1 })
+      .toArray();
+
+    const breaks = docs.map(b => {
+      let duration = null;
+      if (b.startAt && b.endAt) {
+        const mins = Math.round((new Date(b.endAt) - new Date(b.startAt)) / 60000);
+        duration = mins >= 60
+          ? `${Math.floor(mins / 60)}h ${mins % 60}m`
+          : `${mins}m`;
+      }
+      return {
+        startAt:   b.startAt,
+        endAt:     b.endAt || null,
+        createdAt: b.createdAt,
+        updatedBy: b.updatedBy,
+        duration
+      };
+    });
+
+    res.json({ count: breaks.length, breaks });
+  } catch (e) {
+    console.error('[rider-breaks]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

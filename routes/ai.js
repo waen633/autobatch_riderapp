@@ -266,6 +266,11 @@ ISO วันนี้: from="${todayFrom}" to="${todayTo}"
             args = {};
           }
 
+          // === FORCE storeCode จาก UI เท่านั้น — AI ห้าม override ===
+          if ('storeCode' in args) {
+            args.storeCode = storeCode;
+          }
+
           toolsUsed.push(toolName);
           console.log(`[AI Tool] ${toolName}`, args);
 

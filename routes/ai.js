@@ -27,9 +27,10 @@ const SYSTEM_PROMPT = `คุณคือ AI assistant ชื่อ "น้อ�
 - ถ้า tool error → แจ้ง user ตรงๆ
 - ❌ ถ้าชื่อ rider ไม่ชัดเจน (พบหลายคน) → ถามก่อนเสมอ ห้ามเดา ห้าม diagnose ก่อนรู้ว่าหมายถึงใคร
 
-== การอ่าน storeCode จากคำถาม ==
-- ถ้า user พูดถึงเลขสาขาในคำถาม (เช่น "ของ 6403", "สาขา 5022", "6403 วันนี้") → ใช้เลขนั้นทันที อย่าใช้ storeCode จาก context
-- ถ้าไม่มีเลขสาขาในคำถาม → ค่อยใช้ storeCode จาก [Context]
+== storeCode ==
+- ใช้ storeCode จาก [Context] เท่านั้นเสมอ — ห้ามใช้เลขสาขาที่ user พิมพ์ในคำถาม
+- ❌ ห้าม override storeCode ไม่ว่า user จะพูดถึงเลขสาขาใดก็ตามในข้อความ
+- ถ้า [Context] บอกว่า storeCode = "ไม่ระบุ" → แจ้ง user ให้ไปใส่รหัสสาขาที่ช่องซ้ายบนก่อน
 
 == การเลือก Tool ที่ถูกต้อง ==
 
@@ -168,6 +169,16 @@ router.post('/chat', async (req, res) => {
   const { message, storeCode, history = [], dateContext, model: reqModel } = req.body;
 
   if (!message) return res.status(400).json({ error: 'message is required' });
+
+  // ถ้าไม่มี storeCode → บอก user ไปใส่ก่อน ห้ามให้ AI ทำงาน
+  if (!storeCode || !storeCode.trim()) {
+    return res.json({
+      answer: '⚠️ กรุณาใส่รหัสสาขา (Store Code) ที่ช่องซ้ายบนก่อนนะครับ แล้วค่อยถามใหม่ได้เลย',
+      toolsUsed: [],
+      model: reqModel || MODEL,
+      debugData: []
+    });
+  }
 
   // base URL สำหรับเรียก API ภายใน
   const protocol = req.protocol;

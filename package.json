@@ -10,8 +10,10 @@
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "fastest-levenshtein": "^1.0.16",
     "googleapis": "^144.0.0",
     "mongodb": "^6.7.0",
+    "openai": "^6.38.0",
     "polyline": "^0.2.0",
     "tencentcloud-sdk-nodejs-cls": "^4.1.228"
   }

@@ -19,6 +19,8 @@ const SYSTEM_PROMPT = `คุณคือ AI assistant ชื่อ "น้อ�
 - ตอบภาษาไทย กระชับ ใช้ emoji พอเหมาะ
 - ❌ ห้ามตอบยาวเกิน 8 บรรทัด เว้นแต่ user ขอ list ครบ
 - ❌ ห้ามอธิบายซ้ำ ห้ามสรุปซ้ำ — พูดครั้งเดียวแล้วจบ
+- ❌ ห้ามเรียก tool ซ้ำถ้าข้อมูลนั้นมีอยู่ใน conversation history แล้ว — ดูจาก tool result ใน history แล้วตอบเลย
+- ✅ การคำนวณ "รอนานแค่ไหน" → ใช้เวลาปัจจุบันจาก [Context] ลบด้วย createdAt ของ order แสดงเป็น "X นาที" หรือ "X ชั่วโมง Y นาที"
 - ถ้าไม่ระบุวันที่ → ใช้วันนี้เป็น default
 - ถ้าไม่ระบุสาขา → ใช้ storeCode จาก [Context]
 - ❌ ห้ามแต่งชื่อ rider, ตัวเลข, หรือข้อมูลใดๆ ขึ้นมาเอง โดยเด็ดขาด
@@ -191,21 +193,26 @@ router.post('/chat', async (req, res) => {
   const yyyy       = bangkokNow.getFullYear();   // Gregorian เช่น 2026
   const mm         = String(bangkokNow.getMonth() + 1).padStart(2, '0');
   const dd         = String(bangkokNow.getDate()).padStart(2, '0');
+  const hh         = String(bangkokNow.getHours()).padStart(2, '0');
+  const min        = String(bangkokNow.getMinutes()).padStart(2, '0');
   const todayISO   = `${yyyy}-${mm}-${dd}`;      // "2026-05-17"
   const todayFrom  = `${todayISO}T00:00:00+07:00`;
   const todayTo    = `${todayISO}T23:59:59+07:00`;
+  const nowISO     = `${todayISO}T${hh}:${min}:00+07:00`;  // เวลาปัจจุบัน Bangkok
   // เดือนไทย → เลขเดือน
   const thaiMonths = {'มกราคม':'01','กุมภาพันธ์':'02','มีนาคม':'03','เมษายน':'04','พฤษภาคม':'05','มิถุนายน':'06','กรกฎาคม':'07','สิงหาคม':'08','กันยายน':'09','ตุลาคม':'10','พฤศจิกายน':'11','ธันวาคม':'12','Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06','Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'};
   const monthMap = Object.entries(thaiMonths).map(([k,v]) => `"${k}"=${v}`).join(', ');
-  const contextNote = `[Context: วันนี้คือ ${dd}/${mm}/${yyyy} (Gregorian ปีสากล ไม่ใช่พุทธศักราช) | storeCode ปัจจุบัน: ${storeCode || 'ไม่ระบุ'}
+  const contextNote = `[Context: วันนี้คือ ${dd}/${mm}/${yyyy} เวลาปัจจุบัน ${hh}:${min} น. (Bangkok UTC+7, Gregorian) | storeCode: ${storeCode}
+ISO ตอนนี้: "${nowISO}"
 ISO วันนี้: from="${todayFrom}" to="${todayTo}"
+การคำนวณเวลาผ่านไป: ใช้ "${nowISO}" เป็น "ตอนนี้" แล้วลบ createdAt — ห้ามใช้เวลาจากความจำ
 แปลงเดือน: ${monthMap}
 ตัวอย่างการแปลงวันที่ → ISO (ใช้ปี ${yyyy} เสมอ):
   "14 พฤษภาคม" → from="${yyyy}-05-14T00:00:00+07:00" to="${yyyy}-05-14T23:59:59+07:00"
   "14-16 พฤษภาคม" → from="${yyyy}-05-14T00:00:00+07:00" to="${yyyy}-05-16T23:59:59+07:00"
-  "14 May" หรือ "May 14" → from="${yyyy}-05-14T00:00:00+07:00"
   "3 วันที่ผ่านมา" → from="${new Date(now.getTime()-3*86400000).toISOString().slice(0,10)}T00:00:00+07:00" to="${todayTo}"
-ข้อห้ามเด็ดขาด: ห้ามแต่งชื่อ rider หรือตัวเลขขึ้นมาเอง ถ้า tool return data=[] ให้บอก "ไม่พบข้อมูลในช่วงนี้"]`;
+ข้อห้ามเด็ดขาด: ห้ามแต่งชื่อ rider หรือตัวเลขขึ้นมาเอง ถ้า tool return data=[] ให้บอก "ไม่พบข้อมูลในช่วงนี้"
+❌ ห้ามเรียก tool ซ้ำถ้าข้อมูลนั้นมีอยู่ใน conversation history แล้ว — ให้ใช้ผลเดิมและตอบได้เลย]`;
 
   // build message array
   const messages = [

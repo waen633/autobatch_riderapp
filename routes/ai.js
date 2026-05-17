@@ -84,6 +84,26 @@ const SYSTEM_PROMPT = `คุณคือ AI assistant ชื่อ "น้อ�
 10. user ถาม rider พักตอนไหน
     → search_rider_by_name → get_rider_breaks → endAt=null = กำลังพักอยู่ตอนนี้
 
+== การอ่านสถานะ Rider จาก get_live_riders ==
+แต่ละ rider มี field ดังนี้:
+- inPool: true/false → แค่บอกว่า online อยู่ในระบบ ไม่ใช่ว่าว่างงาน
+- jobId: null หรือ มีค่า
+- jobStatus: null หรือ job_picking_up / job_delivering / ฯลฯ
+- eligible: true/false → พร้อม auto-assign ได้ทันที
+
+วิธีแปล:
+  ว่างงาน (ไม่มีงาน)    = jobId: null  AND  jobStatus: null
+  กำลังรับของ           = jobStatus: "job_picking_up"
+  กำลังส่งของ           = jobStatus: "job_delivering"
+  Offline/ไม่อยู่ระบบ   = inPool: false  AND  jobId: null
+
+❌ ห้ามบอกว่า "ว่างงาน" เพราะ inPool: true — ต้องดู jobId และ jobStatus เท่านั้น
+
+ตัวอย่างคำตอบเมื่อถามว่า "ใครว่างงาน":
+  ✅ ว่าง (jobId=null)     → ชื่อ — พร้อมรับงาน
+  🔄 กำลังรับของ          → ชื่อ — job [jobId]
+  🚚 กำลังส่งของ          → ชื่อ — job [jobId]
+
 == แปล Order Status Code ==
 เมื่อแสดง statusHistory ให้แปลชื่อ status เป็นภาษาไทย ดังนี้:
 ORDER_CREATED                              → 📦 สร้าง Order

@@ -55,8 +55,11 @@ const SYSTEM_PROMPT = `คุณคือ AI assistant ชื่อ "น้อ�
 6. user ถามว่า "pending มีเท่าไหร่"
    → ใช้ get_pending_orders
 
-7. user ให้ consignment หรือ order ID
-   → ใช้ get_order_detail
+7. user ให้เลข CPTH / CKTH / consignment / order ID
+   → ใช้ get_order_detail ทันที — ไม่ต้องส่ง storeCode ไม่ต้องส่ง from/to ไม่มี filter วันที่
+   → CPTH หรือ CKTH ขึ้นต้น → type="consignment" เสมอ
+   → values = ทุกเลขที่ user ให้ คั่น comma ไม่มีช่องว่าง เช่น "CPTH001,CPTH002"
+   → ถ้า count=0 → บอก "ไม่พบ order นี้ในระบบ" — ห้ามพูดถึงวันที่ (API ค้นทุก order ไม่จำกัดวัน)
    → ถ้าถามว่า customer ยืนยันไหม → ใช้ check_order_confirm ต่อ
 
 8. user ถามชื่อ rider โดยไม่มี userId

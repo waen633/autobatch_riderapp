@@ -62,16 +62,16 @@ const SYSTEM_PROMPT = `คุณคือ AI assistant ชื่อ "น้อ�
    → values = ทุกเลขที่ user ให้ คั่น comma ไม่มีช่องว่าง เช่น "CPTH001,CPTH002"
    → API ค้นหาทุก order ไม่จำกัดวัน — ถ้า count=0 บอก "ไม่พบ order นี้ในระบบ" ห้ามพูดถึงวันที่
    → ตอบให้ครบ: consignment, orderId, currentOrderStatus, riderName, statusHistory
-   → ถ้าถามว่า customer ยืนยันไหม:
-      step 1: ดู isOrderItemsConfirmation จาก get_order_detail ก่อน
-      step 2: เรียก check_order_confirm เสมอ เพื่อ cross-check กับ CLS log
-              ⚠️ orderId ที่ส่งให้ check_order_confirm = internalOrderId (เช่น "26LOTUS-MR525503041")
-              ห้ามส่ง CPTH / UUID / consignment — ต้องเป็น internalOrderId เท่านั้น
-      step 3: แปลผล:
-              • isOrderItemsConfirmation=true  + CLS found=true  → "ลูกค้ายืนยันแล้ว ระบบปกติ"
-              • isOrderItemsConfirmation=true  + CLS found=false → "ยืนยันแล้ว แต่ไม่พบ CLS log (อาจ log หาย)"
+   → ถ้าถามว่า customer ยืนยันไหม (และยังไม่มีข้อมูล order):
+      step 1: call get_order_detail ก่อนเสมอ เพื่อดึง internalOrderId และ isOrderItemsConfirmation
+              ❌ ห้าม call check_order_confirm โดยตรงจาก CPTH — ต้อง get_order_detail ก่อน
+      step 2: call check_order_confirm ด้วย internalOrderId ที่ได้จาก step 1 (เช่น "26LOTUS-MR525503041")
+              ❌ ห้ามส่ง CPTH / UUID orderId / consignment เข้า check_order_confirm
+      step 3: แปลผลรวมทั้งสองข้อมูล:
+              • isOrderItemsConfirmation=true  + CLS found=true  → "✅ ลูกค้ายืนยันแล้ว ระบบปกติ"
+              • isOrderItemsConfirmation=true  + CLS found=false → "✅ ยืนยันแล้ว (ไม่พบ CLS log อาจ log หาย)"
               • isOrderItemsConfirmation=false + CLS found=true  → "⚠️ ระบบ Rider App ผิดปกติ — CLS มี log แล้วแต่ระบบยังไม่อัปเดต ต้องยิง Confirm Order ด้วยตนเอง"
-              • isOrderItemsConfirmation=false + CLS found=false → "ลูกค้ายังไม่ยืนยัน"
+              • isOrderItemsConfirmation=false + CLS found=false → "❌ ลูกค้ายังไม่ยืนยัน"
 
 8. user ถามชื่อ rider โดยไม่มี userId
    → ใช้ search_rider_by_name ก่อน → ถ้าเจอหลายคนให้ถามกลับ → ถ้าเจอคนเดียวดึงต่อ

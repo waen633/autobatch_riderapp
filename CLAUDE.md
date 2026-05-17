@@ -18,6 +18,7 @@ npm start                              # run server port 3000
 pm2 start server.js --name autobatch   # production
 pm2 restart autobatch                  # after code change
 pm2 logs autobatch                     # view logs
+npx kill-port 3000 && npm start        # force restart (dev)
 ```
 
 ## Git Branches
@@ -86,7 +87,7 @@ SYNC_SHEET_NAME=rider_queue
 ```
 POST /api/ai/chat
   body: { message, storeCode, history[], model? }
-  response: { answer, toolsUsed[], model }
+  response: { answer, toolsUsed[], model, debugData[] }
 
 Flow: user message → inject context → OpenRouter API → tool_calls loop (max 6) → answer
 ```
@@ -101,10 +102,10 @@ search_rider_by_name
 ```
 
 **Context injected per request:**
-- Gregorian date (NOT Buddhist era year)
-- ISO from/to for today
-- Thai month → number mapping (มกราคม→01 etc.)
-- storeCode from UI
+- Gregorian date + เวลาปัจจุบัน HH:MM น. Bangkok (UTC+7)
+- nowISO, todayFrom, todayTo (ISO Bangkok)
+- Thai month → number mapping
+- storeCode จาก UI field
 
 ## Known Gotchas
 
@@ -122,24 +123,58 @@ MongoDB stores Gregorian year 2026.
 ❌ meta-llama/llama-3.1-8b:free     → 404 No endpoints
 ```
 
-**3. storeCode Override in AI**
-If user mentions a store number in the message (e.g. "ของสาขา 6403", "6403 วันนี้")
-→ AI must use that number, NOT the context storeCode from the dashboard UI.
-Rule is enforced in SYSTEM_PROMPT in routes/ai.js.
+**3. storeCode Lock — Backend Enforced**
+storeCode ใน tool args ถูก force ทับด้วยค่าจาก UI เสมอ ก่อน executeTool ทุกครั้ง:
+```js
+if ('storeCode' in args) args.storeCode = storeCode; // จาก req.body
+```
+→ AI ไม่สามารถดึงข้อมูลสาขาอื่นได้ ถ้า storeCode ว่าง → return error ทันที
 
-**4. get_jobs strips orderIds**
+**4. Timezone — UTC → Bangkok แปลงใน toolExecutor**
+MongoDB เก็บ datetime เป็น UTC (Z suffix)
+toolExecutor.js แปลง createdAt/updatedAt/pickUpSLA/deliverySLA/statusHistory/join_pool_at
+→ Bangkok time ก่อนส่งให้ AI เสมอ ด้วย toBKK() helper:
+```js
+function toBKK(isoStr) { /* UTC+7, format "HH:MM น. (DD/MM/YYYY)" */ }
+```
+→ AI รับเวลา Bangkok แล้ว ไม่ต้องแปลงเอง
+
+**5. get_jobs strips orderIds**
 toolExecutor.js get_jobs case explicitly maps fields — orderIds IS included.
-If AI can't see orderIds, check the map() in toolExecutor.js get_jobs case.
 
-**5. Fuzzy rider name search threshold**
+**6. Fuzzy rider name search threshold**
 search_rider_by_name: score > 0.35 (Levenshtein-based)
 get_rider_jobs: score > 0.45 (stricter, to avoid false matches)
+
+**7. Rider ว่างงาน — อ่านจาก jobId/jobStatus เท่านั้น**
+- inPool: true = online ในระบบ ≠ ว่างงาน
+- ว่างงาน = jobId: null AND jobStatus: null
+- กำลังรับของ = jobStatus: "job_picking_up"
+- กำลังส่งของ = jobStatus: "job_delivering"
+
+**8. Diagnose หลายชื่อ — ต้องถามก่อน**
+search_rider_by_name found ≥ 2 → หยุดทันที แสดงรายชื่อ + ถาม user
+ห้าม call get_job_diagnostics โดยไม่รู้ว่าหมายถึงใคร
+
+**9. check_order_confirm ต้องใช้ internalOrderId**
+- ✅ ส่ง internalOrderId เช่น "26LOTUS-MR525503041"
+- ❌ ห้ามส่ง CPTH / UUID orderId
+- Flow: get_order_detail → ดึง internalOrderId → check_order_confirm
+
+**10. CPTH/CKTH → get_order_detail เท่านั้น**
+- type="consignment" เสมอ
+- ห้ามใช้ get_pending_orders เมื่อ user ให้เลข CPTH/CKTH
+
+## Chat Widget Features (index.html)
+- 🗑️ Clear chat — ล้าง history + messages
+- ⤢ Expand — toggle normal → expanded (660px) → fullscreen → normal
+- 🔍 Debug mode — toggle แสดง/ซ่อน raw tool data ใต้ทุก bot message
+- debug panel เป็น `<details>` always visible (collapsed by default)
 
 ## Phase 3 — Planned (not started)
 - **SQLite**: user login, roles per storeCode, API key settings stored in DB
 - **AI Feedback**: thumbs up/down after each reply → store Q&A → few-shot inject
 - **Multi-ENV**: VM2 deployment with ENV2 config, frontend ENV switcher toggle
-- Database choice for Phase 3: SQLite (users/roles/keys) + optional Chroma (vector memory)
 
 ## Quick Setup (new machine)
 ```bash

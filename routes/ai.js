@@ -123,6 +123,7 @@ ISO วันนี้: from="${todayFrom}" to="${todayTo}"
   ];
 
   const toolsUsed = [];
+  const debugData  = [];
   const MAX_ROUNDS = 6;
 
   try {
@@ -147,6 +148,7 @@ ISO วันนี้: from="${todayFrom}" to="${todayTo}"
           answer:    msg.content,
           toolsUsed,
           model:     activeModel,
+          debugData,
         });
       }
 
@@ -170,6 +172,9 @@ ISO วันนี้: from="${todayFrom}" to="${todayTo}"
           } catch (err) {
             result = { error: err.message };
           }
+
+          // เก็บ debug info
+          debugData.push({ tool: toolName, args, result });
 
           return {
             role:         'tool',

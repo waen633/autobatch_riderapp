@@ -3312,10 +3312,38 @@ applyLang();
   .ai-chat-header .ai-title { font-weight:700; font-size:.95rem; }
   .ai-chat-header .ai-subtitle { font-size:.72rem; opacity:.8; }
   .ai-chat-header .ai-close {
-    margin-left:auto; background:none; border:none; color:#fff;
+    background:none; border:none; color:#fff;
     font-size:18px; cursor:pointer; opacity:.8; padding:0;
   }
   .ai-chat-header .ai-close:hover { opacity:1; }
+  .ai-chat-header .ai-hdr-btn {
+    background:none; border:none; color:#fff;
+    font-size:15px; cursor:pointer; opacity:.7; padding:0 3px;
+    transition:opacity .15s;
+  }
+  .ai-chat-header .ai-hdr-btn:hover { opacity:1; }
+  .ai-chat-header .ai-hdr-spacer { margin-left:auto; }
+
+  /* Expand states */
+  #ai-chat-window.expanded {
+    width:660px; max-width:calc(100vw - 40px);
+    height:78vh; max-height:calc(100vh - 60px);
+  }
+  #ai-chat-window.fullscreen {
+    width:100vw; height:100vh;
+    bottom:0 !important; right:0 !important;
+    border-radius:0; max-width:100vw; max-height:100vh;
+  }
+
+  /* Debug button in model bar */
+  #ai-debug-btn {
+    background:none; border:1px solid #cbd5e1; color:#94a3b8;
+    font-size:.72rem; cursor:pointer; opacity:.55; padding:2px 6px;
+    border-radius:4px; transition:opacity .15s, color .15s;
+    white-space:nowrap;
+  }
+  #ai-debug-btn:hover { opacity:1; }
+  #ai-debug-btn.active { opacity:1; color:#4f46e5; border-color:#4f46e5; }
 
   /* Model selector */
   .ai-model-bar {
@@ -3415,7 +3443,10 @@ applyLang();
       <div class="ai-title">น้องบอท</div>
       <div class="ai-subtitle">AI Assistant — Dashboard Autobatch</div>
     </div>
-    <button class="ai-close" onclick="aiToggle()">✕</button>
+    <span class="ai-hdr-spacer"></span>
+    <button class="ai-hdr-btn" id="ai-expand-btn" onclick="aiToggleExpand()" title="ขยายจอ">⤢</button>
+    <button class="ai-hdr-btn" onclick="aiClear()" title="ล้างการสนทนา">🗑️</button>
+    <button class="ai-close" onclick="aiToggle()" title="ปิด">✕</button>
   </div>
 
   <div class="ai-model-bar">
@@ -3425,6 +3456,7 @@ applyLang();
       <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
       <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
     </select>
+    <button id="ai-debug-btn" onclick="aiToggleDebug()" title="Debug — ดูข้อมูลที่ bot ดึงมา">🔍 Debug</button>
   </div>
 
   <div class="ai-messages" id="ai-messages">
@@ -3473,6 +3505,8 @@ const aiState = {
   loading:  false,
   unread:   0,
   open:     false,
+  debug:    false,
+  expanded: 0,    // 0=normal 1=expanded 2=fullscreen
 };
 
 function aiToggle() {
@@ -3493,6 +3527,42 @@ function updateAiFab() {
   } else {
     badge.style.display = 'none';
   }
+}
+
+function aiClear() {
+  document.getElementById('ai-messages').innerHTML =
+    '<div class="ai-bubble bot">สวัสดีครับ 👋 ล้างการสนทนาแล้ว — ถามใหม่ได้เลยครับ</div>';
+  aiState.history = [];
+  const s = document.getElementById('ai-suggestions');
+  if (s) s.style.display = '';
+}
+
+function aiToggleExpand() {
+  const win = document.getElementById('ai-chat-window');
+  const btn = document.getElementById('ai-expand-btn');
+  aiState.expanded = (aiState.expanded + 1) % 3;
+  win.classList.remove('expanded','fullscreen');
+  if (aiState.expanded === 1) {
+    win.classList.add('expanded');
+    btn.textContent = '⤡';
+    btn.title = 'ขยายเต็มจอ';
+  } else if (aiState.expanded === 2) {
+    win.classList.add('fullscreen');
+    btn.textContent = '❐';
+    btn.title = 'กลับขนาดปกติ';
+  } else {
+    btn.textContent = '⤢';
+    btn.title = 'ขยายจอ';
+  }
+}
+
+function aiToggleDebug() {
+  aiState.debug = !aiState.debug;
+  const btn = document.getElementById('ai-debug-btn');
+  btn.classList.toggle('active', aiState.debug);
+  document.querySelectorAll('.ai-debug-panel').forEach(el => {
+    el.style.display = aiState.debug ? 'block' : 'none';
+  });
 }
 
 function aiSuggest(btn) {
@@ -3521,7 +3591,7 @@ function aiSuggestFill(text) {
   document.getElementById('ai-suggestions').style.display = 'none';
 }
 
-function aiAddBubble(role, content, toolsUsed = [], isError = false) {
+function aiAddBubble(role, content, toolsUsed = [], isError = false, debugData = null) {
   const box  = document.getElementById('ai-messages');
   const div  = document.createElement('div');
   div.className = `ai-bubble ${role}${isError ? ' error' : ''}`;
@@ -3543,6 +3613,23 @@ function aiAddBubble(role, content, toolsUsed = [], isError = false) {
       toolDiv.appendChild(b);
     });
     div.appendChild(toolDiv);
+  }
+
+  // Debug panel — แสดงเฉพาะเมื่อ debug mode เปิดอยู่
+  if (role === 'bot' && debugData && debugData.length > 0) {
+    const panel = document.createElement('details');
+    panel.className = 'ai-debug-panel';
+    panel.style.display = aiState.debug ? 'block' : 'none';
+    panel.style.marginTop = '6px';
+    const safeJson = JSON.stringify(debugData, null, 2)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    panel.innerHTML = `
+      <summary style="font-size:.65rem;color:#64748b;cursor:pointer;user-select:none">
+        🔍 Debug — ${debugData.length} tool call${debugData.length>1?'s':''}
+      </summary>
+      <pre style="font-size:.6rem;overflow:auto;max-height:220px;background:#0f172a;color:#94a3b8;
+        padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;word-break:break-all">${safeJson}</pre>`;
+    div.appendChild(panel);
   }
 
   box.appendChild(div);
@@ -3599,7 +3686,7 @@ async function aiSend() {
     if (!res.ok) {
       aiAddBubble('bot', data.error || 'เกิดข้อผิดพลาด', [], true);
     } else {
-      aiAddBubble('bot', data.answer, data.toolsUsed || []);
+      aiAddBubble('bot', data.answer, data.toolsUsed || [], false, data.debugData || null);
       // เก็บ history
       aiState.history.push({ role: 'user',      content: msg });
       aiState.history.push({ role: 'assistant', content: data.answer });

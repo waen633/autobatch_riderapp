@@ -2,7 +2,7 @@
 
 > Dashboard สำหรับ monitor และจัดการกระบวนการ Auto-Batching, Rider Assignment และ Order Status แบบ Real-time
 
-![Version](https://img.shields.io/badge/version-1.6.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.x-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -22,6 +22,7 @@
 | 🔄 **Auto-Refresh** | ตั้งเวลา refresh อัตโนมัติแยกต่อหัวข้อ (Off / 5 / 10 / 30 นาที) |
 | 🔎 **Auto-Assign Diagnostic** | วิเคราะห์ทุกรอบ scan ของ job ว่าทำไมถึง assign ไม่ได้ — แสดงสถานะ rider แต่ละคน, ชื่อ rider ที่ assigned สำเร็จ, พร้อม pagination 10 รอบ/หน้า |
 | ☕ **Break Log** | กดไอคอนกาแฟบน Rider → Modal แสดงประวัติ break ตาม date range ที่เลือก (จำนวนครั้ง, Start/End, Duration, Created At) |
+| 🤖 **AI Chat (น้องบอท)** | AI Assistant ถามภาษาไทยได้เลย — ดึงข้อมูล Orders, Jobs, Riders, Diagnostics อัตโนมัติ ผ่าน OpenRouter + tool calling |
 | 🛠️ **UI/UX** | Fullscreen, collapse, Raw Data expand, Dual-language (TH/EN) |
 
 ---
@@ -50,6 +51,7 @@
 - **Frontend**: HTML / CSS / JavaScript (Vanilla) + **Leaflet.js** (Maps) + **Chart.js v4** (Donuts)
 - **Libraries**: Bootstrap 5, flatpickr, chartjs-plugin-datalabels, googleapis
 - **Auto-sync**: Google Sheets API — push rider queue ทุก 1 ชม. ตรง :00
+- **AI**: OpenRouter API (Claude-3-haiku default) + OpenAI-compatible tool calling loop (13 tools)
 
 ---
 
@@ -75,6 +77,10 @@ cp .env.example .env
 ```env
 # MongoDB
 MONGO_URI=mongodb://user:pass@host:27017/...
+
+# AI Chat (Phase 2)
+OPENROUTER_API_KEY=...
+AI_MODEL=anthropic/claude-3-haiku
 
 # Tencent CLS (job diagnostics)
 CLS_SECRET_ID=...
@@ -117,14 +123,17 @@ autobatch_riderapp/
 │   ├── db.js                   # MongoDB client singleton
 │   ├── helpers.js              # safeStr, splitCodes
 │   ├── eligibility.js          # evalEligibility, buildMapUrl
-│   └── cls.js                  # Tencent CLS client (getClsClient, getClsTopicId)
+│   ├── cls.js                  # Tencent CLS client (getClsClient, getClsTopicId)
+│   ├── aiTools.js              # 13 AI tool definitions (OpenAI function-calling format)
+│   └── toolExecutor.js         # execute tool calls → call local API → return Bangkok-time JSON
 ├── routes/
 │   ├── pending.js              # GET /api/pending
 │   ├── jobs.js                 # GET /api/jobs, stuck, job-route, jobs-km
-│   ├── orders.js               # GET /api/orders, batches
+│   ├── orders.js               # GET /api/orders, batches, order-confirm-check
 │   ├── riders.js               # GET /api/riders, live, rider-breaks
 │   ├── performance.js          # GET /api/rider-performance
-│   └── diagnostics.js          # GET /api/job-diagnostics (Tencent CLS)
+│   ├── diagnostics.js          # GET /api/job-diagnostics (Tencent CLS)
+│   └── ai.js                   # POST /api/ai/chat (Phase 2 AI endpoint)
 ├── sync/
 │   └── sheetsSync.js           # Auto-sync rider queue → Google Sheets ทุก 1 ชม.
 ├── server.js                   # Express setup + mount routes
@@ -152,6 +161,36 @@ autobatch_riderapp/
 | GET | `/api/orders` | ค้นหา Order |
 | GET | `/api/batches` | ค้นหา Batch |
 | GET | `/api/rider-breaks` | ดึงประวัติ Break ของ Rider (`?userId=`, `?from=`, `?to=`) จาก `4pl-fleet.riderbreaklogs` |
+| POST | `/api/ai/chat` | AI Chat — `{ message, storeCode, history[], model? }` → `{ answer, toolsUsed[], debugData[] }` |
+
+## 🤖 AI Chat Assistant (น้องบอท) — Phase 2
+
+AI Assistant ลอยอยู่มุมล่างขวา ถามภาษาไทยได้เลย ไม่ต้องคลิก dashboard เอง
+
+**ความสามารถ:**
+- ถาม pending orders, job status, rider queue ได้ทันที
+- ค้นหา order จาก CPTH/CKTH consignment number
+- diagnose ว่า rider ไม่ได้รับงานเพราะอะไร (ดู assign log)
+- เช็คว่า customer ยืนยัน order แล้วหรือยัง
+- ค้นหาชื่อ rider แบบ fuzzy (สะกดผิดนิดหน่อยก็ได้)
+
+**13 Tools:**
+```
+get_pending_orders     get_jobs              get_job_by_id
+get_stuck_jobs         get_order_detail      check_order_confirm
+get_riders             get_live_riders       get_rider_performance
+get_rider_breaks       get_job_diagnostics   get_rider_jobs
+search_rider_by_name
+```
+
+**Chat Widget Features:**
+- 🗑️ Clear — ล้าง history
+- ⤢ Expand — ขยายจอ (normal → expanded → fullscreen)
+- 🔍 Debug — ดู raw tool data ที่ AI ดึงมา
+
+**ข้อกำหนด:** ต้องใส่ Store Code ที่ช่องซ้ายบนก่อน — AI จะดึงข้อมูลเฉพาะสาขาที่ระบุเท่านั้น
+
+---
 
 ## 📊 Google Sheets Auto-sync
 
@@ -183,6 +222,7 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 2.0.0 | **Phase 2 — AI Chat Assistant (น้องบอท)**: เพิ่ม AI widget มุมล่างขวา ถามภาษาไทยได้เลย, 13 tools ครอบคลุมทุก API, multi-turn conversation, storeCode lock (backend enforced), UTC→Bangkok auto-convert, debug mode ดู raw data, clear/expand/fullscreen chat window; เพิ่ม `routes/ai.js` POST `/api/ai/chat`, `lib/aiTools.js`, `lib/toolExecutor.js`; dependencies: `openai`, `fastest-levenshtein` |
 | 1.6.0 | เพิ่ม **Break Log Modal**: กดไอคอน ☕ บน Rider → Modal แสดงประวัติ break ตาม date range ที่เลือก (จำนวนครั้ง, Start/End, Duration, Created At); เพิ่ม API `/api/rider-breaks` ดึงข้อมูลจาก `4pl-fleet.riderbreaklogs`; เพิ่ม `lib/cls.js` Tencent CLS client |
 | 1.5.0 | **Refactor + Google Sheets Sync**: แยก `server.js` เป็น `lib/`, `routes/`, `sync/` — เพิ่ม `sync/sheetsSync.js` push rider queue ขึ้น Google Sheets แยก tab ต่อ Store ทุก 1 ชม. ตรง :00 |
 | 1.4.0 | เพิ่ม **Auto-Assign Diagnostic**: ปุ่ม 📋 ใน column SEE ROUTE เปิด modal วิเคราะห์รอบ scan ทั้งหมดของ job, แสดงสถานะ rider แต่ละคน (not_in_pool / offline / shift_inactive / on_break), แสดงชื่อ rider ที่ assigned สำเร็จ (ดึงจาก DB), pagination 10 รอบ/หน้า พร้อม dropdown เลือกหน้า + ปุ่มหน้าแรก/สุดท้าย; เพิ่ม API `/api/job-diagnostics` (Tencent CLS); install `tencentcloud-sdk-nodejs-cls` |

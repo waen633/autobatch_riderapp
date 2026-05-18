@@ -1985,11 +1985,31 @@ function toggleTimelineView() {
   }
 }
 
-function showJobTimeline(jobId) {
+async function showJobTimeline(jobId) {
   const d = state.jobs.data.find(j => j.jobId === jobId);
   if (!d) return;
+
+  document.getElementById('timelineTitle').innerHTML =
+    `<i class="bi bi-clock-history me-2"></i>Job: ${d.jobId} <span class="ms-2">${jobBadge(d.status)}</span>`;
+  document.getElementById('timelineBody').innerHTML =
+    '<div class="text-center p-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลด...</div>';
+  new bootstrap.Modal(document.getElementById('timelineModal')).show();
+
+  let assignedEvents = [];
+  try {
+    const r = await fetch(`${API_BASE}/api/job-diagnostics?jobId=${encodeURIComponent(jobId)}&hours=720`);
+    if (r.ok) { const diag = await r.json(); assignedEvents = diag.assignedEvents || []; }
+  } catch {}
+
+  const assignMap = {};
+  assignedEvents.forEach(e => {
+    if (e.assignedAt) assignMap[Math.floor(new Date(e.assignedAt).getTime() / 1000)] = e;
+  });
+
   const history = d.updateStatuses || [];
   const last = history.length - 1;
+  let assignIdx = 0;
+
   const bodyHtml = history.length ? history.map((s, i) => {
     let badgeCls = 'bg-secondary';
     const st = s.status || '';
@@ -1997,6 +2017,21 @@ function showJobTimeline(jobId) {
     else if (st.includes('delivering') || st.includes('picked_up') || st.includes('completed')) badgeCls = 'bg-success';
     else if (st.includes('cancelled') || st.includes('failed')) badgeCls = 'bg-danger';
     else if (st.includes('assigned')) badgeCls = 'bg-info text-dark';
+
+    let riderHtml = '';
+    if (st === 'job_assigned') {
+      const tSec = Math.floor(new Date(s.updatedAt).getTime() / 1000);
+      let ev = null;
+      for (let d = -10; d <= 10; d++) { if (assignMap[tSec + d]) { ev = assignMap[tSec + d]; break; } }
+      if (!ev && assignedEvents[assignIdx]) ev = assignedEvents[assignIdx];
+      if (ev) {
+        const isFinal = assignIdx === assignedEvents.length - 1;
+        riderHtml = isFinal
+          ? `<span class="text-success ms-1"><i class="bi bi-person-check-fill me-1"></i>${ev.riderName || ev.riderId}</span>`
+          : `<span class="text-warning ms-1"><i class="bi bi-person-x-fill me-1"></i>${ev.riderName || ev.riderId} <span class="badge bg-warning text-dark" style="font-size:.65rem;">ไม่รับงาน</span></span>`;
+        assignIdx++;
+      }
+    }
 
     return `
       <div class="tl-row mb-1 d-flex gap-2">
@@ -2008,15 +2043,13 @@ function showJobTimeline(jobId) {
           <div class="d-flex align-items-center gap-2 flex-wrap w-100">
             <small class="text-muted" style="min-width:110px;">${fmtDt(s.updatedAt)}</small>
             <span class="badge ${badgeCls} status-badge">${s.status}</span>
+            ${riderHtml}
           </div>
         </div>
       </div>`;
   }).join('') : '<em class="text-muted">ไม่มีข้อมูล</em>';
 
-  document.getElementById('timelineTitle').innerHTML =
-    `<i class="bi bi-clock-history me-2"></i>Job: ${d.jobId} <span class="ms-2">${jobBadge(d.status)}</span>`;
   document.getElementById('timelineBody').innerHTML = bodyHtml;
-  new bootstrap.Modal(document.getElementById('timelineModal')).show();
 }
 
 // ─── AUTO-ASSIGN DIAGNOSTIC MODAL ───────────────────────────────────────────

@@ -11,7 +11,7 @@ router.get('/job-diagnostics', async (req, res) => {
     if (!jobId) return res.status(400).json({ error: 'jobId required' });
     if (!process.env.CLS_SECRET_ID) return res.status(503).json({ error: 'CLS not configured' });
 
-    const hoursMs = Math.min(parseInt(hours) || 24, 168) * 3600 * 1000;
+    const hoursMs = Math.min(parseInt(hours) || 24, 720) * 3600 * 1000;
     const now = Date.now();
 
     const [client, topicId] = await Promise.all([
@@ -19,15 +19,26 @@ router.get('/job-diagnostics', async (req, res) => {
       getClsTopicId(),
     ]);
 
-    const result = await client.SearchLog({
-      TopicId: topicId,
-      From: now - hoursMs,
-      To: now,
-      Query: `event:"auto_assign_job" AND jobId:"${jobId}"`,
-      Limit: 500,
-      Sort: 'asc',
-      SyntaxRule: 1,
-    });
+    const [result, assignedResult] = await Promise.all([
+      client.SearchLog({
+        TopicId: topicId,
+        From: now - hoursMs,
+        To: now,
+        Query: `event:"auto_assign_job" AND jobId:"${jobId}" AND action:"no_available_riders_for_chunk"`,
+        Limit: 500,
+        Sort: 'asc',
+        SyntaxRule: 1,
+      }),
+      client.SearchLog({
+        TopicId: topicId,
+        From: now - hoursMs,
+        To: now,
+        Query: `event:"auto_assign_job" AND jobId:"${jobId}" AND action:"assigned"`,
+        Limit: 1,
+        Sort: 'asc',
+        SyntaxRule: 1,
+      }),
+    ]);
 
     const rounds = [];
     let assignedEvent = null;
@@ -35,30 +46,30 @@ router.get('/job-diagnostics', async (req, res) => {
     for (const record of (result.Results || [])) {
       let fields = {};
       try { fields = JSON.parse(record.LogJson || '{}'); } catch {}
-
       let msg = {};
       try { msg = JSON.parse(fields.msg || '{}'); } catch {}
+      const riderStatusMap = msg.jobUnAssignDiagnostics?.riderStatusMap || {};
+      rounds.push({
+        time: fields.time || null,
+        zoneIds: msg.zoneIds || [],
+        clusterIds: msg.jobUnAssignDiagnostics?.clusterIds || [],
+        riderStatusMap,
+        totalRiders: Object.keys(riderStatusMap).length,
+      });
+    }
 
-      const action = fields.action || '';
-      const time = fields.time || null;
-
-      if (action === 'assigned') {
-        assignedEvent = {
-          time,
-          riderId: msg.riderId || null,
-          assignedAt: msg.assignedAt || time,
-          zoneId: msg.zoneId || null,
-        };
-      } else if (action === 'no_available_riders_for_chunk') {
-        const riderStatusMap = msg.jobUnAssignDiagnostics?.riderStatusMap || {};
-        rounds.push({
-          time,
-          zoneIds: msg.zoneIds || [],
-          clusterIds: msg.jobUnAssignDiagnostics?.clusterIds || [],
-          riderStatusMap,
-          totalRiders: Object.keys(riderStatusMap).length,
-        });
-      }
+    const assignedRecord = (assignedResult.Results || [])[0];
+    if (assignedRecord) {
+      let fields = {};
+      try { fields = JSON.parse(assignedRecord.LogJson || '{}'); } catch {}
+      let msg = {};
+      try { msg = JSON.parse(fields.msg || '{}'); } catch {}
+      assignedEvent = {
+        time: fields.time || null,
+        riderId: msg.riderId || null,
+        assignedAt: msg.assignedAt || fields.time || null,
+        zoneId: msg.zoneId || null,
+      };
     }
 
     if (assignedEvent?.riderId) {

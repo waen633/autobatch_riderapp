@@ -1995,31 +1995,21 @@ async function showJobTimeline(jobId) {
     '<div class="text-center p-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลด...</div>';
   new bootstrap.Modal(document.getElementById('timelineModal')).show();
 
-  // ดึง assign events จาก diagnostic พร้อมกัน
   let assignedEvents = [];
   try {
     const r = await fetch(`${API_BASE}/api/job-diagnostics?jobId=${encodeURIComponent(jobId)}&hours=720`);
-    if (r.ok) {
-      const diag = await r.json();
-      assignedEvents = diag.assignedEvents || [];
-    }
+    if (r.ok) { const diag = await r.json(); assignedEvents = diag.assignedEvents || []; }
   } catch {}
 
-  // สร้าง map: เวลา assignedAt (วินาที) → event สำหรับ match กับ job_assigned
   const assignMap = {};
   assignedEvents.forEach(e => {
-    if (e.assignedAt) {
-      const sec = new Date(e.assignedAt).getTime();
-      // เก็บ range ±5 วินาที เผื่อ clock skew
-      assignMap[Math.floor(sec / 1000)] = e;
-    }
+    if (e.assignedAt) assignMap[Math.floor(new Date(e.assignedAt).getTime() / 1000)] = e;
   });
 
-  // ถ้า assign events น้อยกว่า job_assigned ใน history ให้ assign ตามลำดับ
   const history = d.updateStatuses || [];
+  const last = history.length - 1;
   let assignIdx = 0;
 
-  const last = history.length - 1;
   const bodyHtml = history.length ? history.map((s, i) => {
     let badgeCls = 'bg-secondary';
     const st = s.status || '';
@@ -2028,23 +2018,17 @@ async function showJobTimeline(jobId) {
     else if (st.includes('cancelled') || st.includes('failed')) badgeCls = 'bg-danger';
     else if (st.includes('assigned')) badgeCls = 'bg-info text-dark';
 
-    // หา assign event ที่ตรงกับ timestamp นี้
     let riderHtml = '';
     if (st === 'job_assigned') {
       const tSec = Math.floor(new Date(s.updatedAt).getTime() / 1000);
-      // ลอง match ±10 วินาที
-      let matchedEvent = null;
-      for (let delta = -10; delta <= 10; delta++) {
-        if (assignMap[tSec + delta]) { matchedEvent = assignMap[tSec + delta]; break; }
-      }
-      // fallback: ใช้ลำดับถ้า match ไม่ได้
-      if (!matchedEvent && assignedEvents[assignIdx]) matchedEvent = assignedEvents[assignIdx];
-      if (matchedEvent) {
+      let ev = null;
+      for (let d = -10; d <= 10; d++) { if (assignMap[tSec + d]) { ev = assignMap[tSec + d]; break; } }
+      if (!ev && assignedEvents[assignIdx]) ev = assignedEvents[assignIdx];
+      if (ev) {
         const isFinal = assignIdx === assignedEvents.length - 1;
-        const label = isFinal
-          ? `<span class="text-success ms-2"><i class="bi bi-person-check-fill me-1"></i>${matchedEvent.riderName || matchedEvent.riderId}</span>`
-          : `<span class="text-warning ms-2"><i class="bi bi-person-x-fill me-1"></i>${matchedEvent.riderName || matchedEvent.riderId} <span class="badge bg-warning text-dark" style="font-size:.65rem;">ไม่รับงาน</span></span>`;
-        riderHtml = label;
+        riderHtml = isFinal
+          ? `<span class="text-success ms-1"><i class="bi bi-person-check-fill me-1"></i>${ev.riderName || ev.riderId}</span>`
+          : `<span class="text-warning ms-1"><i class="bi bi-person-x-fill me-1"></i>${ev.riderName || ev.riderId} <span class="badge bg-warning text-dark" style="font-size:.65rem;">ไม่รับงาน</span></span>`;
         assignIdx++;
       }
     }
@@ -2092,7 +2076,7 @@ async function showJobDiagnostic(jobId) {
 }
 
 function renderDiagnostic(data) {
-  const { rounds = [], assignedEvent, assignedEvents = [] } = data;
+  const { rounds = [], assignedEvent } = data;
 
   const reasonBadge = (reason) => {
     if (reason.startsWith('break_til_')) {
@@ -2143,7 +2127,6 @@ function renderDiagnostic(data) {
   document.getElementById('diagSummary').innerHTML =
     `<span class="me-3">รอบที่ scan: <strong>${rounds.length}</strong></span>` +
     (rounds[0] ? `<span class="me-3">Rider ที่ตรวจ: <strong>${rounds[0].totalRiders}</strong> คน</span>` : '') +
-    (assignedEvents.length > 1 ? `<span class="me-3 text-warning fw-bold"><i class="bi bi-arrow-repeat me-1"></i>Assign ${assignedEvents.length} รอบ (reject ${assignedEvents.length - 1} ครั้ง)</span>` : '') +
     (assignedEvent ? `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Assigned เวลา ${fmtDt(assignedEvent.assignedAt)}</span>` : '<span class="text-danger">ยังไม่ได้ Assign</span>');
 
   if (!rounds.length && !assignedEvent) {
@@ -2155,24 +2138,14 @@ function renderDiagnostic(data) {
   const PAGE_SIZE = 10;
   let _diagPage = 0;
 
-  // สร้าง assign track — แสดงทุกรอบที่ assign (รวม reject)
-  const assignedHtml = assignedEvents.length ? (() => {
-    const rows = assignedEvents.map((e, idx) => {
-      const isFinal = idx === assignedEvents.length - 1;
-      const isRejected = !isFinal;
-      return `
-        <div class="d-flex align-items-center gap-2 py-1 px-3 border-bottom" style="font-size:.8rem;background:${isRejected ? '#fff7ed' : '#f0fdf4'};">
-          <span class="badge ${isRejected ? 'bg-warning text-dark' : 'bg-success'}" style="min-width:4.5rem;font-size:.7rem;">
-            ${isRejected ? `✗ Assign #${idx + 1} (reject)` : `✓ Assign #${idx + 1} (สำเร็จ)`}
-          </span>
-          <span class="text-muted" style="min-width:100px;">${fmtDt(e.assignedAt)}</span>
-          <span class="${isRejected ? 'text-warning' : 'text-success'} fw-semibold">
-            <i class="bi bi-person-${isRejected ? 'x' : 'check'}-fill me-1"></i>${e.riderName || e.riderId || '–'}
-          </span>
-        </div>`;
-    }).join('');
-    return `<div class="border-top"><div class="px-2 pt-2 pb-1" style="font-size:.75rem;color:#64748b;font-weight:600;">ASSIGN TRACK</div>${rows}</div>`;
-  })() : '';
+  const assignedHtml = assignedEvent ? `
+    <div class="border-top" style="background:#f0fdf4;">
+      <div class="py-2 px-3 d-flex align-items-center gap-2" style="font-size:.82rem;">
+        <span class="badge bg-success">✓ Assigned</span>
+        <span class="text-muted">${fmtDt(assignedEvent.assignedAt)}</span>
+        <span class="text-success fw-bold"><i class="bi bi-person-check-fill me-1"></i>${assignedEvent.riderName ? assignedEvent.riderName + ' — ' : ''}Rider ID: ${assignedEvent.riderId || '–'}</span>
+      </div>
+    </div>` : '';
 
   const renderPage = (page) => {
     _diagPage = page;
@@ -3321,452 +3294,6 @@ function resetLayout() {
 }
 
 applyLang();
-</script>
-
-<!-- ════════════════════════════════════════════
-     AI CHAT WIDGET — น้องบอท
-     ════════════════════════════════════════════ -->
-<style>
-  /* Floating button */
-  #ai-fab {
-    position: fixed; bottom: 28px; right: 28px; z-index: 9999;
-    width: 56px; height: 56px; border-radius: 50%;
-    background: linear-gradient(135deg,#4f46e5,#7c3aed);
-    color:#fff; border:none; font-size:24px;
-    box-shadow: 0 4px 20px rgba(79,70,229,0.45);
-    cursor:pointer; display:flex; align-items:center; justify-content:center;
-    transition: transform .2s, box-shadow .2s;
-  }
-  #ai-fab:hover { transform:scale(1.08); box-shadow:0 6px 24px rgba(79,70,229,0.55); }
-  #ai-fab .ai-fab-badge {
-    position:absolute; top:-4px; right:-4px;
-    background:#ef4444; color:#fff; border-radius:50%;
-    font-size:10px; width:18px; height:18px;
-    display:none; align-items:center; justify-content:center; font-weight:700;
-  }
-
-  /* Chat window */
-  #ai-chat-window {
-    position:fixed; bottom:96px; right:28px; z-index:9998;
-    width:380px; max-width:calc(100vw - 40px);
-    height:540px; max-height:calc(100vh - 120px);
-    background:#fff; border-radius:16px;
-    box-shadow:0 8px 40px rgba(0,0,0,0.18);
-    display:none; flex-direction:column; overflow:hidden;
-    border:1px solid #e2e8f0;
-  }
-  #ai-chat-window.open { display:flex; }
-
-  /* Header */
-  .ai-chat-header {
-    background:linear-gradient(135deg,#4f46e5,#7c3aed);
-    color:#fff; padding:14px 16px;
-    display:flex; align-items:center; gap:10px;
-    flex-shrink:0;
-  }
-  .ai-chat-header .ai-avatar {
-    width:34px; height:34px; background:rgba(255,255,255,.2);
-    border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font-size:18px;
-  }
-  .ai-chat-header .ai-title { font-weight:700; font-size:.95rem; }
-  .ai-chat-header .ai-subtitle { font-size:.72rem; opacity:.8; }
-  .ai-chat-header .ai-close {
-    background:none; border:none; color:#fff;
-    font-size:18px; cursor:pointer; opacity:.8; padding:0;
-  }
-  .ai-chat-header .ai-close:hover { opacity:1; }
-  .ai-chat-header .ai-hdr-btn {
-    background:none; border:none; color:#fff;
-    font-size:15px; cursor:pointer; opacity:.7; padding:0 3px;
-    transition:opacity .15s;
-  }
-  .ai-chat-header .ai-hdr-btn:hover { opacity:1; }
-  .ai-chat-header .ai-hdr-spacer { margin-left:auto; }
-
-  /* Expand states */
-  #ai-chat-window.expanded {
-    width:660px; max-width:calc(100vw - 40px);
-    height:78vh; max-height:calc(100vh - 60px);
-  }
-  #ai-chat-window.fullscreen {
-    width:100vw; height:100vh;
-    bottom:0 !important; right:0 !important;
-    border-radius:0; max-width:100vw; max-height:100vh;
-  }
-
-  /* Debug button in model bar */
-  #ai-debug-btn {
-    background:none; border:1px solid #cbd5e1; color:#94a3b8;
-    font-size:.72rem; cursor:pointer; opacity:.55; padding:2px 6px;
-    border-radius:4px; transition:opacity .15s, color .15s;
-    white-space:nowrap;
-  }
-  #ai-debug-btn:hover { opacity:1; }
-  #ai-debug-btn.active { opacity:1; color:#4f46e5; border-color:#4f46e5; }
-
-  /* Model selector */
-  .ai-model-bar {
-    background:#f8fafc; border-bottom:1px solid #e2e8f0;
-    padding:6px 12px; display:flex; align-items:center; gap:6px;
-    flex-shrink:0;
-  }
-  .ai-model-bar label { font-size:.72rem; color:#64748b; white-space:nowrap; }
-  .ai-model-bar select {
-    font-size:.72rem; padding:2px 6px; border:1px solid #cbd5e1;
-    border-radius:4px; background:#fff; color:#334155; flex:1;
-  }
-
-  /* Messages area */
-  .ai-messages {
-    flex:1; overflow-y:auto; padding:14px 12px;
-    display:flex; flex-direction:column; gap:10px;
-    scrollbar-width:thin;
-  }
-
-  /* Bubble */
-  .ai-bubble {
-    max-width:88%; padding:10px 14px; border-radius:14px;
-    font-size:.83rem; line-height:1.55; word-break:break-word;
-  }
-  .ai-bubble.user {
-    align-self:flex-end;
-    background:linear-gradient(135deg,#4f46e5,#7c3aed);
-    color:#fff; border-bottom-right-radius:4px;
-  }
-  .ai-bubble.bot {
-    align-self:flex-start;
-    background:#f1f5f9; color:#1e293b;
-    border-bottom-left-radius:4px;
-  }
-  .ai-bubble.bot.error { background:#fee2e2; color:#b91c1c; }
-  .ai-bubble.bot.thinking {
-    background:#f1f5f9; color:#64748b; font-style:italic;
-  }
-  .ai-bubble .ai-tools-used {
-    margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;
-  }
-  .ai-tools-used .ai-tool-badge {
-    font-size:.65rem; padding:2px 6px; border-radius:10px;
-    background:#e0e7ff; color:#4338ca; font-weight:600;
-  }
-
-  /* Input area */
-  .ai-input-area {
-    border-top:1px solid #e2e8f0; padding:10px 12px;
-    display:flex; gap:8px; align-items:flex-end; flex-shrink:0;
-    background:#fff;
-  }
-  .ai-input-area textarea {
-    flex:1; border:1px solid #cbd5e1; border-radius:10px;
-    padding:8px 12px; font-size:.83rem; resize:none;
-    font-family:inherit; line-height:1.4; max-height:100px;
-    overflow-y:auto; outline:none; color:#1e293b;
-  }
-  .ai-input-area textarea:focus { border-color:#4f46e5; }
-  .ai-send-btn {
-    width:38px; height:38px; border-radius:50%;
-    background:#4f46e5; color:#fff; border:none;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; font-size:16px; flex-shrink:0;
-    transition:background .2s;
-  }
-  .ai-send-btn:hover { background:#4338ca; }
-  .ai-send-btn:disabled { background:#94a3b8; cursor:default; }
-
-  /* Suggestions */
-  .ai-suggestions {
-    padding:6px 12px 10px; display:flex; flex-wrap:wrap; gap:5px;
-    overflow-y:auto; max-height:220px; scrollbar-width:thin;
-    border-top:1px solid #f1f5f9;
-  }
-  .ai-sugg-btn {
-    font-size:.72rem; padding:4px 10px; border-radius:20px;
-    background:#f8fafc; color:#4f46e5; border:1px solid #e0e7ff;
-    cursor:pointer; transition:all .15s; white-space:nowrap;
-    text-align:left;
-  }
-  .ai-sugg-btn:hover { background:#e0e7ff; transform:translateY(-1px); }
-</style>
-
-<!-- Floating Action Button -->
-<button id="ai-fab" onclick="aiToggle()" title="ถามน้องบอท AI">
-  🤖
-  <span class="ai-fab-badge" id="ai-fab-badge"></span>
-</button>
-
-<!-- Chat Window -->
-<div id="ai-chat-window">
-  <div class="ai-chat-header">
-    <div class="ai-avatar">🤖</div>
-    <div>
-      <div class="ai-title">น้องบอท</div>
-      <div class="ai-subtitle">AI Assistant — Dashboard Autobatch</div>
-    </div>
-    <span class="ai-hdr-spacer"></span>
-    <button class="ai-hdr-btn" id="ai-expand-btn" onclick="aiToggleExpand()" title="ขยายจอ">⤢</button>
-    <button class="ai-hdr-btn" onclick="aiClear()" title="ล้างการสนทนา">🗑️</button>
-    <button class="ai-close" onclick="aiToggle()" title="ปิด">✕</button>
-  </div>
-
-  <div class="ai-model-bar">
-    <label>Model:</label>
-    <select id="ai-model-select">
-      <option value="anthropic/claude-3-haiku" selected>Claude 3 Haiku ⚡ (แนะนำ)</option>
-      <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
-      <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
-    </select>
-    <button id="ai-debug-btn" onclick="aiToggleDebug()" title="Debug — ดูข้อมูลที่ bot ดึงมา">🔍 Debug</button>
-  </div>
-
-  <div class="ai-messages" id="ai-messages">
-    <div class="ai-bubble bot">
-      สวัสดีครับ 👋 ผมน้องบอท<br>
-      ถามได้เลยครับ — หรือกดตัวอย่างด้านล่าง<br>
-      <small style="opacity:.65">⚠️ ถ้าถาม Job/Rider ให้ระบุ ID หรือชื่อด้วยนะครับ</small>
-    </div>
-  </div>
-
-  <!-- Categorized suggestions -->
-  <div class="ai-suggestions" id="ai-suggestions">
-
-    <div style="width:100%;font-size:.68rem;color:#94a3b8;font-weight:600;padding:2px 2px 0;letter-spacing:.4px;">📦 ORDER</div>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('order [CONSIGNMENT] อยู่ status อะไร ใครรับงาน')">Order นี้ status อะไร?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('order [CONSIGNMENT] customer ยืนยันสินค้าแล้วหรือยัง')">Customer confirm แล้วไหม?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('pending สาขานี้ตอนนี้มีเท่าไหร่')">Pending ตอนนี้มีเท่าไหร่?</button>
-
-    <div style="width:100%;font-size:.68rem;color:#94a3b8;font-weight:600;padding:6px 2px 0;letter-spacing:.4px;">🚚 JOB</div>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('job [JOB_ID] status อะไร ใครรับ มี order อะไรบ้าง')">Job นี้ใครรับ / order อะไร?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('job [JOB_ID] rider คนนี้เห็น job ไหม มีชื่อในรอบไหน')">Rider เห็น job นี้ไหม?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('วันนี้สาขานี้จ่ายงานไปกี่งาน ใครรับมากสุด')">วันนี้จ่ายงานไปกี่งาน?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('job ค้างอยู่มีไหม สาขานี้วันนี้')">Job ค้างอยู่มีไหม?</button>
-
-    <div style="width:100%;font-size:.68rem;color:#94a3b8;font-weight:600;padding:6px 2px 0;letter-spacing:.4px;">🏍️ RIDER</div>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('หา rider ชื่อ [ชื่อ] สาขานี้')">หา Rider จากชื่อ</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('rider [ชื่อ] ไม่ได้รับงาน [JOB_ID] เพราะอะไร ช่วย diagnose')">Rider ไม่ได้งานเพราะอะไร?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('rider [ชื่อ] วันนี้ทำงานกี่งาน accept rate เท่าไหร่')">Rider วันนี้ทำงานกี่งาน?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('rider [ชื่อ] วันนี้พักตอนไหนบ้าง ตอนนี้พักอยู่ไหม')">Rider พักตอนไหนบ้าง?</button>
-    <button class="ai-sugg-btn" onclick="aiSuggestFill('ตอนนี้ rider online กี่คน พร้อมรับงานกี่คน')">Rider online / พร้อมรับงาน?</button>
-
-  </div>
-
-  <div class="ai-input-area">
-    <textarea id="ai-input" placeholder="ถามได้เลยครับ..." rows="1"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"
-      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-    <button class="ai-send-btn" id="ai-send-btn" onclick="aiSend()">➤</button>
-  </div>
-</div>
-
-<script>
-// ── AI Chat State ────────────────────────────────────────────────────
-const aiState = {
-  history:  [],
-  loading:  false,
-  unread:   0,
-  open:     false,
-  debug:    false,
-  expanded: 0,    // 0=normal 1=expanded 2=fullscreen
-};
-
-function aiToggle() {
-  aiState.open = !aiState.open;
-  document.getElementById('ai-chat-window').classList.toggle('open', aiState.open);
-  if (aiState.open) {
-    aiState.unread = 0;
-    updateAiFab();
-    setTimeout(() => document.getElementById('ai-input').focus(), 100);
-  }
-}
-
-function updateAiFab() {
-  const badge = document.getElementById('ai-fab-badge');
-  if (aiState.unread > 0 && !aiState.open) {
-    badge.style.display = 'flex';
-    badge.textContent = aiState.unread;
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-function aiClear() {
-  document.getElementById('ai-messages').innerHTML =
-    '<div class="ai-bubble bot">สวัสดีครับ 👋 ล้างการสนทนาแล้ว — ถามใหม่ได้เลยครับ</div>';
-  aiState.history = [];
-  const s = document.getElementById('ai-suggestions');
-  if (s) s.style.display = '';
-}
-
-function aiToggleExpand() {
-  const win = document.getElementById('ai-chat-window');
-  const btn = document.getElementById('ai-expand-btn');
-  aiState.expanded = (aiState.expanded + 1) % 3;
-  win.classList.remove('expanded','fullscreen');
-  if (aiState.expanded === 1) {
-    win.classList.add('expanded');
-    btn.textContent = '⤡';
-    btn.title = 'ขยายเต็มจอ';
-  } else if (aiState.expanded === 2) {
-    win.classList.add('fullscreen');
-    btn.textContent = '❐';
-    btn.title = 'กลับขนาดปกติ';
-  } else {
-    btn.textContent = '⤢';
-    btn.title = 'ขยายจอ';
-  }
-}
-
-function aiToggleDebug() {
-  aiState.debug = !aiState.debug;
-  const btn = document.getElementById('ai-debug-btn');
-  btn.classList.toggle('active', aiState.debug);
-  document.querySelectorAll('.ai-debug-panel').forEach(el => {
-    el.style.display = aiState.debug ? 'block' : 'none';
-  });
-}
-
-function aiSuggest(btn) {
-  // ปุ่มเก่า — ส่งทันที
-  const inp = document.getElementById('ai-input');
-  inp.value = btn.textContent.replace(/^[^\s]+\s/, '').trim();
-  inp.style.height = 'auto';
-  inp.style.height = inp.scrollHeight + 'px';
-  aiSend();
-}
-
-function aiSuggestFill(text) {
-  // ใส่ข้อความลง input แต่ไม่ส่ง — ให้ user แก้ [PLACEHOLDER] ก่อน
-  const inp = document.getElementById('ai-input');
-  inp.value = text;
-  inp.style.height = 'auto';
-  inp.style.height = inp.scrollHeight + 'px';
-  inp.focus();
-  // ถ้ามี [...] ให้ select ตัวแรกเพื่อให้แก้ง่าย
-  const match = text.match(/\[([^\]]+)\]/);
-  if (match) {
-    const start = text.indexOf('[' + match[1] + ']');
-    inp.setSelectionRange(start, start + match[1].length + 2);
-  }
-  // ซ่อน suggestions หลังจากกด
-  document.getElementById('ai-suggestions').style.display = 'none';
-}
-
-function aiAddBubble(role, content, toolsUsed = [], isError = false, debugData = null) {
-  const box  = document.getElementById('ai-messages');
-  const div  = document.createElement('div');
-  div.className = `ai-bubble ${role}${isError ? ' error' : ''}`;
-
-  // render markdown-lite: bold, newline
-  const html = content
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>');
-  div.innerHTML = html;
-
-  if (toolsUsed.length > 0) {
-    const toolDiv = document.createElement('div');
-    toolDiv.className = 'ai-tools-used';
-    toolsUsed.forEach(t => {
-      const b = document.createElement('span');
-      b.className = 'ai-tool-badge';
-      b.textContent = '🔧 ' + t.replace(/_/g,' ');
-      toolDiv.appendChild(b);
-    });
-    div.appendChild(toolDiv);
-  }
-
-  // Debug panel — แสดง <details> ทุก response (กดเปิดได้เสมอ, ซ่อนถ้า debug mode ปิด)
-  if (role === 'bot' && debugData && debugData.length > 0) {
-    const panel = document.createElement('details');
-    panel.className = 'ai-debug-panel';
-    panel.style.display = 'block';   // แสดง <details> เสมอ แต่ collapsed โดย default
-    panel.style.marginTop = '6px';
-    panel.open = aiState.debug;      // ถ้า debug mode เปิดอยู่ →펼ขยายอัตโนมัติ
-    const safeJson = JSON.stringify(debugData, null, 2)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    panel.innerHTML = `
-      <summary style="font-size:.65rem;color:#94a3b8;cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:4px">
-        <span style="opacity:.6">🔍</span>
-        <span style="text-decoration:underline dotted">ดู raw data (${debugData.length} tool${debugData.length>1?'s':''})</span>
-      </summary>
-      <pre style="font-size:.6rem;overflow:auto;max-height:260px;background:#0f172a;color:#94a3b8;
-        padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;word-break:break-all">${safeJson}</pre>`;
-    div.appendChild(panel);
-  }
-
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-  return div;
-}
-
-function aiRemoveThinking() {
-  const thinking = document.querySelector('.ai-bubble.thinking');
-  if (thinking) thinking.remove();
-}
-
-async function aiSend() {
-  const input = document.getElementById('ai-input');
-  const msg   = input.value.trim();
-  if (!msg || aiState.loading) return;
-
-  // ซ่อน suggestions หลังจากส่งครั้งแรก
-  document.getElementById('ai-suggestions').style.display = 'none';
-
-  aiAddBubble('user', msg);
-  input.value = '';
-  input.style.height = 'auto';
-
-  aiState.loading = true;
-  document.getElementById('ai-send-btn').disabled = true;
-
-  // thinking bubble
-  const thinking = aiAddBubble('bot thinking', '⏳ กำลังดึงข้อมูล...');
-
-  try {
-    // รับ storeCode จาก UI ปัจจุบัน
-    const storeCodeEl = document.getElementById('store-code-input') ||
-                        document.getElementById('storeCodeInput') ||
-                        document.querySelector('[id*="store"]');
-    const storeCode   = storeCodeEl?.value || '';
-
-    const model = document.getElementById('ai-model-select').value;
-
-    const res  = await fetch('/api/ai/chat', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message:    msg,
-        storeCode,
-        history:    aiState.history.slice(-10), // ส่ง 10 turns ล่าสุด
-        model,
-      }),
-    });
-
-    const data = await res.json();
-    aiRemoveThinking();
-
-    if (!res.ok) {
-      aiAddBubble('bot', data.error || 'เกิดข้อผิดพลาด', [], true);
-    } else {
-      aiAddBubble('bot', data.answer, data.toolsUsed || [], false, data.debugData || null);
-      // เก็บ history
-      aiState.history.push({ role: 'user',      content: msg });
-      aiState.history.push({ role: 'assistant', content: data.answer });
-
-      // unread badge ถ้า window ปิดอยู่
-      if (!aiState.open) {
-        aiState.unread++;
-        updateAiFab();
-      }
-    }
-  } catch (err) {
-    aiRemoveThinking();
-    aiAddBubble('bot', '❌ เชื่อมต่อ AI ไม่ได้ กรุณาลองใหม่', [], true);
-  } finally {
-    aiState.loading = false;
-    document.getElementById('ai-send-btn').disabled = false;
-  }
-}
 </script>
 </body>
 </html>

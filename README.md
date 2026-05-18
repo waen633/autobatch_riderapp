@@ -148,10 +148,26 @@ autobatch_riderapp/
 | GET | `/api/riders` | ดึงสถานะ Rider Pool + Eligibility |
 | GET | `/api/live` | ดึงตำแหน่ง Rider + Store สำหรับ Live Map |
 | GET | `/api/rider-performance` | ดึงข้อมูล Store Performance (Jobs + Workload Share per Rider) |
-| GET | `/api/job-diagnostics` | ดึง Auto-Assign Diagnostic log จาก Tencent CLS (`?jobId=`, `?hours=`) |
+| GET | `/api/job-diagnostics` | ดึง Auto-Assign Diagnostic log จาก Tencent CLS (`?jobId=`, `?hours=` default 720h) — return `rounds[]`, `assignedEvent` (final), `assignedEvents[]` (ทุกรอบรวม reject) |
 | GET | `/api/orders` | ค้นหา Order |
 | GET | `/api/batches` | ค้นหา Batch |
 | GET | `/api/rider-breaks` | ดึงประวัติ Break ของ Rider (`?userId=`, `?from=`, `?to=`) จาก `4pl-fleet.riderbreaklogs` |
+
+---
+
+## 🔧 Dev TODO — API ที่ยังต้องทำเพิ่ม
+
+รายการนี้มาจากการวิเคราะห์เคสที่ L1 Support พบบ่อย แต่ยังไม่มี API รองรับ
+
+| Priority | Feature | API ที่ต้องการ | หมายเหตุ |
+|----------|---------|---------------|---------|
+| 🔴 High | **Rider Ban History** | `GET /api/rider-ban-history?userId=&from=&to=` | ดูว่า rider ถูก ban กี่ครั้ง ช่วงไหน ban หมดเมื่อไหร่ เพราะ reject job ไหน — ข้อมูลน่าจะอยู่ใน `4pl-fleet` collection |
+| 🔴 High | **Job Cancel Reason** | เพิ่ม field `cancelReason` ใน response `/api/jobs` | ตอนนี้รู้แค่ `job_cancelled` แต่ไม่รู้สาเหตุ (`no_rider` / `customer_cancel` / `sla_exceeded` ฯลฯ) — L1 ต้องการแยกเคสนี้ได้ |
+| 🟡 Medium | **Store Performance (AI Tool)** | เพิ่ม tool `get_store_performance` ใน `lib/aiTools.js` | Dashboard มี Section นี้แล้ว แต่ AI ยังตอบไม่ได้ถ้าถามว่า "accept rate สาขานี้เป็นยังไง" |
+
+> **หมายเหตุ**: ทั้ง 3 รายการไม่กระทบ production ที่รันอยู่ สามารถเพิ่มเป็น read-only endpoint ได้เลย
+
+---
 
 ## 📊 Google Sheets Auto-sync
 
@@ -183,6 +199,7 @@ autobatch_riderapp/
 
 | Version | Changes |
 |---------|---------|
+| 1.7.0 | **Diagnostic Assign Track**: ดึง assigned events ทุกรอบ (ไม่ใช่แค่รอบแรก) — แสดงชื่อ rider ที่ถูก assign ทุกคนพร้อม badge "ไม่รับงาน" บน Job Timeline; Summary bar แสดง "Assign N รอบ (reject N-1 ครั้ง)"; ขยาย CLS log range จาก 7 วัน → 30 วัน (720h); แยก query `assigned` event ออกจาก `no_available_riders_for_chunk` เพื่อป้องกัน limit 500 ตัด |
 | 1.6.0 | เพิ่ม **Break Log Modal**: กดไอคอน ☕ บน Rider → Modal แสดงประวัติ break ตาม date range ที่เลือก (จำนวนครั้ง, Start/End, Duration, Created At); เพิ่ม API `/api/rider-breaks` ดึงข้อมูลจาก `4pl-fleet.riderbreaklogs`; เพิ่ม `lib/cls.js` Tencent CLS client |
 | 1.5.0 | **Refactor + Google Sheets Sync**: แยก `server.js` เป็น `lib/`, `routes/`, `sync/` — เพิ่ม `sync/sheetsSync.js` push rider queue ขึ้น Google Sheets แยก tab ต่อ Store ทุก 1 ชม. ตรง :00 |
 | 1.4.0 | เพิ่ม **Auto-Assign Diagnostic**: ปุ่ม 📋 ใน column SEE ROUTE เปิด modal วิเคราะห์รอบ scan ทั้งหมดของ job, แสดงสถานะ rider แต่ละคน (not_in_pool / offline / shift_inactive / on_break), แสดงชื่อ rider ที่ assigned สำเร็จ (ดึงจาก DB), pagination 10 รอบ/หน้า พร้อม dropdown เลือกหน้า + ปุ่มหน้าแรก/สุดท้าย; เพิ่ม API `/api/job-diagnostics` (Tencent CLS); install `tencentcloud-sdk-nodejs-cls` |

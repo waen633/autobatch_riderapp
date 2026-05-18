@@ -14,13 +14,14 @@ router.get('/job-diagnostics', async (req, res) => {
     const hoursMs = Math.min(parseInt(hours) || 24, 720) * 3600 * 1000;
     const now = Date.now();
 
-    const [client, topicId] = await Promise.all([
+    const [clsClient, topicId] = await Promise.all([
       Promise.resolve(getClsClient()),
       getClsTopicId(),
     ]);
 
-    const [result, assignedResult] = await Promise.all([
-      client.SearchLog({
+    // ดึง no_available_riders_for_chunk และ assigned events พร้อมกัน
+    const [roundResult, assignedResult] = await Promise.all([
+      clsClient.SearchLog({
         TopicId: topicId,
         From: now - hoursMs,
         To: now,
@@ -29,21 +30,20 @@ router.get('/job-diagnostics', async (req, res) => {
         Sort: 'asc',
         SyntaxRule: 1,
       }),
-      client.SearchLog({
+      clsClient.SearchLog({
         TopicId: topicId,
         From: now - hoursMs,
         To: now,
         Query: `event:"auto_assign_job" AND jobId:"${jobId}" AND action:"assigned"`,
-        Limit: 1,
+        Limit: 100,   // รับทุกรอบที่ assign (rider reject แล้ว re-assign)
         Sort: 'asc',
         SyntaxRule: 1,
       }),
     ]);
 
+    // --- parse rounds ---
     const rounds = [];
-    let assignedEvent = null;
-
-    for (const record of (result.Results || [])) {
+    for (const record of (roundResult.Results || [])) {
       let fields = {};
       try { fields = JSON.parse(record.LogJson || '{}'); } catch {}
       let msg = {};
@@ -58,34 +58,51 @@ router.get('/job-diagnostics', async (req, res) => {
       });
     }
 
-    const assignedRecord = (assignedResult.Results || [])[0];
-    if (assignedRecord) {
+    // --- parse ALL assigned events ---
+    const assignedEvents = [];
+    for (const record of (assignedResult.Results || [])) {
       let fields = {};
-      try { fields = JSON.parse(assignedRecord.LogJson || '{}'); } catch {}
+      try { fields = JSON.parse(record.LogJson || '{}'); } catch {}
       let msg = {};
       try { msg = JSON.parse(fields.msg || '{}'); } catch {}
-      assignedEvent = {
-        time: fields.time || null,
-        riderId: msg.riderId || null,
-        assignedAt: msg.assignedAt || fields.time || null,
-        zoneId: msg.zoneId || null,
-      };
+      const riderId = msg.riderId || null;
+      if (riderId) {
+        assignedEvents.push({
+          time:       fields.time || null,
+          riderId,
+          assignedAt: msg.assignedAt || fields.time || null,
+          zoneId:     msg.zoneId || null,
+          riderName:  null, // fill below
+        });
+      }
     }
 
-    if (assignedEvent?.riderId) {
+    // --- lookup rider names for all assigned events ---
+    if (assignedEvents.length) {
       try {
-        const c = await getClient();
-        const staff = await c.db('4pl-fleet').collection('staffs').findOne(
-          { userId: new ObjectId(assignedEvent.riderId) },
-          { projection: { firstname: 1, lastname: 1 } }
-        );
-        if (staff) {
-          assignedEvent.riderName = `${staff.firstname || ''} ${staff.lastname || ''}`.trim();
+        const dbClient = await getClient();
+        const riderIds = [...new Set(assignedEvents.map(e => e.riderId))];
+        const staffs = await dbClient.db('4pl-fleet').collection('staffs').find(
+          { userId: { $in: riderIds.map(id => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) } },
+          { projection: { userId: 1, firstname: 1, lastname: 1 } }
+        ).toArray();
+
+        const nameMap = {};
+        for (const s of staffs) {
+          nameMap[s.userId.toString()] = `${s.firstname || ''} ${s.lastname || ''}`.trim();
+        }
+        for (const e of assignedEvents) {
+          e.riderName = nameMap[e.riderId] || null;
         }
       } catch {}
     }
 
-    res.json({ jobId, rounds, assignedEvent });
+    // assignedEvent = last one (final assignment)
+    const assignedEvent = assignedEvents.length
+      ? assignedEvents[assignedEvents.length - 1]
+      : null;
+
+    res.json({ jobId, rounds, assignedEvent, assignedEvents });
   } catch (e) {
     console.error('[/api/job-diagnostics]', e.message);
     res.status(500).json({ error: e.message });

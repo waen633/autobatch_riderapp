@@ -1985,10 +1985,40 @@ function toggleTimelineView() {
   }
 }
 
-function showJobTimeline(jobId) {
+async function showJobTimeline(jobId) {
   const d = state.jobs.data.find(j => j.jobId === jobId);
   if (!d) return;
+
+  document.getElementById('timelineTitle').innerHTML =
+    `<i class="bi bi-clock-history me-2"></i>Job: ${d.jobId} <span class="ms-2">${jobBadge(d.status)}</span>`;
+  document.getElementById('timelineBody').innerHTML =
+    '<div class="text-center p-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลด...</div>';
+  new bootstrap.Modal(document.getElementById('timelineModal')).show();
+
+  // ดึง assign events จาก diagnostic พร้อมกัน
+  let assignedEvents = [];
+  try {
+    const r = await fetch(`${API_BASE}/api/job-diagnostics?jobId=${encodeURIComponent(jobId)}&hours=720`);
+    if (r.ok) {
+      const diag = await r.json();
+      assignedEvents = diag.assignedEvents || [];
+    }
+  } catch {}
+
+  // สร้าง map: เวลา assignedAt (วินาที) → event สำหรับ match กับ job_assigned
+  const assignMap = {};
+  assignedEvents.forEach(e => {
+    if (e.assignedAt) {
+      const sec = new Date(e.assignedAt).getTime();
+      // เก็บ range ±5 วินาที เผื่อ clock skew
+      assignMap[Math.floor(sec / 1000)] = e;
+    }
+  });
+
+  // ถ้า assign events น้อยกว่า job_assigned ใน history ให้ assign ตามลำดับ
   const history = d.updateStatuses || [];
+  let assignIdx = 0;
+
   const last = history.length - 1;
   const bodyHtml = history.length ? history.map((s, i) => {
     let badgeCls = 'bg-secondary';
@@ -1997,6 +2027,27 @@ function showJobTimeline(jobId) {
     else if (st.includes('delivering') || st.includes('picked_up') || st.includes('completed')) badgeCls = 'bg-success';
     else if (st.includes('cancelled') || st.includes('failed')) badgeCls = 'bg-danger';
     else if (st.includes('assigned')) badgeCls = 'bg-info text-dark';
+
+    // หา assign event ที่ตรงกับ timestamp นี้
+    let riderHtml = '';
+    if (st === 'job_assigned') {
+      const tSec = Math.floor(new Date(s.updatedAt).getTime() / 1000);
+      // ลอง match ±10 วินาที
+      let matchedEvent = null;
+      for (let delta = -10; delta <= 10; delta++) {
+        if (assignMap[tSec + delta]) { matchedEvent = assignMap[tSec + delta]; break; }
+      }
+      // fallback: ใช้ลำดับถ้า match ไม่ได้
+      if (!matchedEvent && assignedEvents[assignIdx]) matchedEvent = assignedEvents[assignIdx];
+      if (matchedEvent) {
+        const isFinal = assignIdx === assignedEvents.length - 1;
+        const label = isFinal
+          ? `<span class="text-success ms-2"><i class="bi bi-person-check-fill me-1"></i>${matchedEvent.riderName || matchedEvent.riderId}</span>`
+          : `<span class="text-warning ms-2"><i class="bi bi-person-x-fill me-1"></i>${matchedEvent.riderName || matchedEvent.riderId} <span class="badge bg-warning text-dark" style="font-size:.65rem;">ไม่รับงาน</span></span>`;
+        riderHtml = label;
+        assignIdx++;
+      }
+    }
 
     return `
       <div class="tl-row mb-1 d-flex gap-2">
@@ -2008,15 +2059,13 @@ function showJobTimeline(jobId) {
           <div class="d-flex align-items-center gap-2 flex-wrap w-100">
             <small class="text-muted" style="min-width:110px;">${fmtDt(s.updatedAt)}</small>
             <span class="badge ${badgeCls} status-badge">${s.status}</span>
+            ${riderHtml}
           </div>
         </div>
       </div>`;
   }).join('') : '<em class="text-muted">ไม่มีข้อมูล</em>';
 
-  document.getElementById('timelineTitle').innerHTML =
-    `<i class="bi bi-clock-history me-2"></i>Job: ${d.jobId} <span class="ms-2">${jobBadge(d.status)}</span>`;
   document.getElementById('timelineBody').innerHTML = bodyHtml;
-  new bootstrap.Modal(document.getElementById('timelineModal')).show();
 }
 
 // ─── AUTO-ASSIGN DIAGNOSTIC MODAL ───────────────────────────────────────────
@@ -2043,7 +2092,7 @@ async function showJobDiagnostic(jobId) {
 }
 
 function renderDiagnostic(data) {
-  const { rounds = [], assignedEvent } = data;
+  const { rounds = [], assignedEvent, assignedEvents = [] } = data;
 
   const reasonBadge = (reason) => {
     if (reason.startsWith('break_til_')) {
@@ -2094,6 +2143,7 @@ function renderDiagnostic(data) {
   document.getElementById('diagSummary').innerHTML =
     `<span class="me-3">รอบที่ scan: <strong>${rounds.length}</strong></span>` +
     (rounds[0] ? `<span class="me-3">Rider ที่ตรวจ: <strong>${rounds[0].totalRiders}</strong> คน</span>` : '') +
+    (assignedEvents.length > 1 ? `<span class="me-3 text-warning fw-bold"><i class="bi bi-arrow-repeat me-1"></i>Assign ${assignedEvents.length} รอบ (reject ${assignedEvents.length - 1} ครั้ง)</span>` : '') +
     (assignedEvent ? `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Assigned เวลา ${fmtDt(assignedEvent.assignedAt)}</span>` : '<span class="text-danger">ยังไม่ได้ Assign</span>');
 
   if (!rounds.length && !assignedEvent) {
@@ -2105,14 +2155,24 @@ function renderDiagnostic(data) {
   const PAGE_SIZE = 10;
   let _diagPage = 0;
 
-  const assignedHtml = assignedEvent ? `
-    <div class="border-top" style="background:#f0fdf4;">
-      <div class="py-2 px-3 d-flex align-items-center gap-2" style="font-size:.82rem;">
-        <span class="badge bg-success">✓ Assigned</span>
-        <span class="text-muted">${fmtDt(assignedEvent.assignedAt)}</span>
-        <span class="text-success fw-bold"><i class="bi bi-person-check-fill me-1"></i>${assignedEvent.riderName ? assignedEvent.riderName + ' — ' : ''}Rider ID: ${assignedEvent.riderId || '–'}</span>
-      </div>
-    </div>` : '';
+  // สร้าง assign track — แสดงทุกรอบที่ assign (รวม reject)
+  const assignedHtml = assignedEvents.length ? (() => {
+    const rows = assignedEvents.map((e, idx) => {
+      const isFinal = idx === assignedEvents.length - 1;
+      const isRejected = !isFinal;
+      return `
+        <div class="d-flex align-items-center gap-2 py-1 px-3 border-bottom" style="font-size:.8rem;background:${isRejected ? '#fff7ed' : '#f0fdf4'};">
+          <span class="badge ${isRejected ? 'bg-warning text-dark' : 'bg-success'}" style="min-width:4.5rem;font-size:.7rem;">
+            ${isRejected ? `✗ Assign #${idx + 1} (reject)` : `✓ Assign #${idx + 1} (สำเร็จ)`}
+          </span>
+          <span class="text-muted" style="min-width:100px;">${fmtDt(e.assignedAt)}</span>
+          <span class="${isRejected ? 'text-warning' : 'text-success'} fw-semibold">
+            <i class="bi bi-person-${isRejected ? 'x' : 'check'}-fill me-1"></i>${e.riderName || e.riderId || '–'}
+          </span>
+        </div>`;
+    }).join('');
+    return `<div class="border-top"><div class="px-2 pt-2 pb-1" style="font-size:.75rem;color:#64748b;font-weight:600;">ASSIGN TRACK</div>${rows}</div>`;
+  })() : '';
 
   const renderPage = (page) => {
     _diagPage = page;

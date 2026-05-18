@@ -2032,7 +2032,7 @@ async function showJobDiagnostic(jobId) {
   _diagModalInstance.show();
 
   try {
-    const res = await fetch(`${API_BASE}/api/job-diagnostics?jobId=${encodeURIComponent(jobId)}`);
+    const res = await fetch(`${API_BASE}/api/job-diagnostics?jobId=${encodeURIComponent(jobId)}&hours=720`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Unknown error');
     renderDiagnostic(data);

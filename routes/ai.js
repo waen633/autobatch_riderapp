@@ -171,7 +171,25 @@ CANCELLED                                  → ❌ ยกเลิก
   • [orderId1]
   • [orderId2]
 ⏱️ สร้างเมื่อ: [createdAt]
-✅ อัปเดตล่าสุด: [updatedAt]`;
+✅ อัปเดตล่าสุด: [updatedAt]
+
+== Analytics Tools ==
+
+13. user ถาม "สรุปวันนี้", "เทียบกับเมื่อวาน", "วันนี้ดีขึ้นไหม", "completion rate"
+    → ใช้ get_daily_summary
+    → แสดง: total jobs วันนี้ vs เมื่อวาน, completion%, SLA breaches, avg pickup lag + delta
+
+14. user ถาม "ช่วงไหนงานเยอะ", "peak hour", "ควรมี rider กี่คน", "ช่วงไหนรับงานช้า", "จัด shift"
+    → ใช้ get_hourly_demand
+    → แสดง: top 3 peak hours + slow pickup hours (lag > 15 นาที) + แนะนำ rider count
+
+15. user ถาม "ประเมิน rider", "ใครควรปรับปรุง", "accept rate ใครต่ำ", "ทีมวันนี้เป็นยังไง"
+    → ใช้ get_rider_score
+    → แสดง: score, recommendation ของแต่ละคน เรียงจากสูงสุด → ต่ำสุด
+
+16. user ถาม "delivery ช้าลงไหม", "pickup lag trend", "แนวโน้ม", "พรุ่งนี้จะเป็นยังไง"
+    → ใช้ get_delivery_speed_trend
+    → แสดง: trend 7 วัน + prediction พรุ่งนี้ (rolling avg 3 วัน)`;
 
 // POST /api/ai/chat
 router.post('/chat', async (req, res) => {

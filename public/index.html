@@ -228,6 +228,19 @@
   </div>
 </nav>
 
+<div class="container-fluid px-3 pt-2 pb-0">
+  <!-- TAB NAV -->
+  <ul class="nav nav-tabs mb-0" id="mainTabs">
+    <li class="nav-item">
+      <a class="nav-link active" href="#" id="tab-dashboard" onclick="switchTab('dashboard');return false;"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" id="tab-analytics" onclick="switchTab('analytics');return false;"><i class="bi bi-bar-chart-line me-1"></i>Analytics &amp; Report</a>
+    </li>
+  </ul>
+</div>
+
+<div id="page-dashboard">
 <div class="container-fluid px-3 py-3">
 
   <!-- FILTER BAR -->
@@ -585,6 +598,157 @@
 
   </div><!-- /grid-stack -->
 </div><!-- /container -->
+</div><!-- /page-dashboard -->
+
+<!-- ═══════════════════════════════════════════════════════
+     ANALYTICS & REPORT TAB
+     ═══════════════════════════════════════════════════════ -->
+<div id="page-analytics" style="display:none;">
+<div class="container-fluid px-3 py-3">
+
+  <!-- ANALYTICS FILTER BAR -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label mb-1 fw-semibold">Store Code</label>
+          <input type="text" class="form-control form-control-sm" id="an-storeCode" value="" placeholder="1104" style="width:160px">
+        </div>
+        <div class="col-auto ms-auto">
+          <button class="btn btn-primary btn-sm" onclick="loadAnalytics()"><i class="bi bi-arrow-repeat me-1"></i>โหลดข้อมูล</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION A: KPI Cards -->
+  <div class="row g-3 mb-3" id="an-kpi-row">
+    <div class="col-6 col-md-3">
+      <div class="card h-100 text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Total Jobs</div>
+          <div class="fs-3 fw-bold" id="an-kpi-jobs">–</div>
+          <div class="small mt-1" id="an-kpi-jobs-delta"></div>
+          <div class="text-muted" style="font-size:.72rem;">vs เมื่อวาน <span id="an-kpi-jobs-yest">–</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100 text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Completion Rate</div>
+          <div class="fs-3 fw-bold" id="an-kpi-cr">–</div>
+          <div class="small mt-1" id="an-kpi-cr-delta"></div>
+          <div class="text-muted" style="font-size:.72rem;">vs เมื่อวาน <span id="an-kpi-cr-yest">–</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100 text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">SLA Breaches</div>
+          <div class="fs-3 fw-bold" id="an-kpi-sla">–</div>
+          <div class="small mt-1" id="an-kpi-sla-delta"></div>
+          <div class="text-muted" style="font-size:.72rem;">vs เมื่อวาน <span id="an-kpi-sla-yest">–</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100 text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Avg Pickup Lag</div>
+          <div class="fs-3 fw-bold" id="an-kpi-lag">–</div>
+          <div class="small mt-1" id="an-kpi-lag-delta"></div>
+          <div class="text-muted" style="font-size:.72rem;">vs เมื่อวาน <span id="an-kpi-lag-yest">–</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION A2: Demand Forecast Card -->
+  <div class="card mb-3" style="border-left:4px solid #8b5cf6;">
+    <div class="card-body py-2">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div><i class="bi bi-stars me-1 text-purple" style="color:#8b5cf6;"></i><strong>พรุ่งนี้คาดการณ์</strong></div>
+        <div>งานทั้งหมด: <strong id="an-fc-total">–</strong> jobs</div>
+        <div class="text-muted">|</div>
+        <div id="an-fc-peaks" class="text-muted small">ยังไม่ได้โหลด</div>
+        <div class="ms-auto">
+          <span class="badge bg-secondary" style="font-size:.72rem;">avg 7 วันที่ผ่านมา</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION B: Hourly Demand Chart -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #3b82f6;">
+      <span><i class="bi bi-clock-history me-2 text-primary"></i>Hourly Demand — Today vs Yesterday + Tomorrow Forecast</span>
+      <span class="text-muted small" id="an-peak-label"></span>
+    </div>
+    <div class="card-body" style="height:280px;">
+      <canvas id="an-hourly-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- SECTION C + D: Rider Score & Delivery Speed -->
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #f59e0b;">
+          <span><i class="bi bi-people-fill me-2 text-warning"></i>Rider Performance Score <small class="text-muted fw-normal">(7 วันล่าสุด)</small></span>
+          <span id="an-rider-shift-badge" class="badge bg-danger d-none"></span>
+        </div>
+        <div class="card-body" style="height:300px; overflow-y:auto; padding:0;">
+          <canvas id="an-rider-chart" style="display:none;"></canvas>
+          <div id="an-rider-table"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header" style="border-top:3px solid #8b5cf6;">
+          <i class="bi bi-graph-up me-2 text-purple" style="color:#8b5cf6;"></i>Delivery Speed — 7 Days + Prediction
+        </div>
+        <div class="card-body" style="height:300px;">
+          <canvas id="an-speed-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION D2: Shift Planning -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #f97316;">
+      <span><i class="bi bi-calendar-week me-2 text-warning"></i>Shift Planning — พรุ่งนี้</span>
+      <span class="text-muted small">จากข้อมูล 7 วัน + คาดการณ์ demand</span>
+    </div>
+    <div class="card-body py-2">
+      <div id="an-shift-plan" class="text-muted" style="font-size:.88rem;">กด "โหลดข้อมูล" เพื่อดูแผน shift</div>
+    </div>
+  </div>
+
+  <!-- SECTION E: AI Insight Panel -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #10b981;">
+      <span><i class="bi bi-robot me-2 text-success"></i>AI Insight วันนี้</span>
+      <button class="btn btn-outline-success btn-sm" onclick="loadAIInsight()"><i class="bi bi-arrow-repeat me-1"></i>Refresh</button>
+    </div>
+    <div class="card-body">
+      <div id="an-ai-insight" class="text-muted" style="white-space:pre-line; font-size:.9rem;">กด "โหลดข้อมูล" เพื่อดู AI Insight</div>
+      <!-- follow-up chat -->
+      <div id="an-ai-followup" class="mt-3 d-none">
+        <div class="input-group input-group-sm">
+          <input type="text" class="form-control" id="an-ai-input" placeholder="ถามต่อ..." onkeydown="if(event.key==='Enter')sendAIFollowup()">
+          <button class="btn btn-success" onclick="sendAIFollowup()"><i class="bi bi-send"></i></button>
+        </div>
+        <div id="an-ai-chat-history" class="mt-2" style="font-size:.85rem;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /page-analytics -->
 
 <!-- COLUMN SELECTOR MODAL -->
 <div class="modal fade" id="colModal" tabindex="-1">
@@ -1995,31 +2159,21 @@ async function showJobTimeline(jobId) {
     '<div class="text-center p-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลด...</div>';
   new bootstrap.Modal(document.getElementById('timelineModal')).show();
 
-  // ดึง assign events จาก diagnostic พร้อมกัน
   let assignedEvents = [];
   try {
     const r = await fetch(`${API_BASE}/api/job-diagnostics?jobId=${encodeURIComponent(jobId)}&hours=720`);
-    if (r.ok) {
-      const diag = await r.json();
-      assignedEvents = diag.assignedEvents || [];
-    }
+    if (r.ok) { const diag = await r.json(); assignedEvents = diag.assignedEvents || []; }
   } catch {}
 
-  // สร้าง map: เวลา assignedAt (วินาที) → event สำหรับ match กับ job_assigned
   const assignMap = {};
   assignedEvents.forEach(e => {
-    if (e.assignedAt) {
-      const sec = new Date(e.assignedAt).getTime();
-      // เก็บ range ±5 วินาที เผื่อ clock skew
-      assignMap[Math.floor(sec / 1000)] = e;
-    }
+    if (e.assignedAt) assignMap[Math.floor(new Date(e.assignedAt).getTime() / 1000)] = e;
   });
 
-  // ถ้า assign events น้อยกว่า job_assigned ใน history ให้ assign ตามลำดับ
   const history = d.updateStatuses || [];
+  const last = history.length - 1;
   let assignIdx = 0;
 
-  const last = history.length - 1;
   const bodyHtml = history.length ? history.map((s, i) => {
     let badgeCls = 'bg-secondary';
     const st = s.status || '';
@@ -2028,23 +2182,17 @@ async function showJobTimeline(jobId) {
     else if (st.includes('cancelled') || st.includes('failed')) badgeCls = 'bg-danger';
     else if (st.includes('assigned')) badgeCls = 'bg-info text-dark';
 
-    // หา assign event ที่ตรงกับ timestamp นี้
     let riderHtml = '';
     if (st === 'job_assigned') {
       const tSec = Math.floor(new Date(s.updatedAt).getTime() / 1000);
-      // ลอง match ±10 วินาที
-      let matchedEvent = null;
-      for (let delta = -10; delta <= 10; delta++) {
-        if (assignMap[tSec + delta]) { matchedEvent = assignMap[tSec + delta]; break; }
-      }
-      // fallback: ใช้ลำดับถ้า match ไม่ได้
-      if (!matchedEvent && assignedEvents[assignIdx]) matchedEvent = assignedEvents[assignIdx];
-      if (matchedEvent) {
+      let ev = null;
+      for (let d = -10; d <= 10; d++) { if (assignMap[tSec + d]) { ev = assignMap[tSec + d]; break; } }
+      if (!ev && assignedEvents[assignIdx]) ev = assignedEvents[assignIdx];
+      if (ev) {
         const isFinal = assignIdx === assignedEvents.length - 1;
-        const label = isFinal
-          ? `<span class="text-success ms-2"><i class="bi bi-person-check-fill me-1"></i>${matchedEvent.riderName || matchedEvent.riderId}</span>`
-          : `<span class="text-warning ms-2"><i class="bi bi-person-x-fill me-1"></i>${matchedEvent.riderName || matchedEvent.riderId} <span class="badge bg-warning text-dark" style="font-size:.65rem;">ไม่รับงาน</span></span>`;
-        riderHtml = label;
+        riderHtml = isFinal
+          ? `<span class="text-success ms-1"><i class="bi bi-person-check-fill me-1"></i>${ev.riderName || ev.riderId}</span>`
+          : `<span class="text-warning ms-1"><i class="bi bi-person-x-fill me-1"></i>${ev.riderName || ev.riderId} <span class="badge bg-warning text-dark" style="font-size:.65rem;">ไม่รับงาน</span></span>`;
         assignIdx++;
       }
     }
@@ -2092,7 +2240,7 @@ async function showJobDiagnostic(jobId) {
 }
 
 function renderDiagnostic(data) {
-  const { rounds = [], assignedEvent, assignedEvents = [] } = data;
+  const { rounds = [], assignedEvent } = data;
 
   const reasonBadge = (reason) => {
     if (reason.startsWith('break_til_')) {
@@ -2143,7 +2291,6 @@ function renderDiagnostic(data) {
   document.getElementById('diagSummary').innerHTML =
     `<span class="me-3">รอบที่ scan: <strong>${rounds.length}</strong></span>` +
     (rounds[0] ? `<span class="me-3">Rider ที่ตรวจ: <strong>${rounds[0].totalRiders}</strong> คน</span>` : '') +
-    (assignedEvents.length > 1 ? `<span class="me-3 text-warning fw-bold"><i class="bi bi-arrow-repeat me-1"></i>Assign ${assignedEvents.length} รอบ (reject ${assignedEvents.length - 1} ครั้ง)</span>` : '') +
     (assignedEvent ? `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Assigned เวลา ${fmtDt(assignedEvent.assignedAt)}</span>` : '<span class="text-danger">ยังไม่ได้ Assign</span>');
 
   if (!rounds.length && !assignedEvent) {
@@ -2155,24 +2302,14 @@ function renderDiagnostic(data) {
   const PAGE_SIZE = 10;
   let _diagPage = 0;
 
-  // สร้าง assign track — แสดงทุกรอบที่ assign (รวม reject)
-  const assignedHtml = assignedEvents.length ? (() => {
-    const rows = assignedEvents.map((e, idx) => {
-      const isFinal = idx === assignedEvents.length - 1;
-      const isRejected = !isFinal;
-      return `
-        <div class="d-flex align-items-center gap-2 py-1 px-3 border-bottom" style="font-size:.8rem;background:${isRejected ? '#fff7ed' : '#f0fdf4'};">
-          <span class="badge ${isRejected ? 'bg-warning text-dark' : 'bg-success'}" style="min-width:4.5rem;font-size:.7rem;">
-            ${isRejected ? `✗ Assign #${idx + 1} (reject)` : `✓ Assign #${idx + 1} (สำเร็จ)`}
-          </span>
-          <span class="text-muted" style="min-width:100px;">${fmtDt(e.assignedAt)}</span>
-          <span class="${isRejected ? 'text-warning' : 'text-success'} fw-semibold">
-            <i class="bi bi-person-${isRejected ? 'x' : 'check'}-fill me-1"></i>${e.riderName || e.riderId || '–'}
-          </span>
-        </div>`;
-    }).join('');
-    return `<div class="border-top"><div class="px-2 pt-2 pb-1" style="font-size:.75rem;color:#64748b;font-weight:600;">ASSIGN TRACK</div>${rows}</div>`;
-  })() : '';
+  const assignedHtml = assignedEvent ? `
+    <div class="border-top" style="background:#f0fdf4;">
+      <div class="py-2 px-3 d-flex align-items-center gap-2" style="font-size:.82rem;">
+        <span class="badge bg-success">✓ Assigned</span>
+        <span class="text-muted">${fmtDt(assignedEvent.assignedAt)}</span>
+        <span class="text-success fw-bold"><i class="bi bi-person-check-fill me-1"></i>${assignedEvent.riderName ? assignedEvent.riderName + ' — ' : ''}Rider ID: ${assignedEvent.riderId || '–'}</span>
+      </div>
+    </div>` : '';
 
   const renderPage = (page) => {
     _diagPage = page;
@@ -3321,8 +3458,352 @@ function resetLayout() {
 }
 
 applyLang();
-</script>
 
+// ══════════════════════════════════════════════════════════
+// ANALYTICS TAB
+// ══════════════════════════════════════════════════════════
+
+function switchTab(tab) {
+  document.getElementById('page-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
+  document.getElementById('page-analytics').style.display = tab === 'analytics' ? '' : 'none';
+  document.getElementById('tab-dashboard').classList.toggle('active', tab === 'dashboard');
+  document.getElementById('tab-analytics').classList.toggle('active', tab === 'analytics');
+  if (tab === 'analytics') {
+    // pre-fill storeCode from dashboard
+    const sc = document.getElementById('storeCode')?.value || '';
+    document.getElementById('an-storeCode').value = sc;
+  }
+}
+
+// chart instances
+let _anHourlyChart = null, _anSpeedChart = null;
+
+function anDelta(val, suffix = '', invertColor = false) {
+  if (val === null || val === undefined) return '<span class="text-muted">–</span>';
+  const pos = val > 0;
+  const color = invertColor ? (pos ? 'danger' : 'success') : (pos ? 'success' : 'danger');
+  const sign  = pos ? '+' : '';
+  return `<span class="text-${color} fw-semibold">${sign}${val}${suffix}</span>`;
+}
+
+async function loadAnalytics() {
+  const sc = document.getElementById('an-storeCode').value.trim();
+  if (!sc) { alert('กรุณาใส่ Store Code'); return; }
+
+  const base = API_BASE;
+
+  // load all in parallel
+  const [summaryRes, hourlyRes, riderRes, speedRes, forecastRes] = await Promise.all([
+    fetch(`${base}/api/analytics/daily-summary?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()).catch(()=>null),
+    fetch(`${base}/api/analytics/hourly?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()).catch(()=>null),
+    fetch(`${base}/api/analytics/rider-score?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()).catch(()=>null),
+    fetch(`${base}/api/analytics/delivery-speed?storeCode=${encodeURIComponent(sc)}&days=7`).then(r=>r.json()).catch(()=>null),
+    fetch(`${base}/api/analytics/demand-forecast?storeCode=${encodeURIComponent(sc)}&days=7`).then(r=>r.json()).catch(()=>null),
+  ]);
+
+  renderKPI(summaryRes);
+  renderHourlyChart(hourlyRes, forecastRes);
+  renderForecastBar(forecastRes);
+  renderRiderTable(riderRes, forecastRes);
+  renderShiftPlan(riderRes, forecastRes);
+  renderSpeedChart(speedRes);
+  loadAIInsight();
+}
+
+function renderKPI(data) {
+  if (!data) return;
+  const { today, yesterday, delta } = data;
+
+  document.getElementById('an-kpi-jobs').textContent = today.totalJobs;
+  document.getElementById('an-kpi-jobs-yest').textContent = yesterday.totalJobs;
+  document.getElementById('an-kpi-jobs-delta').innerHTML = anDelta(delta.totalJobsPct, '%');
+
+  document.getElementById('an-kpi-cr').textContent = today.completionRate + '%';
+  document.getElementById('an-kpi-cr-yest').textContent = yesterday.completionRate + '%';
+  document.getElementById('an-kpi-cr-delta').innerHTML = anDelta(delta.completionRateDelta, '%');
+
+  document.getElementById('an-kpi-sla').textContent = today.slaBreaches;
+  document.getElementById('an-kpi-sla-yest').textContent = yesterday.slaBreaches;
+  document.getElementById('an-kpi-sla-delta').innerHTML = anDelta(delta.slaBreachesDelta, '', true);
+
+  const lagVal = today.avgPickupLagMin !== null ? today.avgPickupLagMin + ' นาที' : '–';
+  const lagYest = yesterday.avgPickupLagMin !== null ? yesterday.avgPickupLagMin + ' นาที' : '–';
+  document.getElementById('an-kpi-lag').textContent = lagVal;
+  document.getElementById('an-kpi-lag-yest').textContent = lagYest;
+  document.getElementById('an-kpi-lag-delta').innerHTML = anDelta(delta.avgPickupLagDelta, ' นาที', true);
+}
+
+function renderHourlyChart(data, forecast) {
+  if (!data) return;
+  const labels   = data.map(h => `${String(h.hour).padStart(2,'0')}:00`);
+  const today    = data.map(h => h.jobCount);
+  const yest     = data.map(h => h.yesterdayJobCount);
+  const fcData   = forecast ? data.map(h => { const f = forecast.hourly?.find(x=>x.hour===h.hour); return f ? f.predictedJobs : 0; }) : null;
+  const bgColors = data.map(h => h.isPeak ? 'rgba(249,115,22,0.8)' : h.isSlowPickup ? 'rgba(239,68,68,0.45)' : 'rgba(59,130,246,0.6)');
+
+  const peaks = data.filter(h=>h.isPeak && h.jobCount>0).map(h=>`${String(h.hour).padStart(2,'0')}:00`);
+  document.getElementById('an-peak-label').textContent = peaks.length ? `Peak วันนี้: ${peaks.join(', ')}` : '';
+
+  const datasets = [
+    { label: 'วันนี้', data: today, backgroundColor: bgColors, order: 2 },
+    { label: 'เมื่อวาน', data: yest, type: 'line', borderColor: '#94a3b8', backgroundColor: 'transparent', borderDash: [4,3], pointRadius: 2, order: 1 },
+  ];
+  if (fcData) {
+    datasets.push({ label: 'พรุ่งนี้ (คาด)', data: fcData, type: 'line', borderColor: '#8b5cf6', backgroundColor: 'transparent', borderDash: [6,3], pointRadius: 3, pointBackgroundColor: '#8b5cf6', order: 0 });
+  }
+
+  if (_anHourlyChart) _anHourlyChart.destroy();
+  const ctx = document.getElementById('an-hourly-chart').getContext('2d');
+  _anHourlyChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 10 }, maxRotation: 0 } },
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderForecastBar(fc) {
+  if (!fc) return;
+  document.getElementById('an-fc-total').textContent = fc.totalPredictedJobs;
+  const peaks = (fc.peakHours || []).slice(0, 3).map(h => `${String(h.hour).padStart(2,'0')}:00 (~${h.predictedJobs} jobs)`);
+  document.getElementById('an-fc-peaks').innerHTML = peaks.length
+    ? `<i class="bi bi-fire text-danger me-1"></i>Peak: ${peaks.join(' | ')}`
+    : 'ไม่พบ peak hours';
+}
+
+function renderRiderTable(data) {
+  const el = document.getElementById('an-rider-table');
+  if (!data || !data.length) { el.innerHTML = '<div class="p-3 text-muted">ไม่พบข้อมูล</div>'; return; }
+  const rows = data.map(r => {
+    const color = r.score >= 70 ? 'success' : r.score >= 40 ? 'warning' : 'danger';
+    const pct   = Math.min(r.score, 100);
+    const avgDaily = r.total > 0 ? Math.round(r.total / 7 * 10) / 10 : 0;
+    return `<div class="px-3 py-2 border-bottom">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="fw-semibold" style="font-size:.88rem;">${r.riderName}</span>
+        <span class="badge bg-${color}">${r.score} คะแนน</span>
+      </div>
+      <div class="progress mb-1" style="height:6px;">
+        <div class="progress-bar bg-${color}" style="width:${pct}%"></div>
+      </div>
+      <div class="d-flex gap-3 flex-wrap" style="font-size:.75rem; color:#64748b;">
+        <span>7 วัน: ${r.total} งาน</span>
+        <span>เฉลี่ย ${avgDaily}/วัน</span>
+        <span>สำเร็จ ${r.acceptRate}%</span>
+        <span>ยกเลิก ${r.cancelRate}%</span>
+        <span class="text-${r.recommendation==='ติดตามด่วน'?'danger':r.recommendation==='ควรปรับปรุง'?'warning':'success'} fw-semibold">${r.recommendation}</span>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = rows;
+}
+
+function renderShiftPlan(riders, forecast) {
+  const el = document.getElementById('an-shift-plan');
+  if (!riders || !riders.length || !forecast) {
+    el.innerHTML = '<span class="text-muted">ไม่มีข้อมูลเพียงพอ</span>';
+    return;
+  }
+
+  const totalFc = forecast.totalPredictedJobs || 0;
+  const peakHours = (forecast.peakHours || []).slice(0, 3);
+
+  // workload ranking: sort by total jobs desc (7 days)
+  const sorted   = [...riders].sort((a, b) => b.total - a.total);
+  const heavyLoad = sorted.slice(0, Math.ceil(sorted.length * 0.3));  // top 30% = ทำงานหนัก
+  const lowLoad   = sorted.slice(-Math.ceil(sorted.length * 0.3));    // bottom 30% = ทำน้อย
+
+  // recommended rider count for tomorrow = ceil(predictedJobs / avgJobsPerRider)
+  const avgJobsPerRider = riders.length ? (riders.reduce((s,r) => s + r.total, 0) / riders.length / 7) : 5;
+  const recommendedRiders = Math.max(2, Math.ceil(totalFc / Math.max(avgJobsPerRider, 1)));
+
+  const peakText = peakHours.length
+    ? peakHours.map(h => `<span class="badge bg-warning text-dark me-1">${String(h.hour).padStart(2,'0')}:00</span>`).join('')
+    : '–';
+
+  const restList = heavyLoad.slice(0, 2).map(r =>
+    `<span class="badge bg-secondary me-1">${r.riderName.replace(/^\(LT\)\s*/,'')}</span>`
+  ).join('');
+
+  const lowList = lowLoad.slice(0, 3).map(r =>
+    `<span class="badge bg-success me-1">${r.riderName.replace(/^\(LT\)\s*/,'')}</span>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="row g-3">
+      <div class="col-12 col-md-4">
+        <div class="p-2 rounded" style="background:#f0fdf4;">
+          <div class="fw-semibold mb-1" style="font-size:.82rem;">📊 คาดการณ์พรุ่งนี้</div>
+          <div>งาน ~<strong>${totalFc}</strong> jobs</div>
+          <div class="mt-1">ต้องการ rider อย่างน้อย <strong class="text-success">${recommendedRiders} คน</strong></div>
+          <div class="mt-1">Peak: ${peakText}</div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="p-2 rounded" style="background:#fff7ed;">
+          <div class="fw-semibold mb-1" style="font-size:.82rem;">😮‍💨 ทำงานหนัก 7 วัน (แนะนำพัก)</div>
+          ${restList || '<span class="text-muted">–</span>'}
+          <div class="text-muted mt-1" style="font-size:.75rem;">งาน ${heavyLoad.slice(0,2).map(r=>r.total).join(', ')} jobs</div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="p-2 rounded" style="background:#eff6ff;">
+          <div class="fw-semibold mb-1" style="font-size:.82rem;">✅ ทำงานน้อย (เพิ่ม shift ได้)</div>
+          ${lowList || '<span class="text-muted">–</span>'}
+          <div class="text-muted mt-1" style="font-size:.75rem;">งาน ${lowLoad.slice(0,3).map(r=>r.total).join(', ')} jobs</div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-2 text-muted" style="font-size:.75rem;">* คำแนะนำอิงจากปริมาณงาน 7 วัน / ถ้า rider แจ้งหยุด ให้ถาม AI เพื่อจัด shift ใหม่</div>
+  `;
+}
+
+function renderSpeedChart(data) {
+  if (!data) return;
+  const actual    = data.filter(d => !d.predicted);
+  const predicted = data.find(d => d.predicted);
+
+  const labels  = actual.map(d => d.date.slice(5));
+  const pickup  = actual.map(d => d.avgPickupLagMin);
+  const delivery= actual.map(d => d.avgDeliveryLagMin);
+
+  // add predicted point
+  if (predicted) {
+    labels.push(predicted.date.slice(5) + ' (คาด)');
+    pickup.push(null); delivery.push(null);
+  }
+
+  // dashed predictive series
+  const pickupPred  = actual.map(() => null);
+  const delivPred   = actual.map(() => null);
+  if (predicted && actual.length) {
+    const lastPickup   = actual[actual.length - 1].avgPickupLagMin;
+    const lastDelivery = actual[actual.length - 1].avgDeliveryLagMin;
+    pickupPred[actual.length - 1]  = lastPickup;
+    delivPred[actual.length - 1]   = lastDelivery;
+    pickupPred.push(predicted.predictedPickupLagMin);
+    delivPred.push(predicted.predictedDeliveryLagMin);
+  } else {
+    if (predicted) { pickupPred.push(null); delivPred.push(null); }
+  }
+
+  if (_anSpeedChart) _anSpeedChart.destroy();
+  const ctx = document.getElementById('an-speed-chart').getContext('2d');
+  _anSpeedChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Pickup Lag (นาที)', data: pickup, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)', tension: .3, pointRadius: 3, fill: true },
+        { label: 'Delivery Lag (นาที)', data: delivery, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)', tension: .3, pointRadius: 3 },
+        { label: 'Pickup (คาดการณ์)', data: pickupPred, borderColor: '#3b82f6', borderDash: [5,4], pointRadius: 4, pointBackgroundColor: '#3b82f6', tension: .3, spanGaps: false },
+        { label: 'Delivery (คาดการณ์)', data: delivPred, borderColor: '#10b981', borderDash: [5,4], pointRadius: 4, pointBackgroundColor: '#10b981', tension: .3, spanGaps: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: false } },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: 'นาที', font: { size: 11 } } },
+        x: { ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// AI Insight — 3 focused sequential calls to avoid overload
+let _anAiHistory = [];
+async function loadAIInsight() {
+  const sc = document.getElementById('an-storeCode').value.trim();
+  if (!sc) return;
+  const el = document.getElementById('an-ai-insight');
+  el.innerHTML = '⏳ กำลังวิเคราะห์...';
+  _anAiHistory = [];
+
+  const base = API_BASE;
+  const sections = [];
+
+  // call 1: peak hours & slow pickup
+  try {
+    el.innerHTML = '⏳ (1/3) วิเคราะห์ peak hours...';
+    const r1 = await fetch(`${base}/api/ai/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'ช่วง peak และช่วงที่รับงานช้า พรุ่งนี้ควรมี rider กี่คน', storeCode: sc, history: [] })
+    });
+    const d1 = await r1.json();
+    if (d1.answer) sections.push('📊 Peak & ช่วงรับงานช้า\n' + d1.answer);
+    _anAiHistory = [
+      { role: 'user', content: 'ช่วง peak และช่วงที่รับงานช้า พรุ่งนี้ควรมี rider กี่คน' },
+      { role: 'assistant', content: d1.answer || '' },
+    ];
+  } catch {}
+
+  // call 2: rider performance 7 days
+  try {
+    el.innerHTML = '⏳ (2/3) ประเมิน rider...';
+    const r2 = await fetch(`${base}/api/ai/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'ใน 7 วันที่ผ่านมา rider คนไหนควรติดตาม หรือควรพักผ่อน', storeCode: sc, history: [] })
+    });
+    const d2 = await r2.json();
+    if (d2.answer) sections.push('👥 Rider 7 วัน\n' + d2.answer);
+  } catch {}
+
+  // call 3: trend & prediction
+  try {
+    el.innerHTML = '⏳ (3/3) คาดการณ์พรุ่งนี้...';
+    const r3 = await fetch(`${base}/api/ai/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'แนวโน้ม pickup lag 7 วัน และคาดการณ์พรุ่งนี้จะเป็นยังไง', storeCode: sc, history: [] })
+    });
+    const d3 = await r3.json();
+    if (d3.answer) sections.push('📈 Trend & พรุ่งนี้\n' + d3.answer);
+  } catch {}
+
+  const reply = sections.length ? sections.join('\n\n─────────────────\n\n') : 'ไม่ได้รับคำตอบ';
+  el.style.whiteSpace = 'pre-line';
+  el.textContent = reply;
+  _anAiHistory.push({ role: 'user', content: 'สรุปภาพรวม' }, { role: 'assistant', content: reply });
+  document.getElementById('an-ai-followup').classList.remove('d-none');
+}
+
+async function sendAIFollowup() {
+  const sc  = document.getElementById('an-storeCode').value.trim();
+  const inp = document.getElementById('an-ai-input');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = '';
+
+  const chatEl = document.getElementById('an-ai-chat-history');
+  chatEl.innerHTML += `<div class="text-end mb-1"><span class="badge bg-secondary">${msg}</span></div>`;
+  chatEl.innerHTML += `<div class="mb-2 text-muted" id="an-typing">⏳ กำลังพิมพ์...</div>`;
+
+  _anAiHistory.push({ role: 'user', content: msg });
+  try {
+    const base = API_BASE;
+    const res  = await fetch(`${base}/api/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, storeCode: sc, history: _anAiHistory.slice(-10) })
+    });
+    const data = await res.json();
+    const reply = data.answer || data.error || '–';
+    _anAiHistory.push({ role: 'assistant', content: reply });
+    document.getElementById('an-typing')?.remove();
+    chatEl.innerHTML += `<div class="mb-2" style="white-space:pre-line;">${reply}</div>`;
+  } catch (e) {
+    document.getElementById('an-typing')?.remove();
+    chatEl.innerHTML += `<div class="text-danger mb-2">${e.message}</div>`;
+  }
+}
+
+</script>
 <!-- ════════════════════════════════════════════
      AI CHAT WIDGET — น้องบอท
      ════════════════════════════════════════════ -->

@@ -2293,10 +2293,23 @@ function renderDiagnostic(data) {
     </table>`;
   };
 
+  // คำนวณระยะเวลาค้นหา
+  const firstTime = rounds.length ? new Date(rounds[0].time) : null;
+  const endTime   = assignedEvent ? new Date(assignedEvent.assignedAt)
+                  : rounds.length ? new Date(rounds[rounds.length - 1].time) : null;
+  let searchDurStr = '';
+  if (firstTime && endTime) {
+    const diffMs = endTime - firstTime;
+    const mins   = Math.floor(diffMs / 60000);
+    const secs   = Math.floor((diffMs % 60000) / 1000);
+    searchDurStr = mins > 0 ? `${mins} นาที ${secs} วิ` : `${secs} วินาที`;
+  }
+
   // Summary bar
   document.getElementById('diagSummary').innerHTML =
     `<span class="me-3">รอบที่ scan: <strong>${rounds.length}</strong></span>` +
     (rounds[0] ? `<span class="me-3">Rider ที่ตรวจ: <strong>${rounds[0].totalRiders}</strong> คน</span>` : '') +
+    (searchDurStr ? `<span class="me-3">ใช้เวลาค้นหา: <strong class="text-warning">${searchDurStr}</strong></span>` : '') +
     (assignedEvent ? `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Assigned เวลา ${fmtDt(assignedEvent.assignedAt)}</span>` : '<span class="text-danger">ยังไม่ได้ Assign</span>');
 
   if (!rounds.length && !assignedEvent) {

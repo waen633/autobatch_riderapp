@@ -1448,11 +1448,11 @@ async function showBreakLog(userId, riderName) {
     }
 
     const rows = json.breaks.map((b, i) => `
-      <tr>
+      <tr${b.active ? ' class="table-warning"' : ''}>
         <td class="text-center text-muted">${i + 1}</td>
         <td>${fmtDt(b.startAt)}</td>
-        <td>${b.endAt ? fmtDt(b.endAt) : '<span class="badge bg-warning text-dark">ยังไม่สิ้นสุด</span>'}</td>
-        <td>${b.duration ? `<span class="badge bg-light text-dark border">${b.duration}</span>` : '–'}</td>
+        <td>${b.endAt ? fmtDt(b.endAt) : '<span class="badge bg-danger">🔴 กำลังพักอยู่</span>'}</td>
+        <td>${b.duration ? `<span class="badge ${b.active ? 'bg-danger' : 'bg-light text-dark border'}">${b.duration}${b.active ? ' (ยังไม่จบ)' : ''}</span>` : '–'}</td>
         <td><small class="text-muted">${fmtDt(b.createdAt)}</small></td>
       </tr>`).join('');
 

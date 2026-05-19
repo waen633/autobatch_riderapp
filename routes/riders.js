@@ -222,9 +222,12 @@ router.get('/rider-breaks', async (req, res) => {
     const toDt   = to ? new Date(to) : new Date(fromDt.getTime() + 86400000); // +1 day default
 
     const filter = {
-      userId:    new ObjectId(userId),
-      deleted:   { $ne: true },
-      createdAt: { $gte: fromDt, $lt: toDt }
+      userId:  new ObjectId(userId),
+      deleted: { $ne: true },
+      $or: [
+        { startAt:   { $gte: fromDt, $lt: toDt } },
+        { createdAt: { $gte: fromDt, $lt: toDt } },
+      ],
     };
 
     const docs = await c.db('4pl-fleet')
@@ -233,10 +236,12 @@ router.get('/rider-breaks', async (req, res) => {
       .sort({ startAt: 1 })
       .toArray();
 
+    const now = new Date();
     const breaks = docs.map(b => {
       let duration = null;
-      if (b.startAt && b.endAt) {
-        const mins = Math.round((new Date(b.endAt) - new Date(b.startAt)) / 60000);
+      const end = b.endAt ? new Date(b.endAt) : null;
+      if (b.startAt) {
+        const mins = Math.round(((end || now) - new Date(b.startAt)) / 60000);
         duration = mins >= 60
           ? `${Math.floor(mins / 60)}h ${mins % 60}m`
           : `${mins}m`;
@@ -246,7 +251,8 @@ router.get('/rider-breaks', async (req, res) => {
         endAt:     b.endAt || null,
         createdAt: b.createdAt,
         updatedBy: b.updatedBy,
-        duration
+        duration,
+        active:    !b.endAt,
       };
     });
 

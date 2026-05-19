@@ -741,7 +741,7 @@
       <button class="btn btn-outline-success btn-sm" onclick="loadAIInsight()"><i class="bi bi-arrow-repeat me-1"></i>Refresh</button>
     </div>
     <div class="card-body">
-      <div id="an-ai-insight" class="text-muted" style="white-space:pre-line; font-size:.9rem;">กด "โหลดข้อมูล" เพื่อดู AI Insight</div>
+      <div id="an-ai-insight" style="font-size:.9rem;">กด "โหลดข้อมูล" เพื่อดู AI Insight</div>
       <!-- follow-up chat -->
       <div id="an-ai-followup" class="mt-3 d-none">
         <div class="input-group input-group-sm">
@@ -3921,22 +3921,24 @@ async function loadAIInsight() {
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}\n\n` +
-    `วิเคราะห์ข้อมูลข้างต้นเป็น 3 section ภาษาไทย ตอบยาวได้:\n\n` +
-    `📊 Peak & ช่วงรับงานช้า\n` +
-    `- peak hour คือชั่วโมงที่ isPeak:true งานมากสุดคือกี่งาน\n` +
-    `- ช่วงที่ isSlowPickup:true คือชั่วโมงไหน\n` +
-    `- แนะนำ rider ที่ควรมีแต่ละ time slot พรุ่งนี้ (อิงจาก jobCount จริง)\n\n` +
-    `──────────────────\n\n` +
-    `👥 Rider 7 วัน\n` +
-    `- ตาราง Markdown ทุกคน: ชื่อ | score | accept% | sla breach% | คำแนะนำ\n` +
-    `- 🟢 score≥60 🟡 40-59 🔴 <40 หน้าชื่อ\n` +
-    `- สรุปว่าใครควรติดตามและเหตุผล\n\n` +
-    `──────────────────\n\n` +
-    `📈 Trend & พรุ่งนี้\n` +
-    `- pickup lag 7 วัน ดีขึ้นหรือแย่ลง วันไหนสูงสุด/ต่ำสุด\n` +
-    `- delivery lag สรุปสั้น\n` +
-    `- คาดการณ์พรุ่งนี้จากข้อมูล predicted\n` +
-    `- ⚠️ ถ้า lag > 30 นาทีหรือแนวโน้มแย่ลงให้เตือน`;
+    `วิเคราะห์ข้อมูลข้างต้น เขียนเป็นภาษาไทยที่เป็นธรรมชาติ เหมือน ops analyst เขียน daily brief ให้ผู้จัดการ\n` +
+    `ห้ามพูดถึง field name เช่น isPeak, isSlowPickup, jobCount — ให้แปลงเป็นภาษาคนเสมอ\n` +
+    `return เป็น HTML fragment (ไม่ต้องมี <html><body>) ใช้ tag เหล่านี้ได้: <h6> <p> <strong> <span> <table> <thead> <tbody> <tr> <th> <td> <hr> <ul> <li> <span class="badge ..."> <div>\n\n` +
+    `โครงสร้าง:\n\n` +
+    `<h6>📊 Peak & ช่วงรับงานช้า</h6>\n` +
+    `<p>เขียน 2-3 ประโยค: ช่วงไหนงานหนาแน่นที่สุดวันนี้ กี่งาน เทียบเมื่อวาน และช่วงไหนที่การรับงานช้าผิดปกติ</p>\n` +
+    `<p><strong>แนะนำ Rider พรุ่งนี้:</strong> บอกแต่ละ time slot ควรมีกี่คน อิงจาก jobCount จริง อธิบายเหตุผลสั้นๆ</p>\n` +
+    `<hr>\n` +
+    `<h6>👥 Rider Performance 7 วัน</h6>\n` +
+    `<table class="table table-sm table-bordered" style="font-size:.82rem;">\n` +
+    `<thead class="table-light"><tr><th>Rider</th><th>Score</th><th>Accept</th><th>SLA Breach</th><th>สถานะ</th></tr></thead>\n` +
+    `<tbody>...แถวทุกคน โดยใส่ badge สถานะ: <span class="badge bg-success">ปกติ</span> หรือ <span class="badge bg-danger">ติดตามด่วน</span>...</tbody>\n` +
+    `</table>\n` +
+    `<p>สรุปว่าใครน่าเป็นห่วงและทำไม เขียนแบบ insight ไม่ใช่แค่ list</p>\n` +
+    `<hr>\n` +
+    `<h6>📈 Delivery Trend & คาดการณ์พรุ่งนี้</h6>\n` +
+    `<p>เขียน 3-4 ประโยค: pickup lag 7 วันที่ผ่านมาเป็นอย่างไร ดีขึ้นหรือแย่ลง วันที่หนักสุดคือวันไหน delivery lag เป็นยังไง และคาดว่าพรุ่งนี้จะเป็นอย่างไร</p>\n` +
+    `ถ้า lag > 30 นาที หรือแนวโน้มแย่ลง ให้ใส่ <span class="badge bg-warning text-dark">⚠️ ควรระวัง</span> พร้อมอธิบายสั้น`;
 
   try {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {
@@ -3950,8 +3952,8 @@ async function loadAIInsight() {
       return;
     }
     const reply = data.answer || 'ไม่ได้รับคำตอบ';
-    el.style.whiteSpace = 'pre-line';
-    el.textContent = reply;
+    el.style.whiteSpace = '';
+    el.innerHTML = reply;
     _anAiHistory = [{ role: 'user', content: prompt }, { role: 'assistant', content: reply }];
     document.getElementById('an-ai-followup').classList.remove('d-none');
   } catch (e) {

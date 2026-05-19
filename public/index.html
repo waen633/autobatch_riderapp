@@ -3925,7 +3925,9 @@ async function loadAIInsight() {
     `- Rider 1 คน รับได้ 1 job เท่านั้นในเวลาเดียวกัน (1 job = หลาย order ใน batch เดียว)\n` +
     `- Rider จะได้รับ job ใหม่หลังจากส่งของครบและปิด job เดิมแล้วเท่านั้น\n` +
     `- ดังนั้นจำนวน rider ที่ active = จำนวน job ที่ระบบสามารถรันได้พร้อมกันในเวลานั้น\n` +
-    `- เมื่อคำนวณว่าต้องการ rider กี่คน ให้คิดจากปริมาณ job ต่อชั่วโมง หาร cycle time เฉลี่ย (pickup lag + delivery lag)\n\n` +
+    `- คำนวณ rider ที่ต้องการต่อชั่วโมง: riders = jobs_per_hour × (pickup_lag_min + delivery_lag_min) ÷ 60\n` +
+    `- ตัวอย่าง: 10 jobs/ชม × 85 นาที ÷ 60 = 14.2 → ต้องการ 15 คน (ปัดขึ้นเสมอ)\n` +
+    `- ทุกครั้งที่แนะนำจำนวน rider ให้แสดงการคำนวณด้วยตัวเลขจริงจากข้อมูลข้างต้น ห้ามประมาณลอยๆ\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}`;
@@ -3936,7 +3938,9 @@ async function loadAIInsight() {
     `- Rider 1 คน รับได้ 1 job เท่านั้นในเวลาเดียวกัน (1 job = หลาย order ใน batch เดียว)\n` +
     `- Rider จะได้รับ job ใหม่หลังจากส่งของครบและปิด job เดิมแล้วเท่านั้น\n` +
     `- จำนวน rider ที่ active = จำนวน job ที่รันพร้อมกันได้ในขณะนั้น\n` +
-    `- คำนวณ rider ที่ต้องการ: job/ชั่วโมง × cycle time เฉลี่ย (pickup lag + delivery lag) ÷ 60\n\n` +
+    `- คำนวณ rider ที่ต้องการต่อชั่วโมง: riders = jobs_per_hour × (pickup_lag_min + delivery_lag_min) ÷ 60\n` +
+    `- ตัวอย่าง: 10 jobs/ชม × 85 นาที ÷ 60 = 14.2 → ต้องการ 15 คน (ปัดขึ้นเสมอ)\n` +
+    `- ทุกครั้งที่แนะนำจำนวน rider ให้แสดงการคำนวณด้วยตัวเลขจริงจากข้อมูล ห้ามประมาณลอยๆ\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}\n\n` +

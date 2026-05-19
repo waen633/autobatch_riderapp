@@ -251,15 +251,24 @@ ISO วันนี้: from="${todayFrom}" to="${todayTo}"
   const debugData  = [];
   const MAX_ROUNDS = 6;
 
+  const callAI = async (msgs) => {
+    const activeModel = reqModel || MODEL;
+    try {
+      return await client.chat.completions.create({ model: activeModel, messages: msgs, tools, tool_choice: 'auto' });
+    } catch (err) {
+      if (err.status === 429) {
+        console.log('[AI] 429 rate-limit — รอ 22s แล้ว retry...');
+        await new Promise(r => setTimeout(r, 22000));
+        return await client.chat.completions.create({ model: activeModel, messages: msgs, tools, tool_choice: 'auto' });
+      }
+      throw err;
+    }
+  };
+
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const activeModel = reqModel || MODEL;
-    const response = await client.chat.completions.create({
-        model:    activeModel,
-        messages,
-        tools,
-        tool_choice: 'auto',
-      });
+      const response = await callAI(messages);
 
       const choice = response.choices[0];
       const msg    = choice.message;

@@ -248,17 +248,53 @@ router.get('/analytics/rider-score', async (req, res) => {
 });
 
 // ─── GET /api/analytics/delivery-speed ─────────────────────────────────────
+// mode=daily (default): 7-day trend + prediction
+// mode=hourly&date=YYYY-MM-DD: 24-hour breakdown for a specific date
 router.get('/analytics/delivery-speed', async (req, res) => {
   try {
-    const { storeCode, days = '7' } = req.query;
+    const { storeCode, days = '7', mode, date } = req.query;
     if (!storeCode) return res.status(400).json({ error: 'storeCode required' });
 
     const codes = splitCodes(storeCode);
     const db = await getClient();
     const storeIds = await resolveStoreIds(db, codes);
-    const numDays = Math.min(parseInt(days) || 7, 30);
 
+    // ── HOURLY MODE ──────────────────────────────────────────────────────────
+    if (mode === 'hourly') {
+      const targetDate = date || new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+      const from = new Date(targetDate + 'T00:00:00+07:00');
+      const to   = new Date(targetDate + 'T23:59:59+07:00');
+      const jobs = await fetchJobs(db, storeIds, from, to);
+
+      const buckets = Array.from({ length: 24 }, () => ({
+        pickupLags: [], deliveryLags: [], riderIds: new Set(), slaBreaches: 0,
+      }));
+
+      for (const job of jobs) {
+        const h = (new Date(job.createdAt).getTime() / 3600000 + 7) % 24 | 0;
+        const pLag = pickupLagMin(job);
+        const dLag = deliveryLagMin(job);
+        if (pLag !== null && pLag >= 0 && pLag < 180) buckets[h].pickupLags.push(pLag);
+        if (dLag !== null && dLag >= 0 && dLag < 300) buckets[h].deliveryLags.push(dLag);
+        if (job.assignment?.rider?.id) buckets[h].riderIds.add(job.assignment.rider.id.toString());
+        if (isSLABreach(job)) buckets[h].slaBreaches++;
+      }
+
+      const data = buckets.map((b, h) => ({
+        hour: h,
+        avgPickupLagMin:   b.pickupLags.length   ? Math.round(b.pickupLags.reduce((a, c) => a + c, 0)   / b.pickupLags.length   * 10) / 10 : null,
+        avgDeliveryLagMin: b.deliveryLags.length ? Math.round(b.deliveryLags.reduce((a, c) => a + c, 0) / b.deliveryLags.length * 10) / 10 : null,
+        activeRiderCount: b.riderIds.size,
+        slaBreachCount:   b.slaBreaches,
+      }));
+
+      return res.json({ mode: 'hourly', date: targetDate, data });
+    }
+
+    // ── DAILY MODE (default) ─────────────────────────────────────────────────
+    const numDays = Math.min(parseInt(days) || 7, 30);
     const results = [];
+
     for (let i = numDays - 1; i >= 0; i--) {
       const { from, to } = dayRange(-i);
       const jobs = await fetchJobs(db, storeIds, from, to);
@@ -269,31 +305,35 @@ router.get('/analytics/delivery-speed', async (req, res) => {
       const avgPickup   = pLags.length ? pLags.reduce((a, b) => a + b, 0) / pLags.length : null;
       const avgDelivery = dLags.length ? dLags.reduce((a, b) => a + b, 0) / dLags.length : null;
 
+      const riderIds = new Set(jobs.map(j => j.assignment?.rider?.id?.toString()).filter(Boolean));
+      const slaBreaches = jobs.filter(isSLABreach).length;
+
       const bkk = new Date(from.getTime() + 7 * 3600 * 1000);
       results.push({
         date: bkk.toISOString().slice(0, 10),
         avgPickupLagMin:   avgPickup   !== null ? Math.round(avgPickup   * 10) / 10 : null,
         avgDeliveryLagMin: avgDelivery !== null ? Math.round(avgDelivery * 10) / 10 : null,
+        activeRiderCount: riderIds.size,
+        slaBreachCount:   slaBreaches,
       });
     }
 
     // rolling avg 3 days for predictive next day
-    const last3Pickup = results.slice(-3).map(r => r.avgPickupLagMin).filter(v => v !== null);
+    const last3Pickup   = results.slice(-3).map(r => r.avgPickupLagMin).filter(v => v !== null);
     const last3Delivery = results.slice(-3).map(r => r.avgDeliveryLagMin).filter(v => v !== null);
-    const predictedPickup   = last3Pickup.length   ? last3Pickup.reduce((a, b) => a + b, 0) / last3Pickup.length   : null;
+    const predictedPickup   = last3Pickup.length   ? last3Pickup.reduce((a, b) => a + b, 0)   / last3Pickup.length   : null;
     const predictedDelivery = last3Delivery.length ? last3Delivery.reduce((a, b) => a + b, 0) / last3Delivery.length : null;
 
     const tomorrowBkk = new Date(dayRange(1).from.getTime() + 7 * 3600 * 1000);
     results.push({
       date: tomorrowBkk.toISOString().slice(0, 10),
-      avgPickupLagMin:   null,
-      avgDeliveryLagMin: null,
+      avgPickupLagMin: null, avgDeliveryLagMin: null, activeRiderCount: null, slaBreachCount: null,
       predicted: true,
       predictedPickupLagMin:   predictedPickup   !== null ? Math.round(predictedPickup   * 10) / 10 : null,
       predictedDeliveryLagMin: predictedDelivery !== null ? Math.round(predictedDelivery * 10) / 10 : null,
     });
 
-    res.json(results);
+    res.json({ mode: 'daily', data: results });
   } catch (e) {
     console.error('[/api/analytics/delivery-speed]', e.message);
     res.status(500).json({ error: e.message });

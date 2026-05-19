@@ -691,29 +691,35 @@
     </div>
   </div>
 
-  <!-- SECTION C + D: Rider Score & Delivery Speed -->
-  <div class="row g-3 mb-3">
-    <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #f59e0b;">
-          <span><i class="bi bi-people-fill me-2 text-warning"></i>Rider Performance Score <small class="text-muted fw-normal">(7 วันล่าสุด)</small></span>
-          <span id="an-rider-shift-badge" class="badge bg-danger d-none"></span>
+  <!-- SECTION C: Rider Score -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #f59e0b;">
+      <span><i class="bi bi-people-fill me-2 text-warning"></i>Rider Performance Score <small class="text-muted fw-normal">(7 วันล่าสุด)</small></span>
+      <span id="an-rider-shift-badge" class="badge bg-danger d-none"></span>
+    </div>
+    <div class="card-body" style="height:300px; overflow-y:auto; padding:0;">
+      <canvas id="an-rider-chart" style="display:none;"></canvas>
+      <div id="an-rider-table"></div>
+    </div>
+  </div>
+
+  <!-- SECTION D: Delivery Speed — full width -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-top:3px solid #8b5cf6;">
+      <span><i class="bi bi-graph-up me-2" style="color:#8b5cf6;"></i>Delivery Speed + Active Riders</span>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <!-- view toggle -->
+        <div class="btn-group btn-group-sm" role="group">
+          <button id="an-speed-btn-daily"  type="button" class="btn btn-purple active" onclick="setSpeedMode('daily')"  style="background:#8b5cf6;color:#fff;border-color:#8b5cf6;">รายวัน 7d</button>
+          <button id="an-speed-btn-hourly" type="button" class="btn btn-outline-secondary" onclick="setSpeedMode('hourly')">รายชั่วโมง</button>
         </div>
-        <div class="card-body" style="height:300px; overflow-y:auto; padding:0;">
-          <canvas id="an-rider-chart" style="display:none;"></canvas>
-          <div id="an-rider-table"></div>
-        </div>
+        <!-- date picker for hourly mode -->
+        <input type="date" id="an-speed-date" class="form-control form-control-sm d-none" style="width:140px;" onchange="loadSpeedHourly()">
+        <small id="an-speed-hint" class="text-muted" style="font-size:.78rem;">แกนขวา = จำนวน Rider รับงาน</small>
       </div>
     </div>
-    <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header" style="border-top:3px solid #8b5cf6;">
-          <i class="bi bi-graph-up me-2 text-purple" style="color:#8b5cf6;"></i>Delivery Speed — 7 Days + Prediction
-        </div>
-        <div class="card-body" style="height:300px;">
-          <canvas id="an-speed-chart"></canvas>
-        </div>
-      </div>
+    <div class="card-body" style="height:320px;">
+      <canvas id="an-speed-chart"></canvas>
     </div>
   </div>
 
@@ -3497,7 +3503,7 @@ async function loadAnalytics() {
     fetch(`${base}/api/analytics/daily-summary?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()).catch(()=>null),
     fetch(`${base}/api/analytics/hourly?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()).catch(()=>null),
     fetch(`${base}/api/analytics/rider-score?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()).catch(()=>null),
-    fetch(`${base}/api/analytics/delivery-speed?storeCode=${encodeURIComponent(sc)}&days=7`).then(r=>r.json()).catch(()=>null),
+    fetch(`${base}/api/analytics/delivery-speed?storeCode=${encodeURIComponent(sc)}&days=7&mode=daily`).then(r=>r.json()).catch(()=>null),
     fetch(`${base}/api/analytics/demand-forecast?storeCode=${encodeURIComponent(sc)}&days=7`).then(r=>r.json()).catch(()=>null),
   ]);
 
@@ -3664,60 +3670,209 @@ function renderShiftPlan(riders, forecast) {
   `;
 }
 
-function renderSpeedChart(data) {
-  if (!data) return;
-  const actual    = data.filter(d => !d.predicted);
-  const predicted = data.find(d => d.predicted);
+let _anSpeedMode = 'daily';
 
-  const labels  = actual.map(d => d.date.slice(5));
-  const pickup  = actual.map(d => d.avgPickupLagMin);
-  const delivery= actual.map(d => d.avgDeliveryLagMin);
-
-  // add predicted point
-  if (predicted) {
-    labels.push(predicted.date.slice(5) + ' (คาด)');
-    pickup.push(null); delivery.push(null);
-  }
-
-  // dashed predictive series
-  const pickupPred  = actual.map(() => null);
-  const delivPred   = actual.map(() => null);
-  if (predicted && actual.length) {
-    const lastPickup   = actual[actual.length - 1].avgPickupLagMin;
-    const lastDelivery = actual[actual.length - 1].avgDeliveryLagMin;
-    pickupPred[actual.length - 1]  = lastPickup;
-    delivPred[actual.length - 1]   = lastDelivery;
-    pickupPred.push(predicted.predictedPickupLagMin);
-    delivPred.push(predicted.predictedDeliveryLagMin);
+function setSpeedMode(mode) {
+  _anSpeedMode = mode;
+  const btnDaily  = document.getElementById('an-speed-btn-daily');
+  const btnHourly = document.getElementById('an-speed-btn-hourly');
+  const dateInput = document.getElementById('an-speed-date');
+  if (mode === 'hourly') {
+    btnDaily.classList.remove('active'); btnDaily.style.background=''; btnDaily.style.color=''; btnDaily.style.borderColor='';
+    btnDaily.className = 'btn btn-outline-secondary btn-sm';
+    btnHourly.className = 'btn btn-sm active'; btnHourly.style.cssText = 'background:#8b5cf6;color:#fff;border-color:#8b5cf6;';
+    dateInput.classList.remove('d-none');
+    // default to today (BKK)
+    if (!dateInput.value) {
+      const bkkNow = new Date(Date.now() + 7*3600*1000);
+      dateInput.value = bkkNow.toISOString().slice(0,10);
+    }
+    loadSpeedHourly();
   } else {
-    if (predicted) { pickupPred.push(null); delivPred.push(null); }
+    btnHourly.classList.remove('active'); btnHourly.style.cssText='';
+    btnHourly.className = 'btn btn-outline-secondary btn-sm';
+    btnDaily.className = 'btn btn-sm active'; btnDaily.style.cssText = 'background:#8b5cf6;color:#fff;border-color:#8b5cf6;';
+    dateInput.classList.add('d-none');
+    // reload daily
+    const sc = document.getElementById('an-storeCode').value.trim();
+    if (!sc) return;
+    fetch(`${API_BASE}/api/analytics/delivery-speed?storeCode=${encodeURIComponent(sc)}&days=7&mode=daily`)
+      .then(r=>r.json()).then(renderSpeedChart).catch(()=>{});
   }
+}
+
+async function loadSpeedHourly() {
+  const sc = document.getElementById('an-storeCode').value.trim();
+  if (!sc) return;
+  const date = document.getElementById('an-speed-date').value;
+  if (!date) return;
+  const res = await fetch(`${API_BASE}/api/analytics/delivery-speed?storeCode=${encodeURIComponent(sc)}&mode=hourly&date=${date}`)
+    .then(r=>r.json()).catch(()=>null);
+  renderSpeedChart(res);
+}
+
+function renderSpeedChart(res) {
+  if (!res) return;
+
+  // support old flat-array format (fallback) and new { mode, data } format
+  const isHourly = res.mode === 'hourly';
+  const rawData  = res.data || res;   // res.data for new format, res itself for old
 
   if (_anSpeedChart) _anSpeedChart.destroy();
   const ctx = document.getElementById('an-speed-chart').getContext('2d');
-  _anSpeedChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Pickup Lag (นาที)', data: pickup, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)', tension: .3, pointRadius: 3, fill: true },
-        { label: 'Delivery Lag (นาที)', data: delivery, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)', tension: .3, pointRadius: 3 },
-        { label: 'Pickup (คาดการณ์)', data: pickupPred, borderColor: '#3b82f6', borderDash: [5,4], pointRadius: 4, pointBackgroundColor: '#3b82f6', tension: .3, spanGaps: false },
-        { label: 'Delivery (คาดการณ์)', data: delivPred, borderColor: '#10b981', borderDash: [5,4], pointRadius: 4, pointBackgroundColor: '#10b981', tension: .3, spanGaps: false },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: false } },
-      scales: {
-        y: { beginAtZero: true, title: { display: true, text: 'นาที', font: { size: 11 } } },
-        x: { ticks: { font: { size: 10 } } }
+
+  if (isHourly) {
+    // ── HOURLY VIEW ─────────────────────────────────────────────────────────
+    const labels   = rawData.map(d => `${String(d.hour).padStart(2,'0')}:00`);
+    const pickup   = rawData.map(d => d.avgPickupLagMin);
+    const delivery = rawData.map(d => d.avgDeliveryLagMin);
+    const riders   = rawData.map(d => d.activeRiderCount);
+    const slaBar   = rawData.map(d => d.slaBreachCount || 0);
+
+    // bar color: red if lag > 15 AND riders are low (below median non-zero)
+    const nonZeroRiders = riders.filter(v => v > 0);
+    const medianRiders  = nonZeroRiders.length
+      ? nonZeroRiders.sort((a,b)=>a-b)[Math.floor(nonZeroRiders.length/2)]
+      : 0;
+    const riderBarColors = rawData.map((d, i) => {
+      const lag = pickup[i];
+      if (d.activeRiderCount < medianRiders && lag !== null && lag > 15)
+        return 'rgba(239,68,68,.75)';    // red: low rider + slow pickup
+      if (d.activeRiderCount < medianRiders)
+        return 'rgba(251,146,60,.65)';   // orange: low rider
+      return 'rgba(139,92,246,.5)';      // purple: normal
+    });
+
+    _anSpeedChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'line', label: 'Pickup Lag (นาที)',
+            data: pickup, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)',
+            tension: .3, pointRadius: 3, fill: true, yAxisID: 'y', order: 1,
+          },
+          {
+            type: 'line', label: 'Delivery Lag (นาที)',
+            data: delivery, borderColor: '#10b981', tension: .3, pointRadius: 3,
+            yAxisID: 'y', order: 2,
+          },
+          {
+            type: 'bar', label: 'Riders รับงาน (คน)',
+            data: riders, backgroundColor: riderBarColors,
+            yAxisID: 'y1', order: 3,
+          },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+          datalabels: { display: false },
+          tooltip: {
+            callbacks: {
+              afterBody(items) {
+                const idx = items[0]?.dataIndex;
+                if (idx == null) return [];
+                const sla = slaBar[idx];
+                return sla > 0 ? [`⚠️ SLA breach: ${sla} งาน`] : [];
+              }
+            }
+          }
+        },
+        scales: {
+          y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'นาที', font: { size: 11 } },
+                grid: { color: 'rgba(0,0,0,.05)' } },
+          y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Riders (คน)', font: { size: 11 } },
+                grid: { drawOnChartArea: false }, ticks: { stepSize: 1 } },
+          x:  { ticks: { font: { size: 9 }, maxRotation: 0 } }
+        }
       }
+    });
+
+  } else {
+    // ── DAILY VIEW ───────────────────────────────────────────────────────────
+    const actual    = rawData.filter(d => !d.predicted);
+    const predicted = rawData.find(d => d.predicted);
+
+    const labels   = actual.map(d => d.date.slice(5));
+    const pickup   = actual.map(d => d.avgPickupLagMin);
+    const delivery = actual.map(d => d.avgDeliveryLagMin);
+    const riders   = actual.map(d => d.activeRiderCount);
+
+    if (predicted) {
+      labels.push(predicted.date.slice(5) + ' (คาด)');
+      pickup.push(null); delivery.push(null); riders.push(null);
     }
-  });
+
+    // dashed predictive lines
+    const pickupPred = actual.map(() => null);
+    const delivPred  = actual.map(() => null);
+    if (predicted && actual.length) {
+      pickupPred[actual.length - 1] = actual[actual.length - 1].avgPickupLagMin;
+      delivPred[actual.length - 1]  = actual[actual.length - 1].avgDeliveryLagMin;
+      pickupPred.push(predicted.predictedPickupLagMin);
+      delivPred.push(predicted.predictedDeliveryLagMin);
+    } else if (predicted) {
+      pickupPred.push(null); delivPred.push(null);
+    }
+
+    _anSpeedChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'line', label: 'Pickup Lag (นาที)',
+            data: pickup, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)',
+            tension: .3, pointRadius: 3, fill: true, yAxisID: 'y', order: 1,
+          },
+          {
+            type: 'line', label: 'Delivery Lag (นาที)',
+            data: delivery, borderColor: '#10b981', tension: .3, pointRadius: 3,
+            yAxisID: 'y', order: 2,
+          },
+          {
+            type: 'line', label: 'Pickup (คาดการณ์)',
+            data: pickupPred, borderColor: '#3b82f6', borderDash: [5,4],
+            pointRadius: 4, pointBackgroundColor: '#3b82f6', tension: .3,
+            spanGaps: false, yAxisID: 'y', order: 3,
+          },
+          {
+            type: 'line', label: 'Delivery (คาดการณ์)',
+            data: delivPred, borderColor: '#10b981', borderDash: [5,4],
+            pointRadius: 4, pointBackgroundColor: '#10b981', tension: .3,
+            spanGaps: false, yAxisID: 'y', order: 4,
+          },
+          {
+            type: 'bar', label: 'Riders รับงาน (คน)',
+            data: riders, backgroundColor: 'rgba(139,92,246,.45)',
+            yAxisID: 'y1', order: 5,
+          },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+          datalabels: { display: false },
+        },
+        scales: {
+          y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'นาที', font: { size: 11 } },
+                grid: { color: 'rgba(0,0,0,.05)' } },
+          y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Riders (คน)', font: { size: 11 } },
+                grid: { drawOnChartArea: false }, ticks: { stepSize: 1 } },
+          x:  { ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  }
 }
 
-// AI Insight — 3 focused sequential calls to avoid overload
+// AI Insight — single call covering all 3 topics to avoid rate-limit (free-models-per-min)
 let _anAiHistory = [];
 async function loadAIInsight() {
   const sc = document.getElementById('an-storeCode').value.trim();
@@ -3726,51 +3881,34 @@ async function loadAIInsight() {
   el.innerHTML = '⏳ กำลังวิเคราะห์...';
   _anAiHistory = [];
 
-  const base = API_BASE;
-  const sections = [];
+  const prompt =
+    'วิเคราะห์ dashboard สาขานี้ให้ครบ 3 ด้าน แต่ละด้านขึ้นต้นด้วย emoji และหัวข้อ:\n' +
+    '1) 📊 Peak & ช่วงรับงานช้า — ช่วงเวลา peak, ช่วงที่ pickup lag สูง, พรุ่งนี้ควรมี rider กี่คน\n' +
+    '2) 👥 Rider 7 วัน — rider คนไหนรับงานหนัก/ควรพัก, คนไหนรับงานน้อย/เพิ่ม shift ได้\n' +
+    '3) 📈 Trend & พรุ่งนี้ — แนวโน้ม pickup lag 7 วัน, คาดการณ์พรุ่งนี้จะเป็นอย่างไร\n' +
+    'ตอบกระชับ ตรงประเด็น เป็นภาษาไทย';
 
-  // call 1: peak hours & slow pickup
   try {
-    el.innerHTML = '⏳ (1/3) วิเคราะห์ peak hours...';
-    const r1 = await fetch(`${base}/api/ai/chat`, {
+    const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'ช่วง peak และช่วงที่รับงานช้า พรุ่งนี้ควรมี rider กี่คน', storeCode: sc, history: [] })
+      body: JSON.stringify({ message: prompt, storeCode: sc, history: [] })
     });
-    const d1 = await r1.json();
-    if (d1.answer) sections.push('📊 Peak & ช่วงรับงานช้า\n' + d1.answer);
+    const data = await res.json();
+    if (data.error) {
+      el.textContent = `❌ ${data.detail || data.error}`;
+      return;
+    }
+    const reply = data.answer || 'ไม่ได้รับคำตอบ';
+    el.style.whiteSpace = 'pre-line';
+    el.textContent = reply;
     _anAiHistory = [
-      { role: 'user', content: 'ช่วง peak และช่วงที่รับงานช้า พรุ่งนี้ควรมี rider กี่คน' },
-      { role: 'assistant', content: d1.answer || '' },
+      { role: 'user', content: prompt },
+      { role: 'assistant', content: reply },
     ];
-  } catch {}
-
-  // call 2: rider performance 7 days
-  try {
-    el.innerHTML = '⏳ (2/3) ประเมิน rider...';
-    const r2 = await fetch(`${base}/api/ai/chat`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'ใน 7 วันที่ผ่านมา rider คนไหนควรติดตาม หรือควรพักผ่อน', storeCode: sc, history: [] })
-    });
-    const d2 = await r2.json();
-    if (d2.answer) sections.push('👥 Rider 7 วัน\n' + d2.answer);
-  } catch {}
-
-  // call 3: trend & prediction
-  try {
-    el.innerHTML = '⏳ (3/3) คาดการณ์พรุ่งนี้...';
-    const r3 = await fetch(`${base}/api/ai/chat`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'แนวโน้ม pickup lag 7 วัน และคาดการณ์พรุ่งนี้จะเป็นยังไง', storeCode: sc, history: [] })
-    });
-    const d3 = await r3.json();
-    if (d3.answer) sections.push('📈 Trend & พรุ่งนี้\n' + d3.answer);
-  } catch {}
-
-  const reply = sections.length ? sections.join('\n\n─────────────────\n\n') : 'ไม่ได้รับคำตอบ';
-  el.style.whiteSpace = 'pre-line';
-  el.textContent = reply;
-  _anAiHistory.push({ role: 'user', content: 'สรุปภาพรวม' }, { role: 'assistant', content: reply });
-  document.getElementById('an-ai-followup').classList.remove('d-none');
+    document.getElementById('an-ai-followup').classList.remove('d-none');
+  } catch (e) {
+    el.textContent = `❌ ${e.message}`;
+  }
 }
 
 async function sendAIFollowup() {

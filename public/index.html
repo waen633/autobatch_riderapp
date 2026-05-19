@@ -3891,23 +3891,12 @@ async function loadAIInsight() {
   try {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt, storeCode: sc, history: [] })
+      body: JSON.stringify({ message: prompt, storeCode: sc, history: [] }),
+      signal: AbortSignal.timeout(130000),
     });
     const data = await res.json();
     if (data.error) {
-      const is429 = (data.detail || '').includes('429') || (data.detail || '').includes('rate');
-      if (is429) {
-        // countdown 70s แล้ว auto-retry
-        let sec = 70;
-        const tick = setInterval(() => {
-          sec--;
-          el.textContent = `⏳ Rate limit — ลองใหม่อัตโนมัติใน ${sec} วินาที...`;
-          if (sec <= 0) { clearInterval(tick); loadAIInsight(); }
-        }, 1000);
-        el.textContent = `⏳ Rate limit — ลองใหม่อัตโนมัติใน ${sec} วินาที...`;
-      } else {
-        el.textContent = `❌ ${data.detail || data.error}`;
-      }
+      el.textContent = `⚠️ ${data.detail || data.error}\n\nกด Refresh เพื่อลองใหม่`;
       return;
     }
     const reply = data.answer || 'ไม่ได้รับคำตอบ';
@@ -3919,7 +3908,7 @@ async function loadAIInsight() {
     ];
     document.getElementById('an-ai-followup').classList.remove('d-none');
   } catch (e) {
-    el.textContent = `❌ ${e.message}`;
+    el.textContent = `⚠️ หมดเวลา — กด Refresh เพื่อลองใหม่`;
   }
 }
 

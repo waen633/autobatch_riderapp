@@ -193,7 +193,7 @@ CANCELLED                                  → ❌ ยกเลิก
 
 // POST /api/ai/chat
 router.post('/chat', async (req, res) => {
-  const { message, storeCode, history = [], dateContext, model: reqModel } = req.body;
+  const { message, storeCode, history = [], dateContext, model: reqModel, noTools } = req.body;
 
   if (!message) return res.status(400).json({ error: 'message is required' });
 
@@ -251,11 +251,13 @@ ISO วันนี้: from="${todayFrom}" to="${todayTo}"
   const debugData  = [];
   const MAX_ROUNDS = 6;
 
-  const callAI = async (msgs) => {
+  const callAI = async (msgs, useTools = true) => {
     const activeModel = reqModel || MODEL;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        return await client.chat.completions.create({ model: activeModel, messages: msgs, tools, tool_choice: 'auto' });
+        const opts = { model: activeModel, messages: msgs };
+        if (useTools) { opts.tools = tools; opts.tool_choice = 'auto'; }
+        return await client.chat.completions.create(opts);
       } catch (err) {
         if (err.status === 429 && attempt < 2) {
           const wait = attempt === 0 ? 30000 : 65000;
@@ -269,6 +271,13 @@ ISO วันนี้: from="${todayFrom}" to="${todayTo}"
   };
 
   try {
+    // noTools = ข้อมูลฝังมาใน prompt แล้ว ไม่ต้องให้ AI เรียก tool
+    if (noTools) {
+      const response = await callAI(messages, false);
+      const msg = response.choices[0].message;
+      return res.json({ answer: msg.content, toolsUsed: [], model: reqModel || MODEL, debugData: [] });
+    }
+
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const activeModel = reqModel || MODEL;
       const response = await callAI(messages);

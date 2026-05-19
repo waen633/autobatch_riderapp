@@ -3872,41 +3872,77 @@ function renderSpeedChart(res) {
   }
 }
 
-// AI Insight — single call covering all 3 topics to avoid rate-limit (free-models-per-min)
+// AI Insight — fetch ข้อมูลจริงก่อน แล้วยัดเข้า prompt เลย (ไม่ใช้ tool calling)
 let _anAiHistory = [];
 async function loadAIInsight() {
   const sc = document.getElementById('an-storeCode').value.trim();
   if (!sc) return;
   const el = document.getElementById('an-ai-insight');
-  el.innerHTML = '⏳ กำลังวิเคราะห์...';
+  el.innerHTML = '⏳ กำลังโหลดข้อมูล...';
   _anAiHistory = [];
 
+  // ดึงข้อมูลจริงจาก API ก่อน
+  let hourly, riders, speed;
+  try {
+    el.innerHTML = '⏳ กำลังโหลดข้อมูล (1/3)...';
+    [hourly, riders, speed] = await Promise.all([
+      fetch(`${API_BASE}/api/analytics/hourly?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()),
+      fetch(`${API_BASE}/api/analytics/rider-score?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()),
+      fetch(`${API_BASE}/api/analytics/delivery-speed?storeCode=${encodeURIComponent(sc)}&mode=daily&days=7`).then(r=>r.json()),
+    ]);
+  } catch(e) {
+    el.textContent = `⚠️ โหลดข้อมูลไม่ได้: ${e.message}`;
+    return;
+  }
+
+  el.innerHTML = '⏳ AI กำลังวิเคราะห์...';
+
+  // ยัดข้อมูลจริงเข้า prompt
+  const speedRows = (speed.data || speed).filter(d => !d.predicted);
+  const speedPred = (speed.data || speed).find(d => d.predicted);
+
+  const hourlyStr = hourly.map(h =>
+    `${String(h.hour).padStart(2,'0')}:00 — ${h.jobCount}งาน | lag:${h.avgPickupLagMin??'-'}นาที | slowPickup:${h.isSlowPickup} | peak:${h.isPeak}`
+  ).join('\n');
+
+  const riderStr = riders.map(r =>
+    `${r.riderName} | score:${r.score} | accept:${r.acceptRate}% | cancel:${r.cancelRate}% | slaBreach:${r.slaBreachRate}% | rec:${r.recommendation}`
+  ).join('\n');
+
+  const speedStr = speedRows.map(d =>
+    `${d.date} | pickupLag:${d.avgPickupLagMin??'-'}นาที | deliveryLag:${d.avgDeliveryLagMin??'-'}นาที`
+  ).join('\n');
+  const predStr = speedPred
+    ? `พรุ่งนี้ (คาด): pickupLag:${speedPred.predictedPickupLagMin??'-'}นาที | deliveryLag:${speedPred.predictedDeliveryLagMin??'-'}นาที`
+    : '';
+
   const prompt =
-    'Daily Insight Report — ตอบยาวได้ ต้องเรียก tool ก่อนทุกครั้ง ห้ามแต่งข้อมูล\n\n' +
-    'ขั้นตอน:\n' +
-    'STEP 1: เรียก get_hourly_demand แล้วจาก result จริง วิเคราะห์:\n' +
-    '  - peak hour คืออะไร งานวันนี้กี่งาน เมื่อวานกี่งาน\n' +
-    '  - hour ไหนมี isSlowPickup=true\n' +
-    '  - แนะนำจำนวน rider แต่ละ time slot พรุ่งนี้\n' +
-    '  ขึ้นหัวด้วย 📊 Peak & ช่วงรับงานช้า\n\n' +
-    'STEP 2: เรียก get_rider_score แล้วจาก result จริง แสดง:\n' +
-    '  - ตาราง Markdown ทุกคน: ชื่อจริง | score | acceptRate | slaBreachRate | recommendation\n' +
-    '  - ใส่ 🟢 score≥60, 🟡 40-59, 🔴 <40 หน้าชื่อ\n' +
-    '  - สรุปว่าใครควรติดตามและเหตุผล\n' +
-    '  ขึ้นหัวด้วย 👥 Rider 7 วัน\n\n' +
-    'STEP 3: เรียก get_delivery_speed_trend แล้วจาก result จริง วิเคราะห์:\n' +
-    '  - pickup lag 7 วัน ดีขึ้นหรือแย่ลง วันสูงสุด/ต่ำสุดคือวันไหน\n' +
-    '  - delivery lag 7 วัน สรุปสั้นๆ\n' +
-    '  - คาดการณ์พรุ่งนี้จาก predicted field\n' +
-    '  - ถ้า lag > 30 นาทีหรือแนวโน้มแย่ลง ใส่ ⚠️ เตือน\n' +
-    '  ขึ้นหัวด้วย 📈 Trend & พรุ่งนี้\n\n' +
-    'คั่นแต่ละ section ด้วย ──────────────────';
+    `ข้อมูลจริงจาก dashboard สาขา ${sc} วันนี้ — ห้ามใช้ข้อมูลอื่นนอกจากนี้:\n\n` +
+    `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
+    `[RIDER SCORE 7 วัน]\n${riderStr}\n\n` +
+    `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}\n\n` +
+    `วิเคราะห์ข้อมูลข้างต้นเป็น 3 section ภาษาไทย ตอบยาวได้:\n\n` +
+    `📊 Peak & ช่วงรับงานช้า\n` +
+    `- peak hour คือชั่วโมงที่ isPeak:true งานมากสุดคือกี่งาน\n` +
+    `- ช่วงที่ isSlowPickup:true คือชั่วโมงไหน\n` +
+    `- แนะนำ rider ที่ควรมีแต่ละ time slot พรุ่งนี้ (อิงจาก jobCount จริง)\n\n` +
+    `──────────────────\n\n` +
+    `👥 Rider 7 วัน\n` +
+    `- ตาราง Markdown ทุกคน: ชื่อ | score | accept% | sla breach% | คำแนะนำ\n` +
+    `- 🟢 score≥60 🟡 40-59 🔴 <40 หน้าชื่อ\n` +
+    `- สรุปว่าใครควรติดตามและเหตุผล\n\n` +
+    `──────────────────\n\n` +
+    `📈 Trend & พรุ่งนี้\n` +
+    `- pickup lag 7 วัน ดีขึ้นหรือแย่ลง วันไหนสูงสุด/ต่ำสุด\n` +
+    `- delivery lag สรุปสั้น\n` +
+    `- คาดการณ์พรุ่งนี้จากข้อมูล predicted\n` +
+    `- ⚠️ ถ้า lag > 30 นาทีหรือแนวโน้มแย่ลงให้เตือน`;
 
   try {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt, storeCode: sc, history: [] }),
-      signal: AbortSignal.timeout(130000),
+      body: JSON.stringify({ message: prompt, storeCode: sc, history: [], noTools: true }),
+      signal: AbortSignal.timeout(60000),
     });
     const data = await res.json();
     if (data.error) {
@@ -3916,10 +3952,7 @@ async function loadAIInsight() {
     const reply = data.answer || 'ไม่ได้รับคำตอบ';
     el.style.whiteSpace = 'pre-line';
     el.textContent = reply;
-    _anAiHistory = [
-      { role: 'user', content: prompt },
-      { role: 'assistant', content: reply },
-    ];
+    _anAiHistory = [{ role: 'user', content: prompt }, { role: 'assistant', content: reply }];
     document.getElementById('an-ai-followup').classList.remove('d-none');
   } catch (e) {
     el.textContent = `⚠️ หมดเวลา — กด Refresh เพื่อลองใหม่`;

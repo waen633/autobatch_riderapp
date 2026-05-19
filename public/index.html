@@ -737,7 +737,7 @@
   <!-- SECTION E: AI Insight Panel -->
   <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #10b981;">
-      <span><i class="bi bi-robot me-2 text-success"></i>AI Insight วันนี้</span>
+      <span><i class="bi bi-moon-stars me-2 text-success"></i>Evening Briefing — คาดการณ์พรุ่งนี้</span>
       <button class="btn btn-outline-success btn-sm" onclick="loadAIInsight()"><i class="bi bi-arrow-repeat me-1"></i>Refresh</button>
     </div>
     <div class="card-body">
@@ -3965,38 +3965,38 @@ async function loadAIInsight() {
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}`;
 
   const prompt =
-    `ข้อมูลจริงจาก dashboard สาขา ${sc} วันนี้ — ห้ามใช้ข้อมูลอื่นนอกจากนี้:\n\n` +
-    `[กฎระบบ — สำคัญมาก]\n` +
-    `- Rider 1 คน รับได้ 1 job เท่านั้นในเวลาเดียวกัน (1 job = หลาย order ใน batch เดียว)\n` +
-    `- Rider จะได้รับ job ใหม่หลังจากส่งของครบและปิด job เดิมแล้วเท่านั้น\n` +
-    `- จำนวน rider ที่ active = จำนวน job ที่รันพร้อมกันได้ในขณะนั้น\n` +
-    `- วิธีแนะนำจำนวน rider: ดูจาก data จริงว่าชั่วโมงไหนมี riderActive กี่คน แล้ว lag/slaBreach เป็นเท่าไหร่\n` +
-    `- หาว่าช่วงที่ lag ต่ำ (< 20 นาที) มี riderActive เฉลี่ยกี่คนต่อ job — ใช้ตัวเลขนั้นเป็นเป้าหมาย\n` +
-    `- ถ้า lag สูงและ riderActive น้อยในชั่วโมงเดียวกัน ให้บอกว่าต้องเพิ่มอีกกี่คนโดยอ้างอิง data\n` +
-    `- ห้ามใช้สูตรที่ไม่มีใน data — ให้อ้าง row ข้อมูลจริงประกอบเสมอ\n\n` +
+    `คุณเป็น Ops Analyst อาวุโสของ Lotus's Last-Mile Delivery สาขา ${sc}\n` +
+    `ตอนนี้เป็นช่วงเย็น — หน้าที่คือเขียน **Evening Briefing** สรุปวันนี้และคาดการณ์พรุ่งนี้ให้ผู้จัดการอ่านก่อนออกจากงาน\n\n` +
+    `[กฎระบบ]\n` +
+    `- Rider 1 คน รับได้ 1 job พร้อมกัน (1 job = หลาย order ใน batch)\n` +
+    `- job ใหม่ได้รับหลังปิด job เก่าเท่านั้น\n` +
+    `- riderActive = จำนวน job ที่รันพร้อมกันในชั่วโมงนั้น\n` +
+    `- แนะนำ rider target: หา slot ที่ lag < 20 นาที → ดูว่ามี riderActive กี่คน → ใช้เป็น baseline\n` +
+    `- ห้ามอ้างตัวเลขที่ไม่มีใน data\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
-    `[RIDER SCORE 7 วัน]\n${riderStr}\n\n` +
-    `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}\n\n` +
-    `วิเคราะห์ข้อมูลข้างต้น เขียนเป็นภาษาไทยที่เป็นธรรมชาติ เหมือน ops analyst เขียน daily brief ให้ผู้จัดการ\n` +
-    `ห้ามพูดถึง field name เช่น isPeak, isSlowPickup, jobCount — ให้แปลงเป็นภาษาคนเสมอ\n` +
-    `ห้ามใช้คำว่า "สลาบรีช" — ให้เขียน "งานส่งเกินกำหนด" หรือ "เกิน SLA" แทน\n` +
-    `ห้ามทับศัพท์คำ "SLA breach" เป็นภาษาไทยออกเสียง — ใช้ความหมายเสมอ\n` +
-    `return เป็น HTML fragment (ไม่ต้องมี <html><body>) ใช้ tag เหล่านี้ได้: <h6> <p> <strong> <span> <table> <thead> <tbody> <tr> <th> <td> <hr> <ul> <li> <span class="badge ..."> <div>\n\n` +
-    `โครงสร้าง:\n\n` +
-    `<h6>📊 Peak & ช่วงรับงานช้า</h6>\n` +
-    `<p>เขียน 2-3 ประโยค: ช่วงไหนงานหนาแน่นที่สุดวันนี้ กี่งาน เทียบเมื่อวาน และช่วงไหนที่การรับงานช้าผิดปกติ</p>\n` +
-    `<p><strong>แนะนำ Rider พรุ่งนี้:</strong> บอกแต่ละ time slot ควรมีกี่คน อิงจาก jobCount จริง อธิบายเหตุผลสั้นๆ</p>\n` +
+    `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
+    `[DELIVERY SPEED & PREDICTION]\n${speedStr}\n${predStr}\n\n` +
+    `---\n` +
+    `เขียนเป็น HTML fragment ภาษาไทยธรรมชาติ เหมือน analyst เขียน brief จริง\n` +
+    `ห้ามใช้ชื่อ field (isPeak, jobCount ฯลฯ) — แปลงเป็นภาษาคนเสมอ\n` +
+    `ห้ามทับศัพท์ SLA breach — ใช้ "งานส่งเกินกำหนด" หรือ "เกิน SLA"\n` +
+    `tag ที่ใช้ได้: <h6> <p> <strong> <span> <table> <thead> <tbody> <tr> <th> <td> <hr> <ul> <li> <div> <span class="badge ...">\n\n` +
+    `โครงสร้างที่ต้องการ:\n\n` +
+    `<h6>🌙 สรุปวันนี้</h6>\n` +
+    `<p>2-3 ประโยค: วันนี้งานรวมกี่งาน เทียบเมื่อวานเป็นยังไง ช่วงไหนหนักสุด มี issue อะไรน่าสังเกตบ้าง</p>\n` +
     `<hr>\n` +
-    `<h6>👥 Rider Performance 7 วัน</h6>\n` +
+    `<h6>🔮 คาดการณ์พรุ่งนี้</h6>\n` +
+    `<p><strong>Demand:</strong> จาก forecast คาดว่าพรุ่งนี้มีงานรวมประมาณกี่งาน peak ช่วงไหน กี่งาน/ชั่วโมง</p>\n` +
+    `<p><strong>Pickup Lag:</strong> จาก trend 7 วัน คาดว่า lag พรุ่งนี้จะอยู่ที่กี่นาที ควรระวังหรือไม่</p>\n` +
+    `<p><strong>Rider ที่แนะนำ:</strong> บอก time slot สำคัญว่าควรมีกี่คน อิงจาก job demand จริงและ baseline riderActive ที่ lag ต่ำ</p>\n` +
+    `ถ้า lag > 30 นาที หรือ demand สูงกว่า 7 วันที่ผ่านมา ให้ใส่ <span class="badge bg-warning text-dark">⚠️ ควรเตรียมพร้อม</span>\n` +
+    `<hr>\n` +
+    `<h6>👥 Rider ที่ต้องติดตามพรุ่งนี้</h6>\n` +
     `<table class="table table-sm table-bordered" style="font-size:.82rem;">\n` +
-    `<thead class="table-light"><tr><th>Rider</th><th>Score</th><th>Accept</th><th>SLA Breach</th><th>สถานะ</th></tr></thead>\n` +
-    `<tbody>...แถวทุกคน โดยใส่ badge สถานะ: <span class="badge bg-success">ปกติ</span> หรือ <span class="badge bg-danger">ติดตามด่วน</span>...</tbody>\n` +
+    `<thead class="table-light"><tr><th>Rider</th><th>Score</th><th>งาน 7 วัน</th><th>ยกเลิก</th><th>สถานะ</th></tr></thead>\n` +
+    `<tbody>...เฉพาะ rider ที่มี score ต่ำ, ยกเลิกสูง, หรือทำงานหนักเกิน ใส่ badge: <span class="badge bg-danger">ติดตามด่วน</span> / <span class="badge bg-warning text-dark">โหลดหนัก</span> / <span class="badge bg-success">ปกติ</span>...</tbody>\n` +
     `</table>\n` +
-    `<p>สรุปว่าใครน่าเป็นห่วงและทำไม เขียนแบบ insight ไม่ใช่แค่ list</p>\n` +
-    `<hr>\n` +
-    `<h6>📈 Delivery Trend & คาดการณ์พรุ่งนี้</h6>\n` +
-    `<p>เขียน 3-4 ประโยค: pickup lag 7 วันที่ผ่านมาเป็นอย่างไร ดีขึ้นหรือแย่ลง วันที่หนักสุดคือวันไหน delivery lag เป็นยังไง และคาดว่าพรุ่งนี้จะเป็นอย่างไร</p>\n` +
-    `ถ้า lag > 30 นาที หรือแนวโน้มแย่ลง ให้ใส่ <span class="badge bg-warning text-dark">⚠️ ควรระวัง</span> พร้อมอธิบายสั้น`;
+    `<p>สรุป 1-2 ประโยค: ใครน่าเป็นห่วงที่สุดและทำไม ควรทำอะไรก่อนเริ่ม shift พรุ่งนี้</p>`;
 
   try {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {

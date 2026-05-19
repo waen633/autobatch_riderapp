@@ -3921,12 +3921,22 @@ async function loadAIInsight() {
   // เก็บไว้ inject ใน follow-up ทุกครั้ง
   _anAiDataContext =
     `ข้อมูลจริงจาก dashboard สาขา ${sc} — ใช้ข้อมูลนี้ตอบทุกคำถาม ห้ามแต่งหรือเดา:\n\n` +
+    `[กฎระบบ — สำคัญมาก]\n` +
+    `- Rider 1 คน รับได้ 1 job เท่านั้นในเวลาเดียวกัน (1 job = หลาย order ใน batch เดียว)\n` +
+    `- Rider จะได้รับ job ใหม่หลังจากส่งของครบและปิด job เดิมแล้วเท่านั้น\n` +
+    `- ดังนั้นจำนวน rider ที่ active = จำนวน job ที่ระบบสามารถรันได้พร้อมกันในเวลานั้น\n` +
+    `- เมื่อคำนวณว่าต้องการ rider กี่คน ให้คิดจากปริมาณ job ต่อชั่วโมง หาร cycle time เฉลี่ย (pickup lag + delivery lag)\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}`;
 
   const prompt =
     `ข้อมูลจริงจาก dashboard สาขา ${sc} วันนี้ — ห้ามใช้ข้อมูลอื่นนอกจากนี้:\n\n` +
+    `[กฎระบบ — สำคัญมาก]\n` +
+    `- Rider 1 คน รับได้ 1 job เท่านั้นในเวลาเดียวกัน (1 job = หลาย order ใน batch เดียว)\n` +
+    `- Rider จะได้รับ job ใหม่หลังจากส่งของครบและปิด job เดิมแล้วเท่านั้น\n` +
+    `- จำนวน rider ที่ active = จำนวน job ที่รันพร้อมกันได้ในขณะนั้น\n` +
+    `- คำนวณ rider ที่ต้องการ: job/ชั่วโมง × cycle time เฉลี่ย (pickup lag + delivery lag) ÷ 60\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}\n\n` +

@@ -3882,11 +3882,11 @@ async function loadAIInsight() {
   _anAiHistory = [];
 
   const prompt =
-    'วิเคราะห์ dashboard สาขานี้ให้ครบ 3 ด้าน แต่ละด้านขึ้นต้นด้วย emoji และหัวข้อ:\n' +
-    '1) 📊 Peak & ช่วงรับงานช้า — ช่วงเวลา peak, ช่วงที่ pickup lag สูง, พรุ่งนี้ควรมี rider กี่คน\n' +
-    '2) 👥 Rider 7 วัน — rider คนไหนรับงานหนัก/ควรพัก, คนไหนรับงานน้อย/เพิ่ม shift ได้\n' +
-    '3) 📈 Trend & พรุ่งนี้ — แนวโน้ม pickup lag 7 วัน, คาดการณ์พรุ่งนี้จะเป็นอย่างไร\n' +
-    'ตอบกระชับ ตรงประเด็น เป็นภาษาไทย';
+    'เรียก tool ตามนี้แล้ววิเคราะห์เป็น 3 หัวข้อ ใช้ข้อมูลจาก tool เท่านั้น ห้ามแต่งชื่อหรือตัวเลข:\n' +
+    '1) 📊 Peak — เรียก get_hourly_demand → บอก top 3 peak hours, ช่วง pickup lag > 15 นาที, ต้องมี rider กี่คน\n' +
+    '2) 👥 Rider 7 วัน — เรียก get_rider_score → บอกชื่อจริงของ rider ที่ควรพัก (งานเยอะ) และ rider ที่ควรเพิ่ม shift (งานน้อย)\n' +
+    '3) 📈 Trend — เรียก get_delivery_speed_trend → บอกแนวโน้ม pickup lag 7 วัน และคาดการณ์พรุ่งนี้\n' +
+    'ตอบกระชับ เป็นภาษาไทย';
 
   try {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {

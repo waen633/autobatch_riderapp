@@ -3511,7 +3511,7 @@ async function loadAnalytics() {
   renderHourlyChart(hourlyRes, forecastRes);
   renderForecastBar(forecastRes);
   renderRiderTable(riderRes, forecastRes);
-  renderShiftPlan(riderRes, forecastRes);
+  renderShiftPlan(riderRes, forecastRes, speedRes);
   renderSpeedChart(speedRes);
   loadAIInsight();
 }
@@ -3610,7 +3610,7 @@ function renderRiderTable(data) {
   el.innerHTML = rows;
 }
 
-function renderShiftPlan(riders, forecast) {
+function renderShiftPlan(riders, forecast, speedData) {
   const el = document.getElementById('an-shift-plan');
   if (!riders || !riders.length || !forecast) {
     el.innerHTML = '<span class="text-muted">ไม่มีข้อมูลเพียงพอ</span>';
@@ -3622,12 +3622,25 @@ function renderShiftPlan(riders, forecast) {
 
   // workload ranking: sort by total jobs desc (7 days)
   const sorted   = [...riders].sort((a, b) => b.total - a.total);
-  const heavyLoad = sorted.slice(0, Math.ceil(sorted.length * 0.3));  // top 30% = ทำงานหนัก
-  const lowLoad   = sorted.slice(-Math.ceil(sorted.length * 0.3));    // bottom 30% = ทำน้อย
+  const heavyLoad = sorted.slice(0, Math.ceil(sorted.length * 0.3));
+  const lowLoad   = sorted.slice(-Math.ceil(sorted.length * 0.3));
 
-  // recommended rider count for tomorrow = ceil(predictedJobs / avgJobsPerRider)
-  const avgJobsPerRider = riders.length ? (riders.reduce((s,r) => s + r.total, 0) / riders.length / 7) : 5;
-  const recommendedRiders = Math.max(2, Math.ceil(totalFc / Math.max(avgJobsPerRider, 1)));
+  // recommended riders — data-driven: หา riderActive เฉลี่ยในวันที่ pickup lag ต่ำ (< 25 นาที)
+  // ถ้าไม่มีวันที่ดีพอ ใช้วันที่ lag ต่ำสุด 2 วันแทน
+  const speedRows = ((speedData?.data || speedData) || []).filter(d => !d.predicted && d.activeRiderCount);
+  const lags = speedRows.map(d => d.avgPickupLagMin).filter(v => v !== null);
+  const lagThreshold = lags.length ? Math.min(25, Math.min(...lags) * 1.3) : 25;
+  const goodDays = speedRows.filter(d => d.avgPickupLagMin !== null && d.avgPickupLagMin <= lagThreshold);
+  let recommendedRiders, riderNote;
+  if (goodDays.length > 0) {
+    const avgActive = goodDays.reduce((s, d) => s + d.activeRiderCount, 0) / goodDays.length;
+    recommendedRiders = Math.max(2, Math.ceil(avgActive));
+    riderNote = `อิงจาก ${goodDays.length} วันที่ pickup lag ≤ ${lagThreshold} นาที (activeRider เฉลี่ย ${avgActive.toFixed(1)} คน)`;
+  } else {
+    const avgJobsPerRider = riders.length ? (riders.reduce((s,r) => s + r.total, 0) / riders.length / 7) : 5;
+    recommendedRiders = Math.max(2, Math.ceil(totalFc / Math.max(avgJobsPerRider, 1)));
+    riderNote = `อิงจาก throughput เฉลี่ยต่อคน (ไม่มี data วันที่ lag ต่ำพอ)`;
+  }
 
   const peakText = peakHours.length
     ? peakHours.map(h => `<span class="badge bg-warning text-dark me-1">${String(h.hour).padStart(2,'0')}:00</span>`).join('')
@@ -3649,6 +3662,7 @@ function renderShiftPlan(riders, forecast) {
           <div>งาน ~<strong>${totalFc}</strong> jobs</div>
           <div class="mt-1">ต้องการ rider อย่างน้อย <strong class="text-success">${recommendedRiders} คน</strong></div>
           <div class="mt-1">Peak: ${peakText}</div>
+          <div class="mt-1 text-muted" style="font-size:.72rem;">📌 ${riderNote}</div>
         </div>
       </div>
       <div class="col-12 col-md-4">
@@ -3904,15 +3918,15 @@ async function loadAIInsight() {
   const speedPred = (speed.data || speed).find(d => d.predicted);
 
   const hourlyStr = hourly.map(h =>
-    `${String(h.hour).padStart(2,'0')}:00 — ${h.jobCount}งาน | riderActive:${h.activeRiderCount??'-'}คน | pickupLag:${h.avgPickupLagMin??'-'}นาที | slaBreach:${h.slaBreachCount??0}ครั้ง | slowPickup:${h.isSlowPickup} | peak:${h.isPeak}`
+    `${String(h.hour).padStart(2,'0')}:00 — ${h.jobCount}งาน | rider:${h.activeRiderCount??'-'}คน | รับงานช้า:${h.avgPickupLagMin??'-'}นาที | งานเกินSLA:${h.slaBreachCount??0}ครั้ง | ช้าผิดปกติ:${h.isSlowPickup} | ชั่วโมงหนาแน่น:${h.isPeak}`
   ).join('\n');
 
   const riderStr = riders.map(r =>
-    `${r.riderName} | score:${r.score} | accept:${r.acceptRate}% | cancel:${r.cancelRate}% | slaBreach:${r.slaBreachRate}% | rec:${r.recommendation}`
+    `${r.riderName} | score:${r.score} | รับงาน:${r.acceptRate}% | ยกเลิก:${r.cancelRate}% | งานเกินSLA:${r.slaBreachRate}% | สถานะ:${r.recommendation}`
   ).join('\n');
 
   const speedStr = speedRows.map(d =>
-    `${d.date} | riderActive:${d.activeRiderCount??'-'}คน | pickupLag:${d.avgPickupLagMin??'-'}นาที | deliveryLag:${d.avgDeliveryLagMin??'-'}นาที | slaBreach:${d.slaBreachCount??0}ครั้ง`
+    `${d.date} | rider:${d.activeRiderCount??'-'}คน | รับงานช้า:${d.avgPickupLagMin??'-'}นาที | ส่งช้า:${d.avgDeliveryLagMin??'-'}นาที | งานเกินSLA:${d.slaBreachCount??0}ครั้ง`
   ).join('\n');
   const predStr = speedPred
     ? `พรุ่งนี้ (คาด): pickupLag:${speedPred.predictedPickupLagMin??'-'}นาที | deliveryLag:${speedPred.predictedDeliveryLagMin??'-'}นาที`
@@ -3948,6 +3962,8 @@ async function loadAIInsight() {
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}\n\n` +
     `วิเคราะห์ข้อมูลข้างต้น เขียนเป็นภาษาไทยที่เป็นธรรมชาติ เหมือน ops analyst เขียน daily brief ให้ผู้จัดการ\n` +
     `ห้ามพูดถึง field name เช่น isPeak, isSlowPickup, jobCount — ให้แปลงเป็นภาษาคนเสมอ\n` +
+    `ห้ามใช้คำว่า "สลาบรีช" — ให้เขียน "งานส่งเกินกำหนด" หรือ "เกิน SLA" แทน\n` +
+    `ห้ามทับศัพท์คำ "SLA breach" เป็นภาษาไทยออกเสียง — ใช้ความหมายเสมอ\n` +
     `return เป็น HTML fragment (ไม่ต้องมี <html><body>) ใช้ tag เหล่านี้ได้: <h6> <p> <strong> <span> <table> <thead> <tbody> <tr> <th> <td> <hr> <ul> <li> <span class="badge ..."> <div>\n\n` +
     `โครงสร้าง:\n\n` +
     `<h6>📊 Peak & ช่วงรับงานช้า</h6>\n` +

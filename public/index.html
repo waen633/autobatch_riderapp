@@ -3915,13 +3915,14 @@ async function loadAIInsight() {
   _anAiDataContext = '';
 
   // ดึงข้อมูลจริงจาก API ก่อน
-  let hourly, riders, speed;
+  let hourly, riders, speed, forecast;
   try {
     el.innerHTML = '⏳ กำลังโหลดข้อมูล (1/3)...';
-    [hourly, riders, speed] = await Promise.all([
+    [hourly, riders, speed, forecast] = await Promise.all([
       fetch(`${API_BASE}/api/analytics/hourly?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()),
       fetch(`${API_BASE}/api/analytics/rider-score?storeCode=${encodeURIComponent(sc)}`).then(r=>r.json()),
       fetch(`${API_BASE}/api/analytics/delivery-speed?storeCode=${encodeURIComponent(sc)}&mode=daily&days=7`).then(r=>r.json()),
+      fetch(`${API_BASE}/api/analytics/demand-forecast?storeCode=${encodeURIComponent(sc)}&days=7`).then(r=>r.json()).catch(()=>null),
     ]);
   } catch(e) {
     el.textContent = `⚠️ โหลดข้อมูลไม่ได้: ${e.message}`;
@@ -3945,8 +3946,16 @@ async function loadAIInsight() {
   const speedStr = speedRows.map(d =>
     `${d.date} | rider:${d.activeRiderCount??'-'}คน | รับงานช้า:${d.avgPickupLagMin??'-'}นาที | ส่งช้า:${d.avgDeliveryLagMin??'-'}นาที | งานเกินSLA:${d.slaBreachCount??0}ครั้ง`
   ).join('\n');
-  const predStr = speedPred
-    ? `พรุ่งนี้ (คาด): pickupLag:${speedPred.predictedPickupLagMin??'-'}นาที | deliveryLag:${speedPred.predictedDeliveryLagMin??'-'}นาที`
+  const predStr = [
+    speedPred ? `lag คาด: pickupLag:${speedPred.predictedPickupLagMin??'-'}นาที | deliveryLag:${speedPred.predictedDeliveryLagMin??'-'}นาที` : '',
+    forecast ? `demand คาด: งานรวม ${forecast.totalPredictedJobs??'-'} jobs | peak: ${(forecast.peakHours||[]).slice(0,3).map(h=>`${String(h.hour).padStart(2,'0')}:00(~${h.predictedJobs}งาน)`).join(', ')}` : '',
+    forecast?.hourly ? `[HOURLY FORECAST พรุ่งนี้]\n${forecast.hourly.map(h=>`${String(h.hour).padStart(2,'0')}:00 — คาด ${h.predictedJobs}งาน`).join('\n')}` : '',
+  ].filter(Boolean).join('\n');
+
+  // ตรวจว่าวันนี้มีข้อมูลน้อย (ช่วงเช้ามืด)
+  const todayJobCount = hourly.reduce((s, h) => s + (h.jobCount || 0), 0);
+  const earlyMorningNote = todayJobCount < 5
+    ? `\n⚠️ หมายเหตุ: ขณะนี้เป็นช่วงต้นวัน ข้อมูลวันนี้ยังมีน้อย (${todayJobCount} งาน) — ให้ข้ามส่วน "สรุปวันนี้" และโฟกัสที่คาดการณ์พรุ่งนี้แทน`
     : '';
 
   // เก็บไว้ inject ใน follow-up ทุกครั้ง
@@ -3972,7 +3981,8 @@ async function loadAIInsight() {
     `- job ใหม่ได้รับหลังปิด job เก่าเท่านั้น\n` +
     `- riderActive = จำนวน job ที่รันพร้อมกันในชั่วโมงนั้น\n` +
     `- แนะนำ rider target: หา slot ที่ lag < 20 นาที → ดูว่ามี riderActive กี่คน → ใช้เป็น baseline\n` +
-    `- ห้ามอ้างตัวเลขที่ไม่มีใน data\n\n` +
+    `- ห้ามอ้างตัวเลขที่ไม่มีใน data\n` +
+    `${earlyMorningNote}\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED & PREDICTION]\n${speedStr}\n${predStr}\n\n` +

@@ -3904,7 +3904,7 @@ async function loadAIInsight() {
   const speedPred = (speed.data || speed).find(d => d.predicted);
 
   const hourlyStr = hourly.map(h =>
-    `${String(h.hour).padStart(2,'0')}:00 — ${h.jobCount}งาน | lag:${h.avgPickupLagMin??'-'}นาที | slowPickup:${h.isSlowPickup} | peak:${h.isPeak}`
+    `${String(h.hour).padStart(2,'0')}:00 — ${h.jobCount}งาน | riderActive:${h.activeRiderCount??'-'}คน | pickupLag:${h.avgPickupLagMin??'-'}นาที | slaBreach:${h.slaBreachCount??0}ครั้ง | slowPickup:${h.isSlowPickup} | peak:${h.isPeak}`
   ).join('\n');
 
   const riderStr = riders.map(r =>
@@ -3912,7 +3912,7 @@ async function loadAIInsight() {
   ).join('\n');
 
   const speedStr = speedRows.map(d =>
-    `${d.date} | pickupLag:${d.avgPickupLagMin??'-'}นาที | deliveryLag:${d.avgDeliveryLagMin??'-'}นาที`
+    `${d.date} | riderActive:${d.activeRiderCount??'-'}คน | pickupLag:${d.avgPickupLagMin??'-'}นาที | deliveryLag:${d.avgDeliveryLagMin??'-'}นาที | slaBreach:${d.slaBreachCount??0}ครั้ง`
   ).join('\n');
   const predStr = speedPred
     ? `พรุ่งนี้ (คาด): pickupLag:${speedPred.predictedPickupLagMin??'-'}นาที | deliveryLag:${speedPred.predictedDeliveryLagMin??'-'}นาที`
@@ -3925,9 +3925,10 @@ async function loadAIInsight() {
     `- Rider 1 คน รับได้ 1 job เท่านั้นในเวลาเดียวกัน (1 job = หลาย order ใน batch เดียว)\n` +
     `- Rider จะได้รับ job ใหม่หลังจากส่งของครบและปิด job เดิมแล้วเท่านั้น\n` +
     `- ดังนั้นจำนวน rider ที่ active = จำนวน job ที่ระบบสามารถรันได้พร้อมกันในเวลานั้น\n` +
-    `- คำนวณ rider ที่ต้องการต่อชั่วโมง: riders = jobs_per_hour × (pickup_lag_min + delivery_lag_min) ÷ 60\n` +
-    `- ตัวอย่าง: 10 jobs/ชม × 85 นาที ÷ 60 = 14.2 → ต้องการ 15 คน (ปัดขึ้นเสมอ)\n` +
-    `- ทุกครั้งที่แนะนำจำนวน rider ให้แสดงการคำนวณด้วยตัวเลขจริงจากข้อมูลข้างต้น ห้ามประมาณลอยๆ\n\n` +
+    `- วิธีแนะนำจำนวน rider: ดูจาก data จริงว่าชั่วโมงไหนมี riderActive กี่คน แล้ว lag/slaBreach เป็นเท่าไหร่\n` +
+    `- หาว่าช่วงที่ lag ต่ำ (< 20 นาที) มี riderActive เฉลี่ยกี่คนต่อ job — ใช้ตัวเลขนั้นเป็นเป้าหมาย\n` +
+    `- ถ้า lag สูงและ riderActive น้อยในชั่วโมงเดียวกัน ให้บอกว่าต้องเพิ่มอีกกี่คนโดยอ้างอิง data\n` +
+    `- ห้ามใช้สูตรที่ไม่มีใน data — ให้อ้าง row ข้อมูลจริงประกอบเสมอ\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}`;
@@ -3938,9 +3939,10 @@ async function loadAIInsight() {
     `- Rider 1 คน รับได้ 1 job เท่านั้นในเวลาเดียวกัน (1 job = หลาย order ใน batch เดียว)\n` +
     `- Rider จะได้รับ job ใหม่หลังจากส่งของครบและปิด job เดิมแล้วเท่านั้น\n` +
     `- จำนวน rider ที่ active = จำนวน job ที่รันพร้อมกันได้ในขณะนั้น\n` +
-    `- คำนวณ rider ที่ต้องการต่อชั่วโมง: riders = jobs_per_hour × (pickup_lag_min + delivery_lag_min) ÷ 60\n` +
-    `- ตัวอย่าง: 10 jobs/ชม × 85 นาที ÷ 60 = 14.2 → ต้องการ 15 คน (ปัดขึ้นเสมอ)\n` +
-    `- ทุกครั้งที่แนะนำจำนวน rider ให้แสดงการคำนวณด้วยตัวเลขจริงจากข้อมูล ห้ามประมาณลอยๆ\n\n` +
+    `- วิธีแนะนำจำนวน rider: ดูจาก data จริงว่าชั่วโมงไหนมี riderActive กี่คน แล้ว lag/slaBreach เป็นเท่าไหร่\n` +
+    `- หาว่าช่วงที่ lag ต่ำ (< 20 นาที) มี riderActive เฉลี่ยกี่คนต่อ job — ใช้ตัวเลขนั้นเป็นเป้าหมาย\n` +
+    `- ถ้า lag สูงและ riderActive น้อยในชั่วโมงเดียวกัน ให้บอกว่าต้องเพิ่มอีกกี่คนโดยอ้างอิง data\n` +
+    `- ห้ามใช้สูตรที่ไม่มีใน data — ให้อ้าง row ข้อมูลจริงประกอบเสมอ\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}\n\n` +

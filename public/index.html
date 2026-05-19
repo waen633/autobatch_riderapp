@@ -3874,12 +3874,14 @@ function renderSpeedChart(res) {
 
 // AI Insight — fetch ข้อมูลจริงก่อน แล้วยัดเข้า prompt เลย (ไม่ใช้ tool calling)
 let _anAiHistory = [];
+let _anAiDataContext = ''; // เก็บ raw data ไว้ inject ใน follow-up ด้วย
 async function loadAIInsight() {
   const sc = document.getElementById('an-storeCode').value.trim();
   if (!sc) return;
   const el = document.getElementById('an-ai-insight');
   el.innerHTML = '⏳ กำลังโหลดข้อมูล...';
   _anAiHistory = [];
+  _anAiDataContext = '';
 
   // ดึงข้อมูลจริงจาก API ก่อน
   let hourly, riders, speed;
@@ -3915,6 +3917,13 @@ async function loadAIInsight() {
   const predStr = speedPred
     ? `พรุ่งนี้ (คาด): pickupLag:${speedPred.predictedPickupLagMin??'-'}นาที | deliveryLag:${speedPred.predictedDeliveryLagMin??'-'}นาที`
     : '';
+
+  // เก็บไว้ inject ใน follow-up ทุกครั้ง
+  _anAiDataContext =
+    `ข้อมูลจริงจาก dashboard สาขา ${sc} — ใช้ข้อมูลนี้ตอบทุกคำถาม ห้ามแต่งหรือเดา:\n\n` +
+    `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
+    `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
+    `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}`;
 
   const prompt =
     `ข้อมูลจริงจาก dashboard สาขา ${sc} วันนี้ — ห้ามใช้ข้อมูลอื่นนอกจากนี้:\n\n` +
@@ -3972,22 +3981,31 @@ async function sendAIFollowup() {
   chatEl.innerHTML += `<div class="text-end mb-1"><span class="badge bg-secondary">${msg}</span></div>`;
   chatEl.innerHTML += `<div class="mb-2 text-muted" id="an-typing">⏳ กำลังพิมพ์...</div>`;
 
+  // inject data context เป็น system message นำหน้าทุกครั้ง
+  const historyWithCtx = _anAiDataContext
+    ? [{ role: 'user', content: _anAiDataContext }, { role: 'assistant', content: 'รับทราบข้อมูลแล้ว พร้อมตอบคำถาม' }, ..._anAiHistory.slice(-8)]
+    : _anAiHistory.slice(-10);
+
   _anAiHistory.push({ role: 'user', content: msg });
   try {
-    const base = API_BASE;
-    const res  = await fetch(`${base}/api/ai/chat`, {
+    const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg, storeCode: sc, history: _anAiHistory.slice(-10) })
+      body: JSON.stringify({
+        message: msg, storeCode: sc,
+        history: historyWithCtx,
+        noTools: true,
+      }),
+      signal: AbortSignal.timeout(60000),
     });
     const data = await res.json();
     const reply = data.answer || data.error || '–';
     _anAiHistory.push({ role: 'assistant', content: reply });
     document.getElementById('an-typing')?.remove();
-    chatEl.innerHTML += `<div class="mb-2" style="white-space:pre-line;">${reply}</div>`;
+    chatEl.innerHTML += `<div class="mb-2">${reply}</div>`;
   } catch (e) {
     document.getElementById('an-typing')?.remove();
-    chatEl.innerHTML += `<div class="text-danger mb-2">${e.message}</div>`;
+    chatEl.innerHTML += `<div class="text-danger mb-2">⚠️ ${e.message}</div>`;
   }
 }
 

@@ -74,9 +74,15 @@ router.get('/analytics/daily-summary', async (req, res) => {
     const todayR = dayRange(0);
     const yesterR = dayRange(-1);
 
+    // cut-off = ตอนนี้ (BKK), yesterday ตัดที่เวลาเดียวกัน → เปรียบ apples-to-apples
+    const nowUtc = new Date();
+    const todayTo   = nowUtc < todayR.to   ? nowUtc : todayR.to;
+    const yesterCut = new Date(nowUtc.getTime() - 86400000); // เมื่อวาน เวลาเดียวกัน
+    const yesterTo  = yesterCut < yesterR.to ? yesterCut : yesterR.to;
+
     const [todayJobs, yesterJobs] = await Promise.all([
-      fetchJobs(db, storeIds, todayR.from, todayR.to),
-      fetchJobs(db, storeIds, yesterR.from, yesterR.to),
+      fetchJobs(db, storeIds, todayR.from, todayTo),
+      fetchJobs(db, storeIds, yesterR.from, yesterTo),
     ]);
 
     function summarize(jobs) {

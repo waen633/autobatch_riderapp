@@ -3895,7 +3895,19 @@ async function loadAIInsight() {
     });
     const data = await res.json();
     if (data.error) {
-      el.textContent = `❌ ${data.detail || data.error}`;
+      const is429 = (data.detail || '').includes('429') || (data.detail || '').includes('rate');
+      if (is429) {
+        // countdown 70s แล้ว auto-retry
+        let sec = 70;
+        const tick = setInterval(() => {
+          sec--;
+          el.textContent = `⏳ Rate limit — ลองใหม่อัตโนมัติใน ${sec} วินาที...`;
+          if (sec <= 0) { clearInterval(tick); loadAIInsight(); }
+        }, 1000);
+        el.textContent = `⏳ Rate limit — ลองใหม่อัตโนมัติใน ${sec} วินาที...`;
+      } else {
+        el.textContent = `❌ ${data.detail || data.error}`;
+      }
       return;
     }
     const reply = data.answer || 'ไม่ได้รับคำตอบ';

@@ -1,4 +1,4 @@
-# Autobatch Dashboard — CLAUDE.md
+# Autobatch Dashboard — CLAUDE.md (Phase 1 / main)
 
 ## Project
 Last-mile Delivery Dashboard สำหรับ Operations team ของ Lotus's
@@ -14,15 +14,16 @@ Monitor & manage: Pending Orders, Rider Pool, Jobs, Auto-assignment diagnostics,
 ## Commands
 ```bash
 npm start                              # run server port 3000
-pm2 start server.js --name autobatch   # production
-pm2 restart autobatch                  # after code change
-pm2 logs autobatch                     # view logs
+pm2 start server.js --name dashboard   # production
+pm2 restart dashboard --update-env     # after code or .env change
+pm2 logs dashboard                     # view logs
 ```
 
 ## Git Branches
 ```
-main                      # Phase 1 — production, stable  ← you are here
-feature/phase2-ai-chat    # Phase 2 — AI chat assistant (น้องบอท)
+main                        # Phase 1 — core dashboard, no AI  ← you are here
+feature/phase2-ai-chat      # Phase 2 — AI chat (น้องบอท)
+feature/phase3-analytics    # Phase 3 — Analytics tab + AI Insight
 ```
 
 ## File Map
@@ -117,10 +118,9 @@ Never call `.insertOne()`, `.updateOne()`, `.deleteOne()` on these collections.
 `CLS_TOPIC_ID` in .env is optional — lib/cls.js auto-fetches it from `CLS_TOPIC_NAME` on first call.
 If diagnostics return empty, check that `CLS_SECRET_ID` / `CLS_SECRET_KEY` are correct.
 
-## Next Phase
-Phase 2 (AI chat assistant) is on branch `feature/phase2-ai-chat`.
-It adds: `routes/ai.js`, `lib/aiTools.js`, `lib/toolExecutor.js`, chat widget in index.html.
-See that branch's CLAUDE.md for full AI context.
+## Other Phases
+- **Phase 2** (`feature/phase2-ai-chat`) — AI chat widget (น้องบอท): `routes/ai.js`, `lib/aiTools.js`, `lib/toolExecutor.js`
+- **Phase 3** (`feature/phase3-analytics`) — Analytics tab, AI Insight, Shift Planning, Delivery Speed chart
 
 ## Quick Setup (new machine)
 ```bash

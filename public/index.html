@@ -1256,8 +1256,12 @@ function flagsHtml(d) {
 }
 
 async function showBreakLog(userId, riderName) {
-  const from = document.getElementById('fromDate').value;
-  const to   = document.getElementById('toDate').value;
+  // ใช้ today Bangkok time เสมอ — ไม่แชร์ picker กับ Jobs
+  const now     = new Date();
+  const bkkNow  = new Date(now.getTime() + 7 * 3600 * 1000);
+  const today   = bkkNow.toISOString().slice(0, 10);          // "2026-05-19"
+  const from    = `${today}T00:00:00+07:00`;
+  const to      = now.toISOString();
 
   document.getElementById('breakModalRiderName').textContent = riderName;
   document.getElementById('breakModalBody').innerHTML =

@@ -3885,7 +3885,7 @@ async function loadAIInsight() {
     'เรียก tool ตามนี้แล้ววิเคราะห์เป็น 3 หัวข้อ ใช้ข้อมูลจาก tool เท่านั้น ห้ามแต่งชื่อหรือตัวเลข:\n' +
     '1) 📊 Peak — เรียก get_hourly_demand → บอก top 3 peak hours, ช่วง pickup lag > 15 นาที, ต้องมี rider กี่คน\n' +
     '2) 👥 Rider 7 วัน — เรียก get_rider_score → บอกชื่อจริงของ rider ที่ควรพัก (งานเยอะ) และ rider ที่ควรเพิ่ม shift (งานน้อย)\n' +
-    '3) 📈 Trend — เรียก get_delivery_speed_trend → บอกแนวโน้ม pickup lag 7 วัน และคาดการณ์พรุ่งนี้\n' +
+    '3) 📈 Trend — เรียก get_delivery_speed_trend → วิเคราะห์แนวโน้ม pickup lag 7 วัน: ดีขึ้นหรือแย่ลง, วันไหนสูงสุด/ต่ำสุด, สาเหตุที่เป็นไปได้, คาดการณ์พรุ่งนี้และควรระวังอะไร\n' +
     'ตอบกระชับ เป็นภาษาไทย';
 
   try {

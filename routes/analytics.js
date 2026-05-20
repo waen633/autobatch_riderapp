@@ -141,12 +141,14 @@ router.get('/analytics/hourly', async (req, res) => {
 
     function bucketByHour(jobs) {
       const hours = {};
-      for (let h = 0; h < 24; h++) hours[h] = { jobCount: 0, lags: [] };
+      for (let h = 0; h < 24; h++) hours[h] = { jobCount: 0, lags: [], riderIds: new Set(), slaBreaches: 0 };
       for (const job of jobs) {
         const bkkHour = (new Date(job.createdAt).getTime() / 3600000 + 7) % 24 | 0;
         hours[bkkHour].jobCount++;
         const lag = pickupLagMin(job);
         if (lag !== null && lag >= 0) hours[bkkHour].lags.push(lag);
+        if (job.assignment?.rider?.id) hours[bkkHour].riderIds.add(job.assignment.rider.id.toString());
+        if (isSLABreach(job)) hours[bkkHour].slaBreaches++;
       }
       return hours;
     }
@@ -172,6 +174,8 @@ router.get('/analytics/hourly', async (req, res) => {
         avgPickupLagMin: avgLag !== null ? Math.round(avgLag * 10) / 10 : null,
         isPeak: peakSet.has(h),
         isSlowPickup: avgLag !== null && avgLag > 15,
+        activeRiderCount: b.riderIds.size,
+        slaBreachCount: b.slaBreaches,
       });
     }
 

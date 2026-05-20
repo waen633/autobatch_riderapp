@@ -3982,6 +3982,7 @@ async function loadAIInsight() {
     `- riderActive = จำนวน job ที่รันพร้อมกันในชั่วโมงนั้น\n` +
     `- แนะนำ rider target: หา slot ที่ lag < 20 นาที → ดูว่ามี riderActive กี่คน → ใช้เป็น baseline\n` +
     `- ห้ามอ้างตัวเลขที่ไม่มีใน data\n` +
+    `- กฎความเร็ว: Pickup Lag เฉลี่ย > 15 นาที ถือว่า "ล่าช้าและเป็นปัญหาใหญ่" (ห้ามบอกว่าไม่เป็นห่วง), Delivery Lag > 20 นาที ถือว่า "ส่งของช้าผิดปกติ"\n` +
     `${earlyMorningNote}\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
@@ -3997,9 +3998,9 @@ async function loadAIInsight() {
     `<hr>\n` +
     `<h6>🔮 คาดการณ์พรุ่งนี้</h6>\n` +
     `<p><strong>Demand:</strong> จาก forecast คาดว่าพรุ่งนี้มีงานรวมประมาณกี่งาน peak ช่วงไหน กี่งาน/ชั่วโมง</p>\n` +
-    `<p><strong>Pickup Lag:</strong> จาก trend 7 วัน คาดว่า lag พรุ่งนี้จะอยู่ที่กี่นาที ควรระวังหรือไม่</p>\n` +
+    `<p><strong>Pickup Lag:</strong> จาก trend 7 วัน คาดว่า lag พรุ่งนี้จะอยู่ที่กี่นาที ควรระวังหรือไม่ (ถ้า lag > 15 นาที ต้องเตือนว่ามีปัญหาคอขวดและชี้แจง)</p>\n` +
     `<p><strong>Rider ที่แนะนำ:</strong> บอก time slot สำคัญว่าควรมีกี่คน อิงจาก job demand จริงและ baseline riderActive ที่ lag ต่ำ</p>\n` +
-    `ถ้า lag > 30 นาที หรือ demand สูงกว่า 7 วันที่ผ่านมา ให้ใส่ <span class="badge bg-warning text-dark">⚠️ ควรเตรียมพร้อม</span>\n` +
+    `ถ้า lag > 30 นาที หรือ demand สูงกว่า 7 วันที่ผ่านมา ให้แปะป้าย <span class="badge bg-warning text-dark">⚠️ ควรเตรียมพร้อม</span> ไว้ที่หัวข้อคาดการณ์ และอธิบายว่าต้องเตรียมกำลังพลอย่างไร ห้ามแทรกป้ายนี้ลอยๆ ในข้อความบรรยาย\n` +
     `<hr>\n` +
     `<h6>👥 Rider ที่ต้องติดตามพรุ่งนี้</h6>\n` +
     `<table class="table table-sm table-bordered" style="font-size:.82rem;">\n` +
@@ -4045,13 +4046,19 @@ async function sendAIFollowup() {
     ? [{ role: 'user', content: _anAiDataContext }, { role: 'assistant', content: 'รับทราบข้อมูลแล้ว พร้อมตอบคำถาม' }, ..._anAiHistory.slice(-8)]
     : _anAiHistory.slice(-10);
 
+  const msgWithInstructions = msg + 
+    `\n\n[คำสั่งสำหรับคำถามนี้ — สำคัญมาก]` +
+    `\n- ตอบตรงประเด็นของคำถามนี้เท่านั้น ห้ามนำข้อมูลประวัติหรือตารางประเมินผล Rider ทั้งหมดที่ส่งไปในบริบทมาแสดงซ้ำหากไม่เกี่ยวข้อง` +
+    `\n- หากตอบเรื่อง "ตารางจัดกะแนะนำ" ให้สรุปเป็นช่วงเวลาการเข้างานของ Rider (เช่น กะเช้า 08:00-13:00 น. ควรใช้กี่คน, กะบ่าย/เย็นควรใช้กี่คน) โดยอิงตามชั่วโมง Peak ในข้อมูลคาดการณ์ และห้ามเอาตารางรายชื่อ Rider ทั้งหมดมาแปะซ้ำ` +
+    `\n- ห้ามประเมินว่าค่าเฉลี่ย Pickup Lag > 15 นาที หรือ Delivery Lag > 20 นาทีว่า "ปกติ/ไม่มีปัญหา" — สถิติระดับนี้ถือว่าล่าช้าและส่งผลกระทบต่อ SLA ต้องชี้แจงแนวทางลด Lag นี้ในตารางจัดกะ`;
+
   _anAiHistory.push({ role: 'user', content: msg });
   try {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: msg, storeCode: sc,
+        message: msgWithInstructions, storeCode: sc,
         history: historyWithCtx,
         noTools: true,
       }),

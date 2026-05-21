@@ -49,7 +49,9 @@ router.get('/jobs', async (req, res) => {
           projection: {
             jobId: 1, orderIds: 1, status: 1, createdAt: 1, updatedAt: 1, updateStatuses: 1, storeId: 1,
             'assignment.rider.id': 1, 'assignment.rider.name': 1, pickUpSLA: 1, sla: 1,
-            'routeOptimizationResult.totalDistance': 1, 'routeOptimizationResult.travelDuration': 1
+            'routeOptimizationResult.totalDistance': 1, 'routeOptimizationResult.travelDuration': 1,
+            'routeOptimizationResult.visitDuration': 1, 'routeOptimizationResult.waitDuration': 1,
+            'routeOptimizationResult.totalWeightGrams': 1, 'routeOptimizationResult.totalBoxDimensionVolumes': 1
           }
         }
       )
@@ -70,8 +72,14 @@ router.get('/jobs', async (req, res) => {
       createdAt: d.createdAt || null,
       updatedAt: d.updatedAt || null,
       updateStatuses: Array.isArray(d.updateStatuses) ? d.updateStatuses : [],
-      totalDistance: d.routeOptimizationResult?.totalDistance ?? null,
-      travelDuration: d.routeOptimizationResult?.travelDuration ?? null
+      routeOptimizationResult: d.routeOptimizationResult ? {
+        totalDistance: d.routeOptimizationResult.totalDistance ?? null,
+        travelDuration: d.routeOptimizationResult.travelDuration ?? null,
+        visitDuration: d.routeOptimizationResult.visitDuration ?? null,
+        waitDuration: d.routeOptimizationResult.waitDuration ?? null,
+        totalWeightGrams: d.routeOptimizationResult.totalWeightGrams ?? null,
+        totalBoxDimensionVolumes: d.routeOptimizationResult.totalBoxDimensionVolumes ?? null
+      } : null
     }));
 
     res.json({ count: data.length, data });

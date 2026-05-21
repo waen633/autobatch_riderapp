@@ -3254,7 +3254,32 @@ function _showRouteModal(title, meta, onShown) {
   }, { once: true });
 }
 
-function _renderRouteMap(rawResults, jobId) {
+function _renderRouteMetrics(m) {
+  const c = document.getElementById('routeModalMetrics');
+  if (!c) return;
+  if (!m || Object.keys(m).length === 0) {
+    c.style.setProperty('display', 'none', 'important');
+    return;
+  }
+  c.style.setProperty('display', 'flex', 'important');
+  const d = m.totalDistance ? (m.totalDistance/1000).toFixed(2) + ' km' : '-';
+  const t = m.travelDuration ? Math.round(m.travelDuration/60) + ' min' : '-';
+  const v = m.visitDuration ? Math.round(m.visitDuration/60) + ' min' : '-';
+  const w = m.waitDuration ? Math.round(m.waitDuration/60) + ' min' : '-';
+  const weight = m.totalWeightGrams ? (m.totalWeightGrams/1000).toFixed(1) + ' kg' : '-';
+  const vol = m.totalBoxDimensionVolumes ? (m.totalBoxDimensionVolumes/1000).toFixed(1) + ' L' : '-';
+  
+  c.innerHTML = `
+    ${_metaBadge('🚗 <b>Dist:</b> ' + d, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+    ${_metaBadge('⏱ <b>Travel:</b> ' + t, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+    ${_metaBadge('⏳ <b>Wait:</b> ' + w, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+    ${_metaBadge('📦 <b>Drop:</b> ' + v, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+    ${_metaBadge('⚖️ <b>Weight:</b> ' + weight, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
+    ${_metaBadge('🧊 <b>Vol:</b> ' + vol, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
+  `;
+}
+
+function _renderRouteMap(rawResults, jobId, metrics = null) {
   if (routeMap) { routeMap.remove(); routeMap = null; }
   const container = document.getElementById('route-modal-map');
   container.innerHTML = '';
@@ -3279,6 +3304,12 @@ function _renderRouteMap(rawResults, jobId) {
     if (totalKm && job) job.totalKm = parseFloat(totalKm);
   }
   if (totalKm) metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`🛣 ${totalKm} km`, { bg:'#f0fdf4', text:'#15803d', border:'#bbf7d0' }) }));
+  
+  // Add total duration if available
+  if (metrics && metrics.totalDuration) {
+    const totalMin = Math.round(metrics.totalDuration / 60);
+    metaEl.appendChild(Object.assign(document.createElement('span'), { innerHTML: _metaBadge(`⏱ ${totalMin} min (Total)`, { bg:'#fdf4ff', text:'#a21caf', border:'#f5d0fe' }) }));
+  }
 }
 
 function _mapLoading() {
@@ -3306,7 +3337,8 @@ async function openJobRoute(jobId, btn) {
       const r = await fetch(`${API_BASE}/api/job-route?jobId=${encodeURIComponent(jobId)}`);
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      _renderRouteMap(j.rawResults, jobId);
+      _renderRouteMap(j.rawResults, jobId, j.metrics);
+      if (j.metrics) _renderRouteMetrics(j.metrics);
     } catch(e) { _mapError(e.message); }
   });
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-map me-1"></i>Route'; }

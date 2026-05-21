@@ -48,7 +48,8 @@ router.get('/jobs', async (req, res) => {
         {
           projection: {
             jobId: 1, orderIds: 1, status: 1, createdAt: 1, updatedAt: 1, updateStatuses: 1, storeId: 1,
-            'assignment.rider.id': 1, 'assignment.rider.name': 1, pickUpSLA: 1, sla: 1
+            'assignment.rider.id': 1, 'assignment.rider.name': 1, pickUpSLA: 1, sla: 1,
+            'routeOptimizationResult.totalDistance': 1, 'routeOptimizationResult.travelDuration': 1
           }
         }
       )
@@ -68,7 +69,9 @@ router.get('/jobs', async (req, res) => {
       status: d.status || null,
       createdAt: d.createdAt || null,
       updatedAt: d.updatedAt || null,
-      updateStatuses: Array.isArray(d.updateStatuses) ? d.updateStatuses : []
+      updateStatuses: Array.isArray(d.updateStatuses) ? d.updateStatuses : [],
+      totalDistance: d.routeOptimizationResult?.totalDistance ?? null,
+      travelDuration: d.routeOptimizationResult?.travelDuration ?? null
     }));
 
     res.json({ count: data.length, data });
@@ -132,14 +135,32 @@ router.get('/job-route', async (req, res) => {
           _id: 0, jobId: 1,
           'routeOptimizationResult.orderSummary.rawResult': 1,
           'routeOptimizationResult.rawResult': 1,
-          'routeOptimizationResult.orderSummary.routePolylinePoints': 1
+          'routeOptimizationResult.orderSummary.routePolylinePoints': 1,
+          'routeOptimizationResult.totalDistance': 1,
+          'routeOptimizationResult.travelDuration': 1,
+          'routeOptimizationResult.totalDuration': 1,
+          'routeOptimizationResult.waitDuration': 1,
+          'routeOptimizationResult.visitDuration': 1,
+          'routeOptimizationResult.totalWeightGrams': 1,
+          'routeOptimizationResult.totalBoxDimensionVolumes': 1
         }
       }
     );
     if (!doc) return res.status(404).json({ error: 'Job not found' });
     const rawResults = extractRawResults(doc);
     if (!rawResults.length) return res.status(404).json({ error: 'No route data for this job' });
-    res.json({ rawResults });
+    
+    const metrics = {
+      totalDistance: doc.routeOptimizationResult?.totalDistance ?? null,
+      travelDuration: doc.routeOptimizationResult?.travelDuration ?? null,
+      totalDuration: doc.routeOptimizationResult?.totalDuration ?? null,
+      waitDuration: doc.routeOptimizationResult?.waitDuration ?? null,
+      visitDuration: doc.routeOptimizationResult?.visitDuration ?? null,
+      totalWeightGrams: doc.routeOptimizationResult?.totalWeightGrams ?? null,
+      totalBoxDimensionVolumes: doc.routeOptimizationResult?.totalBoxDimensionVolumes ?? null
+    };
+
+    res.json({ rawResults, metrics });
   } catch (e) {
     console.error('[/api/job-route]', e.message);
     res.status(500).json({ error: e.message });

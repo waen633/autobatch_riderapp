@@ -785,7 +785,8 @@
         </div>
         <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body p-0 flex-grow-1" style="min-height:0;">
+      <div id="routeModalMetrics" class="d-flex flex-wrap gap-2 px-3 pb-2 pt-2 bg-light border-bottom" style="display:none; font-size:0.85rem;"></div>
+      <div class="modal-body p-0" id="mapContainer">
         <div id="route-modal-map" style="height:100%;width:100%;"></div>
       </div>
     </div>
@@ -1146,6 +1147,8 @@ const COLS = {
     { id:'rider',       lk:'col_rider',       sk:'riderName',   r: d => d.riderName
         ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
+    { id:'distance',    lk:'col_distance',    sk:'totalDistance',  r: d => (d.routeOptimizationResult && d.routeOptimizationResult.totalDistance) ? `<small>${(d.routeOptimizationResult.totalDistance/1000).toFixed(2)} km</small>` : '–' },
+    { id:'duration',    lk:'col_duration',    sk:'travelDuration', r: d => (d.routeOptimizationResult && d.routeOptimizationResult.travelDuration) ? `<small>${Math.round(d.routeOptimizationResult.travelDuration/60)} min</small>` : '–' },
     { id:'orderCount',  lk:'col_count',       sk:'orderCount',  r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
     { id:'orderIds',    lk:'col_orderIds',    sk:null,          r: d => {
       if (!d.orderIds || !d.orderIds.length) return '–';
@@ -1267,7 +1270,7 @@ const COLS = {
 const DEFAULT_COLS = {
   pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
-  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
+  jobs:    ['jobId','storeCode','rider','distance','duration','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
 
   orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
@@ -1788,7 +1791,31 @@ function toggleRow(tr, tbl, pageIdx) {
   if (!rowData) return;
 
   const colCount = tr.children.length;
-  const detailHtml = `<div class="p-3 bg-light border rounded text-start" style="box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);"><div class="fw-bold mb-2 text-primary"><i class="bi bi-info-circle me-1"></i>Row Details (Raw Data)</div><pre style="font-size:0.75rem; margin:0; white-space:pre-wrap; color:#334155; word-wrap:break-word;">${JSON.stringify(rowData, null, 2)}</pre></div>`;
+  let detailHtml = `<div class="p-3 bg-light border rounded text-start" style="box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);"><div class="fw-bold mb-2 text-primary"><i class="bi bi-info-circle me-1"></i>Row Details (Raw Data)</div><pre style="font-size:0.75rem; margin:0; white-space:pre-wrap; color:#334155; word-wrap:break-word;">${JSON.stringify(rowData, null, 2)}</pre></div>`;
+
+  if (tbl === 'jobs' && rowData.routeOptimizationResult) {
+    const ror = rowData.routeOptimizationResult;
+    const d = ror.totalDistance ? (ror.totalDistance/1000).toFixed(2) + ' km' : '-';
+    const t = ror.travelDuration ? Math.round(ror.travelDuration/60) + ' min' : '-';
+    const v = ror.visitDuration ? Math.round(ror.visitDuration/60) + ' min' : '-';
+    const w = ror.waitDuration ? Math.round(ror.waitDuration/60) + ' min' : '-';
+    const weight = ror.totalWeightGrams ? (ror.totalWeightGrams/1000).toFixed(1) + ' kg' : '-';
+    const vol = ror.totalBoxDimensionVolumes ? (ror.totalBoxDimensionVolumes/1000).toFixed(1) + ' L' : '-';
+    
+    const metricsHtml = `
+      <div class="mb-3 p-3 bg-white border rounded" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div class="fw-bold mb-2 text-success"><i class="bi bi-bar-chart-fill me-1"></i>Route Metrics</div>
+        <div class="d-flex flex-wrap gap-2">
+          ${_metaBadge('🚗 <b>Dist:</b> ' + d, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+          ${_metaBadge('⏱ <b>Travel:</b> ' + t, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+          ${_metaBadge('⏳ <b>Wait:</b> ' + w, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+          ${_metaBadge('📦 <b>Drop:</b> ' + v, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
+          ${_metaBadge('⚖️ <b>Weight:</b> ' + weight, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
+          ${_metaBadge('🧊 <b>Vol:</b> ' + vol, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
+        </div>
+      </div>`;
+    detailHtml = metricsHtml + detailHtml;
+  }
 
   const newTr = document.createElement('tr');
   newTr.className = 'expand-row';

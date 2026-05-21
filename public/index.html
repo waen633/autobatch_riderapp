@@ -843,6 +843,22 @@
   </div>
 </div>
 
+<!-- Rider List Modal -->
+<div class="modal fade" id="riderListModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="border-bottom:1px solid var(--border-color);">
+        <h6 class="modal-title mb-0">
+          <i class="bi bi-people-fill me-2 text-primary"></i>
+          <span id="riderListModalTitle">Riders</span>
+        </h6>
+        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" id="riderListModalBody" style="max-height:70vh;overflow-y:auto;background:#ffffff;"></div>
+    </div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -3863,6 +3879,7 @@ function renderSpeedChart(res) {
     const pickup   = rawData.map(d => d.avgPickupLagMin);
     const delivery = rawData.map(d => d.avgDeliveryLagMin);
     const riders   = rawData.map(d => d.activeRiderCount);
+    const jobsCount= rawData.map(d => d.jobCount || 0);
     const slaBar   = rawData.map(d => d.slaBreachCount || 0);
 
     // bar color: red if lag > 15 AND riders are low (below median non-zero)
@@ -3885,25 +3902,52 @@ function renderSpeedChart(res) {
         labels,
         datasets: [
           {
+            type: 'line', label: 'Jobs (งาน)',
+            data: jobsCount, borderColor: '#f59e0b', tension: .3, pointRadius: 3, borderDash: [5,5],
+            yAxisID: 'y1', order: 1,
+          },
+          {
             type: 'line', label: 'Pickup Lag (นาที)',
             data: pickup, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)',
-            tension: .3, pointRadius: 3, fill: true, yAxisID: 'y', order: 1,
+            tension: .3, pointRadius: 3, fill: true, yAxisID: 'y', order: 2,
           },
           {
             type: 'line', label: 'Delivery Lag (นาที)',
             data: delivery, borderColor: '#10b981', tension: .3, pointRadius: 3,
-            yAxisID: 'y', order: 2,
+            yAxisID: 'y', order: 3,
           },
           {
             type: 'bar', label: 'Riders รับงาน (คน)',
             data: riders, backgroundColor: riderBarColors,
-            yAxisID: 'y1', order: 3,
+            yAxisID: 'y1', order: 4,
           },
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        onClick: (e, activeElements) => {
+          if (!activeElements.length) return;
+          const idx = activeElements[0].index;
+          const hourData = rawData[idx];
+          if (hourData) {
+            const timeStr = `${String(hourData.hour).padStart(2, '0')}:00`;
+            document.getElementById('riderListModalTitle').textContent = `Riders (${timeStr})`;
+            const body = document.getElementById('riderListModalBody');
+            if (hourData.riders && hourData.riders.length > 0) {
+              const sortedRiders = [...hourData.riders].sort((a, b) => (b.slaBreaches || 0) - (a.slaBreaches || 0));
+              body.innerHTML = '<ul class="list-group list-group-flush mb-0" style="font-size:0.85rem;">' + 
+                sortedRiders.map(r => {
+                  const badge = r.slaBreaches ? `<span class="badge bg-danger ms-2" style="font-size:0.7rem;">หลุด SLA: ${r.slaBreaches}</span>` : '';
+                  return `<li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center"><span>${r.name}</span>${badge}</li>`;
+                }).join('') +
+                '</ul>';
+            } else {
+              body.innerHTML = '<div class="text-muted text-center py-4">ไม่มี Rider รับงานในชั่วโมงนี้</div>';
+            }
+            new bootstrap.Modal(document.getElementById('riderListModal')).show();
+          }
+        },
         plugins: {
           legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
           datalabels: { display: false },
@@ -4059,8 +4103,15 @@ async function loadAIInsight() {
 
   // ตรวจว่าวันนี้มีข้อมูลน้อย (ช่วงเช้ามืด)
   const todayJobCount = hourly.reduce((s, h) => s + (h.jobCount || 0), 0);
-  const earlyMorningNote = todayJobCount < 5
+  const weekJobCount = riders.reduce((s, r) => s + (r.total || 0), 0);
+  const isNewStore = weekJobCount < 10; // New branch detected if total jobs over 7 days is very low
+
+  const earlyMorningNote = todayJobCount < 5 && !isNewStore
     ? `\n⚠️ หมายเหตุ: ขณะนี้เป็นช่วงต้นวัน ข้อมูลวันนี้ยังมีน้อย (${todayJobCount} งาน) — ให้ข้ามส่วน "สรุปวันนี้" และโฟกัสที่คาดการณ์พรุ่งนี้แทน`
+    : '';
+
+  const newStoreNote = isNewStore
+    ? `\n⚠️ กฎพิเศษ: นี่คือสาขาที่เพิ่งเปิดใหม่/เปิดทำการวันแรก ข้อมูลย้อนหลัง 7 วันจึงมีน้อยมากหรือเป็นศูนย์ (มีงานรวมแค่ ${weekJobCount} งาน) ห้ามประเมินแนวโน้มหรือแนะนำ shift โดยอิงจากข้อมูล 7 วัน หรืออ้างอิง baseline ที่ไม่มีอยู่จริงเด็ดขาด ให้คำแนะนำสำหรับการเตรียมพร้อมในสาขาใหม่แทน เช่น การติดตามสถานการณ์จริงอย่างใกล้ชิดและเตรียม rider เผื่อไว้`
     : '';
 
   // เก็บไว้ inject ใน follow-up ทุกครั้ง
@@ -4079,40 +4130,41 @@ async function loadAIInsight() {
     `[DELIVERY SPEED 7 วัน]\n${speedStr}\n${predStr}`;
 
   const prompt =
-    `คุณเป็น Ops Analyst อาวุโสของ Lotus's Last-Mile Delivery สาขา ${sc}\n` +
-    `ตอนนี้เป็นช่วงเย็น — หน้าที่คือเขียน **Evening Briefing** สรุปวันนี้และคาดการณ์พรุ่งนี้ให้ผู้จัดการอ่านก่อนออกจากงาน\n\n` +
+    `คุณเป็น Store Manager ของ Lotus's Last-Mile Delivery สาขา ${sc}\n` +
+    `ตอนนี้เป็นช่วงเย็น — หน้าที่คือเขียน **Store Management Briefing** สรุปประเมินความพร้อมของสาขาวันนี้ และวางแผนปรับปรุงการปฏิบัติงานในวันพรุ่งนี้\n\n` +
     `[กฎระบบ]\n` +
     `- Rider 1 คน รับได้ 1 job พร้อมกัน (1 job = หลาย order ใน batch)\n` +
     `- job ใหม่ได้รับหลังปิด job เก่าเท่านั้น\n` +
     `- riderActive = จำนวน job ที่รันพร้อมกันในชั่วโมงนั้น\n` +
     `- แนะนำ rider target: หา slot ที่ lag < 20 นาที → ดูว่ามี riderActive กี่คน → ใช้เป็น baseline\n` +
     `- ห้ามอ้างตัวเลขที่ไม่มีใน data\n` +
-    `- กฎความเร็ว: Pickup Lag เฉลี่ย > 15 นาที ถือว่า "ล่าช้าและเป็นปัญหาใหญ่" (ห้ามบอกว่าไม่เป็นห่วง), Delivery Lag > 20 นาที ถือว่า "ส่งของช้าผิดปกติ"\n` +
-    `${earlyMorningNote}\n\n` +
+    `- กฎการประเมิน: ต้องเน้นที่ความพร้อมของสาขา, DOT (Dispatch On Time), การควบคุม SLA, และปริมาณคนเทียบกับออร์เดอร์\n` +
+    `- Pickup Lag เฉลี่ย > 15 นาที ถือว่า "สาขาไม่มีความพร้อม/คนไม่พอ" ต้อง highlight เป็นปัญหาด่วน, Delivery Lag > 20 นาที ถือว่า "ส่งของช้า/กระทบ DOT"\n` +
+    `${earlyMorningNote}${newStoreNote}\n\n` +
     `[HOURLY DEMAND วันนี้]\n${hourlyStr}\n\n` +
     `[RIDER SCORE & WORKLOAD 7 วัน]\n${riderStr}\n\n` +
     `[DELIVERY SPEED & PREDICTION]\n${speedStr}\n${predStr}\n\n` +
     `---\n` +
-    `เขียนเป็น HTML fragment ภาษาไทยธรรมชาติ เหมือน analyst เขียน brief จริง\n` +
+    `เขียนเป็น HTML fragment ภาษาไทยธรรมชาติ ในมุมมองผู้จัดการสาขาที่เด็ดขาดและเน้นแก้ปัญหา\n` +
     `ห้ามใช้ชื่อ field (isPeak, jobCount ฯลฯ) — แปลงเป็นภาษาคนเสมอ\n` +
-    `ห้ามทับศัพท์ SLA breach — ใช้ "งานส่งเกินกำหนด" หรือ "เกิน SLA"\n` +
+    `ห้ามทับศัพท์ SLA breach — ใช้ "ออร์เดอร์หลุด SLA" หรือ "ส่งผลกระทบต่อ DOT"\n` +
     `tag ที่ใช้ได้: <h6> <p> <strong> <span> <table> <thead> <tbody> <tr> <th> <td> <hr> <ul> <li> <div> <span class="badge ...">\n\n` +
     `โครงสร้างที่ต้องการ:\n\n` +
-    `<h6>🌙 สรุปวันนี้</h6>\n` +
-    `<p>2-3 ประโยค: วันนี้งานรวมกี่งาน เทียบเมื่อวานเป็นยังไง ช่วงไหนหนักสุด มี issue อะไรน่าสังเกตบ้าง</p>\n` +
+    `<h6>🌙 ประเมินความพร้อมวันนี้</h6>\n` +
+    `<p>ประเมินอย่างตรงไปตรงมาว่าวันนี้ "พร้อม" หรือ "ไม่พร้อม" มากแค่ไหน มีปัญหาคอขวดช่วงเวลาใด (ดูจาก lag และจำนวนคน) ออร์เดอร์หลุด SLA มีไหม และส่งผลกระทบต่อ DOT ของสาขาอย่างไร</p>\n` +
     `<hr>\n` +
-    `<h6>🔮 คาดการณ์พรุ่งนี้</h6>\n` +
-    `<p><strong>Demand:</strong> จาก forecast คาดว่าพรุ่งนี้มีงานรวมประมาณกี่งาน peak ช่วงไหน กี่งาน/ชั่วโมง</p>\n` +
-    `<p><strong>Pickup Lag:</strong> จาก trend 7 วัน คาดว่า lag พรุ่งนี้จะอยู่ที่กี่นาที ควรระวังหรือไม่ (ถ้า lag > 15 นาที ต้องเตือนว่ามีปัญหาคอขวดและชี้แจง)</p>\n` +
-    `<p><strong>Rider ที่แนะนำ:</strong> บอก time slot สำคัญว่าควรมีกี่คน อิงจาก job demand จริงและ baseline riderActive ที่ lag ต่ำ</p>\n` +
-    `ถ้า lag > 30 นาที หรือ demand สูงกว่า 7 วันที่ผ่านมา ให้แปะป้าย <span class="badge bg-warning text-dark">⚠️ ควรเตรียมพร้อม</span> ไว้ที่หัวข้อคาดการณ์ และอธิบายว่าต้องเตรียมกำลังพลอย่างไร ห้ามแทรกป้ายนี้ลอยๆ ในข้อความบรรยาย\n` +
+    `<h6>🔮 แผนการปรับปรุง & คาดการณ์พรุ่งนี้</h6>\n` +
+    `<p><strong>แนวโน้ม Demand:</strong> พรุ่งนี้คาดว่างานรวมกี่งาน peak ช่วงไหน</p>\n` +
+    `<p><strong>ปัญหาที่ต้องระวัง:</strong> อิงจาก pickup lag 7 วัน หากมีแนวโน้มช้า ต้องเตือนว่าคอขวดอาจเกิดขึ้นตอนไหน และจะกระทบ DOT หรือไม่</p>\n` +
+    `<p><strong>Action Plan (การจัดการ Rider):</strong> พรุ่งนี้ต้องจัดกะ (shift) อย่างไร ช่วงเวลาใดที่ห้ามขาดคนเด็ดขาด ควรมีกี่คนเป็นขั้นต่ำเพื่อให้ DOT ไม่ตก</p>\n` +
+    `ถ้า lag > 30 นาที หรือ demand พุ่งสูง ให้แปะป้าย <span class="badge bg-danger">🚨 เตือนภัย: ขาดความพร้อม</span> ไว้ที่หัวข้อ และสั่งการเตรียมคนด่วน\n` +
     `<hr>\n` +
-    `<h6>👥 Rider ที่ต้องติดตามพรุ่งนี้</h6>\n` +
+    `<h6>👥 ติดตามผลงาน Rider</h6>\n` +
     `<table class="table table-sm table-bordered" style="font-size:.82rem;">\n` +
-    `<thead class="table-light"><tr><th>Rider</th><th>Score</th><th>งาน 7 วัน</th><th>ยกเลิก</th><th>สถานะ</th></tr></thead>\n` +
-    `<tbody>...เฉพาะ rider ที่มี score ต่ำ, ยกเลิกสูง, หรือทำงานหนักเกิน ใส่ badge: <span class="badge bg-danger">ติดตามด่วน</span> / <span class="badge bg-warning text-dark">โหลดหนัก</span> / <span class="badge bg-success">ปกติ</span>...</tbody>\n` +
+    `<thead class="table-light"><tr><th>Rider</th><th>Score</th><th>รับงาน(7 วัน)</th><th>ยกเลิก</th><th>การจัดการพรุ่งนี้</th></tr></thead>\n` +
+    `<tbody>...เฉพาะ rider ที่มี score ต่ำ, ยกเลิกสูง, หรือทำงานหนักเกิน ใส่ badge: <span class="badge bg-danger">เฝ้าระวัง/ตักเตือน</span> / <span class="badge bg-warning text-dark">จัดกะพัก</span> / <span class="badge bg-success">พร้อมลุย</span>...</tbody>\n` +
     `</table>\n` +
-    `<p>สรุป 1-2 ประโยค: ใครน่าเป็นห่วงที่สุดและทำไม ควรทำอะไรก่อนเริ่ม shift พรุ่งนี้</p>`;
+    `<p>สรุปสั้นๆ: ในฐานะผู้จัดการ ควร focus ที่ใครเป็นพิเศษเพื่อไม่ให้กระทบ SLA ในวันพรุ่งนี้</p>`;
 
   try {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {

@@ -277,24 +277,40 @@ router.get('/analytics/delivery-speed', async (req, res) => {
       const jobs = await fetchJobs(db, storeIds, from, to);
 
       const buckets = Array.from({ length: 24 }, () => ({
-        pickupLags: [], deliveryLags: [], riderIds: new Set(), slaBreaches: 0,
+        pickupLags: [], deliveryLags: [], riderIds: new Set(), riderDetails: new Map(), slaBreaches: 0, jobCount: 0
       }));
 
       for (const job of jobs) {
         const h = (new Date(job.createdAt).getTime() / 3600000 + 7) % 24 | 0;
+        buckets[h].jobCount++;
         const pLag = pickupLagMin(job);
         const dLag = deliveryLagMin(job);
         if (pLag !== null && pLag >= 0 && pLag < 180) buckets[h].pickupLags.push(pLag);
         if (dLag !== null && dLag >= 0 && dLag < 300) buckets[h].deliveryLags.push(dLag);
-        if (job.assignment?.rider?.id) buckets[h].riderIds.add(job.assignment.rider.id.toString());
-        if (isSLABreach(job)) buckets[h].slaBreaches++;
+        
+        const isSLA = isSLABreach(job);
+        if (isSLA) buckets[h].slaBreaches++;
+
+        if (job.assignment?.rider?.id) {
+          const rid = job.assignment.rider.id.toString();
+          const rName = job.assignment.rider.name || rid;
+          buckets[h].riderIds.add(rid);
+          if (!buckets[h].riderDetails.has(rid)) {
+            buckets[h].riderDetails.set(rid, { name: rName, slaBreaches: 0 });
+          }
+          if (isSLA) {
+            buckets[h].riderDetails.get(rid).slaBreaches++;
+          }
+        }
       }
 
       const data = buckets.map((b, h) => ({
         hour: h,
+        jobCount: b.jobCount,
         avgPickupLagMin:   b.pickupLags.length   ? Math.round(b.pickupLags.reduce((a, c) => a + c, 0)   / b.pickupLags.length   * 10) / 10 : null,
         avgDeliveryLagMin: b.deliveryLags.length ? Math.round(b.deliveryLags.reduce((a, c) => a + c, 0) / b.deliveryLags.length * 10) / 10 : null,
         activeRiderCount: b.riderIds.size,
+        riders: Array.from(b.riderDetails.entries()).map(([id, info]) => ({ id, name: info.name, slaBreaches: info.slaBreaches })),
         slaBreachCount:   b.slaBreaches,
       }));
 

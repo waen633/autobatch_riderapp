@@ -255,14 +255,11 @@
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="fromLabel">From</label>
-          <input type="datetime-local" class="form-control form-control-sm" id="fromDate">
+          <input type="text" class="form-control form-control-sm" id="fromDate" placeholder="Select Date...">
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="toLabel">To</label>
-          <div class="input-group input-group-sm" style="width: 220px;">
-            <input type="datetime-local" class="form-control" id="toDate">
-            <button class="btn btn-outline-primary font-monospace fw-bold" type="button" onclick="setToDateNow()" data-i18n="now">Now</button>
-          </div>
+          <input type="text" class="form-control form-control-sm" id="toDate" placeholder="Select Date...">
         </div>
         <div class="col-auto">
           <button class="btn btn-outline-secondary btn-sm" onclick="resetDates()">
@@ -270,6 +267,7 @@
           </button>
           <div class="btn-group ms-2">
             <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(0)" data-i18n="today">Today</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="setToDateNow()" data-i18n="now">Now</button>
             <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(3)" data-i18n="day3">3 Days</button>
             <button class="btn btn-outline-primary btn-sm" onclick="setDateRange(7)" data-i18n="day7">7 Days</button>
           </div>
@@ -787,7 +785,6 @@
         </div>
         <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
       </div>
-      <div id="routeModalMetrics" class="d-flex flex-wrap gap-2 px-3 pb-2 pt-2 bg-light border-bottom" style="display:none !important;"></div>
       <div class="modal-body p-0 flex-grow-1" style="min-height:0;">
         <div id="route-modal-map" style="height:100%;width:100%;"></div>
       </div>
@@ -892,7 +889,7 @@ const i18n = {
     navTitle: 'Lotus Auto-Batching Dashboard',
     storeCode: 'Store Code',
     storeCodeHint: 'หลายสาขาคั่นด้วย ,',
-    fromLabel: 'From', toLabel: 'To', reset: 'รีเซ็ต', now: 'Now',
+    fromLabel: 'From', toLabel: 'To', reset: 'รีเซ็ต',
     today: 'วันนี้', day3: '3 วัน', day7: '7 วัน',
     pendingNote: '* Pending & Riders ไม่ใช้ date range',
     sectionPending: 'Pending Orders', sectionPendingDesc: 'รอสร้าง Job',
@@ -926,7 +923,7 @@ const i18n = {
     rs_onBreak: 'พักเบรก', rs_notReady: 'ไม่พร้อม',
     flag_online: 'Online (อยู่ใน app)', flag_notBanned: 'ไม่โดน Ban (ไม่ได้ reject job)',
     flag_noJob: 'ไม่มีงานในมือ', flag_notOnBreak: 'ไม่ได้พักเบรก',
-    col_store: 'สาขา', col_orderId: 'Order ID', col_consignment: 'Consignment', col_distance: 'ระยะทาง', col_duration: 'เวลาขับ',
+    col_store: 'สาขา', col_orderId: 'Order ID', col_consignment: 'Consignment',
     col_service: 'ประเภทบริการ', col_created: 'สร้างเมื่อ', col_waiting: '⏳ รอมา',
     col_queue: 'คิว', col_name: 'ชื่อ / เบอร์', col_userId: 'User ID',
     col_idleTime: 'รอนาน', col_joinedPool: 'เข้า Pool',
@@ -944,7 +941,7 @@ const i18n = {
   en: {
     navTitle: 'Lotus Auto-Batching Dashboard',
     storeCode: 'Store Code', storeCodeHint: 'Multiple stores: separate by ,',
-    fromLabel: 'From', toLabel: 'To', reset: 'Reset', now: 'Now',
+    fromLabel: 'From', toLabel: 'To', reset: 'Reset',
     today: 'Today', day3: '3 Days', day7: '7 Days',
     pendingNote: '* Pending & Riders do not use date range',
     sectionPending: 'Pending Orders', sectionPendingDesc: 'Waiting for Job',
@@ -978,7 +975,7 @@ const i18n = {
     rs_onBreak: 'On break', rs_notReady: 'Not ready',
     flag_online: 'Online (in app)', flag_notBanned: 'Not banned (no job reject)',
     flag_noJob: 'No active job', flag_notOnBreak: 'Not on break',
-    col_store: 'Store', col_orderId: 'Order ID', col_consignment: 'Consignment', col_distance: 'Distance', col_duration: 'Duration',
+    col_store: 'Store', col_orderId: 'Order ID', col_consignment: 'Consignment',
     col_service: 'Service', col_created: 'Created', col_waiting: '⏳ Waiting',
     col_queue: '#', col_name: 'Name / Phone', col_userId: 'User ID',
     col_idleTime: 'Idle Time', col_joinedPool: 'Joined Pool',
@@ -1149,8 +1146,6 @@ const COLS = {
     { id:'rider',       lk:'col_rider',       sk:'riderName',   r: d => d.riderName
         ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
-    { id:'distance',    lk:'col_distance',    sk:'totalDistance',r: d => d.totalDistance != null ? (d.totalDistance/1000).toFixed(1) + ' km' : '–' },
-    { id:'duration',    lk:'col_duration',    sk:'travelDuration',r: d => d.travelDuration != null ? Math.round(d.travelDuration/60) + ' min' : '–' },
     { id:'orderCount',  lk:'col_count',       sk:'orderCount',  r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
     { id:'orderIds',    lk:'col_orderIds',    sk:null,          r: d => {
       if (!d.orderIds || !d.orderIds.length) return '–';
@@ -1272,7 +1267,7 @@ const COLS = {
 const DEFAULT_COLS = {
   pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
-  jobs:    ['jobId','storeCode','rider','distance','duration','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
+  jobs:    ['jobId','storeCode','rider','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
 
   orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
@@ -1571,8 +1566,6 @@ function setToDateNow() {
       fpTo.set('maxDate', null);
     }
     fpTo.setDate(now, true);
-  } else {
-    document.getElementById('toDate').value = toInputLocal(new Date());
   }
 }
 
@@ -1598,11 +1591,11 @@ function resetDates() {
 function setDateRange(days) {
   const now = new Date(), start = new Date(now), end = new Date(now);
   if (days === 0) {
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
+    start.setHours(0,0,0,0);
+    end.setHours(23,59,59,999);
   } else {
     start.setDate(now.getDate() - days);
-    end.setHours(23, 59, 59, 999);
+    end.setHours(23,59,59,999);
   }
 
   if (typeof fpFrom !== 'undefined' && typeof fpTo !== 'undefined') {
@@ -3226,8 +3219,6 @@ function _showRouteModal(title, meta, onShown) {
   document.getElementById('routeModalTitle').textContent = title;
   const metaEl = document.getElementById('routeModalMeta');
   metaEl.innerHTML = meta.split(' · ').map(s => _metaBadge(s, { bg:'#f1f5f9', text:'#475569', border:'#e2e8f0' })).join('');
-  const metricsEl = document.getElementById('routeModalMetrics');
-  if (metricsEl) metricsEl.style.setProperty('display', 'none', 'important');
   const modalEl = document.getElementById('routeModal');
   new bootstrap.Modal(modalEl).show();
   modalEl.addEventListener('shown.bs.modal', onShown, { once: true });
@@ -3278,31 +3269,6 @@ function _mapError(msg) {
     </div>`;
 }
 
-function _renderRouteMetrics(m) {
-  const c = document.getElementById('routeModalMetrics');
-  if (!c) return;
-  if (!m || Object.keys(m).length === 0) {
-    c.style.setProperty('display', 'none', 'important');
-    return;
-  }
-  c.style.setProperty('display', 'flex', 'important');
-  const d = m.totalDistance ? (m.totalDistance/1000).toFixed(2) + ' km' : '-';
-  const t = m.travelDuration ? Math.round(m.travelDuration/60) + ' min' : '-';
-  const v = m.visitDuration ? Math.round(m.visitDuration/60) + ' min' : '-';
-  const w = m.waitDuration ? Math.round(m.waitDuration/60) + ' min' : '-';
-  const weight = m.totalWeightGrams ? (m.totalWeightGrams/1000).toFixed(1) + ' kg' : '-';
-  const vol = m.totalBoxDimensionVolumes ? (m.totalBoxDimensionVolumes/1000).toFixed(1) + ' L' : '-';
-  
-  c.innerHTML = `
-    ${_metaBadge('🚗 <b>Dist:</b> ' + d, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-    ${_metaBadge('⏱ <b>Travel:</b> ' + t, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-    ${_metaBadge('⏳ <b>Wait:</b> ' + w, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-    ${_metaBadge('📦 <b>Drop:</b> ' + v, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-    ${_metaBadge('⚖️ <b>Weight:</b> ' + weight, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
-    ${_metaBadge('🧊 <b>Vol:</b> ' + vol, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
-  `;
-}
-
 async function openJobRoute(jobId, btn) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
   const job = state.jobs.data.find(j => j.jobId === jobId);
@@ -3314,7 +3280,6 @@ async function openJobRoute(jobId, btn) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       _renderRouteMap(j.rawResults, jobId);
-      if (j.metrics) _renderRouteMetrics(j.metrics);
     } catch(e) { _mapError(e.message); }
   });
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-map me-1"></i>Route'; }
@@ -3471,30 +3436,36 @@ function toggleMapCollapse() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-const fdInput = document.getElementById('fromDate');
-const tdInput = document.getElementById('toDate');
-
-fdInput.addEventListener('change', () => {
-  if (!fdInput.value) { tdInput.removeAttribute('min'); tdInput.removeAttribute('max'); return; }
-  const d = new Date(fdInput.value);
-  tdInput.min = toInputLocal(d);
-  const maxTo = new Date(d);
-  maxTo.setDate(maxTo.getDate() + 7);
-  tdInput.max = toInputLocal(maxTo);
-  if (tdInput.value) {
-    const t = new Date(tdInput.value);
-    if (t < d || t > maxTo) tdInput.value = '';
+let fpFrom = flatpickr("#fromDate", {
+  enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true,
+  onChange: function(selectedDates) {
+    if (!selectedDates[0]) return;
+    // When From changes: constrain To to [From, From+7]
+    const maxTo = new Date(selectedDates[0]);
+    maxTo.setDate(maxTo.getDate() + 7);
+    fpTo.set('minDate', selectedDates[0]);
+    fpTo.set('maxDate', maxTo);
+    // If existing To is now out of range, clear it
+    if (fpTo.selectedDates[0]) {
+      const td = fpTo.selectedDates[0];
+      if (td < selectedDates[0] || td > maxTo) fpTo.clear();
+    }
+    // From itself is free — remove any old constraints
+    fpFrom.set('minDate', null);
+    fpFrom.set('maxDate', null);
   }
 });
-
-tdInput.addEventListener('change', () => {
-  if (!tdInput.value) return;
-  if (!fdInput.value) {
-    const d = new Date(tdInput.value);
-    const minFrom = new Date(d);
-    minFrom.setDate(minFrom.getDate() - 7);
-    fdInput.min = toInputLocal(minFrom);
-    fdInput.max = toInputLocal(d);
+let fpTo = flatpickr("#toDate", {
+  enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true,
+  onChange: function(selectedDates) {
+    if (!selectedDates[0]) return;
+    // Only constrain From if From is not yet set (user picked To first)
+    if (fpFrom.selectedDates.length === 0) {
+      const minFrom = new Date(selectedDates[0]);
+      minFrom.setDate(minFrom.getDate() - 7);
+      fpFrom.set('minDate', minFrom);
+      fpFrom.set('maxDate', selectedDates[0]);
+    }
   }
 });
 

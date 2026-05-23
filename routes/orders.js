@@ -174,4 +174,60 @@ router.get('/order-confirm-check', async (req, res) => {
   }
 });
 
+router.get('/order-log-check', async (req, res) => {
+  try {
+    const { value } = req.query;
+    if (!value) return res.status(400).json({ error: 'value required' });
+    if (!process.env.CLS_SECRET_ID) return res.status(503).json({ error: 'CLS not configured' });
+
+    const days30Ms = 30 * 24 * 3600 * 1000;
+    const now = Date.now();
+
+    const [client, topicId] = await Promise.all([
+      Promise.resolve(getClsClient()),
+      getClsTopicId(),
+    ]);
+
+    const result = await client.SearchLog({
+      TopicId: topicId,
+      From: now - days30Ms,
+      To: now,
+      Query: `event:"customer_create_order" AND consignment:"${value}"`,
+      Limit: 1,
+      Sort: 'desc',
+      SyntaxRule: 1,
+    });
+
+    const logs = result.Results || [];
+    if (logs.length === 0) {
+      return res.json({ found: false });
+    }
+
+    const firstLog = logs[0];
+    let fields = {};
+    try {
+      fields = JSON.parse(firstLog.LogJson || '{}');
+    } catch {
+      fields = firstLog || {};
+    }
+
+    const level = parseInt(fields.level || fields.Level || '30', 10);
+    const errMessage = fields['err.message'] || fields.err?.message;
+    const errStack = fields['err.stack'] || fields.err?.stack;
+    const hasError = level >= 40 || !!errMessage || !!errStack;
+
+    res.json({
+      found: true,
+      hasError,
+      level,
+      errMessage: errMessage || null,
+      errStack: errStack || null,
+      logTime: fields.time || fields.LogTime || firstLog.LogTime
+    });
+  } catch (e) {
+    console.error('[/api/order-log-check]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

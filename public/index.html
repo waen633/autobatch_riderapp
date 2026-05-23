@@ -75,6 +75,15 @@
     }
     .flash-animate tr td { animation: flash-data 0.8s ease-out; }
     
+    @keyframes pulse-red {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+    .animate-pulse {
+      animation: pulse-red 1.5s infinite ease-in-out;
+    }
+    
     .card-fullscreen {
       position: fixed !important;
       top: 3vh !important;
@@ -378,7 +387,7 @@
     <div class="grid-stack-item-content">
       <div class="card h-100">
         <div class="card-header card-pending d-flex justify-content-between align-items-center">
-          <span class="d-flex align-items-center gap-1"><i class="bi bi-grip-vertical gs-drag-handle" title="ลาก"></i><i class="bi bi-box-seam me-2 text-warning"></i><span data-i18n="sectionPending">Pending Orders</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionPendingDesc">รอสร้าง Job</span>)</small></span>
+          <span class="d-flex align-items-center gap-1"><i class="bi bi-grip-vertical gs-drag-handle" title="ลาก"></i><i class="bi bi-box-seam me-2 text-warning"></i><span data-i18n="sectionPending">Pending Orders</span> <small class="text-muted fw-normal ms-1">(<span data-i18n="sectionPendingDesc">รอสร้าง Job</span>)</small><span id="pending-batch-times" class="ms-2 d-flex gap-1 flex-wrap"></span></span>
           <div class="d-flex align-items-center gap-2 no-drag">
             <button class="btn col-btn" onclick="toggleFullscreen(this)" title="Expand"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" onclick="openColModal('pending')"><i class="bi bi-layout-three-columns"></i></button>
@@ -1249,7 +1258,18 @@ const COLS = {
     }},
     { id:'currentOrderStatus',lk:'col_status',       sk:'currentOrderStatus',    r: d =>
       d.isNotFound
-        ? `<span class="badge bg-secondary opacity-50">No data</span>`
+        ? `<div class="d-flex align-items-center gap-1 flex-wrap">
+             <span class="badge bg-secondary opacity-50">No data</span>
+             ${d.consignment && d.consignment !== '–'
+               ? `<button class="btn btn-outline-info btn-sm py-0 px-1 check-log-btn" 
+                          data-value="${d.consignment}"
+                          onclick="event.stopPropagation(); checkCLSLog(this)">
+                    Check log
+                  </button>
+                  <span class="log-status-msg ms-1" style="font-size: .75rem;"></span>`
+               : ''
+             }
+           </div>`
         : `${orderStatusBadge(d.currentOrderStatus)} <button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" onclick="showTimeline('${d._id}')" title="${t('explainStatus')}"><i class="bi bi-clock-history"></i></button>` },
     { id:'riderName',         lk:'col_rider',        sk:'riderName',             r: d => d.riderName
         ? `<div>${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
@@ -1404,7 +1424,26 @@ function pendingWaitHtml(d) {
   } else {
     cls = 'bg-success'; icon = '🟢';
   }
-  return `<span class="badge ${cls} status-badge" style="font-size:.8rem;">${icon} ${text}</span>`;
+
+  // Check batchTime configuration from state
+  let warningHtml = '';
+  const batchTime = (state.pending.batchTimeMap && state.pending.batchTimeMap[d.storeCode] !== undefined)
+    ? state.pending.batchTimeMap[d.storeCode]
+    : null;
+
+  if (batchTime !== null && totalMins > (batchTime + 5)) {
+    warningHtml = `<div class="mt-1"><span class="badge bg-danger animate-pulse" style="font-size:.72rem; font-weight: 500;"><i class="bi bi-exclamation-circle-fill me-1"></i>มีปัญหารบกวนเเก้ไข</span></div>`;
+  }
+
+  const limitText = batchTime !== null ? `<div class="text-muted" style="font-size:.7rem; margin-top:2px;">รอบ Batch: ${batchTime}m</div>` : '';
+
+  return `
+    <div class="d-flex flex-column align-items-center">
+      <span class="badge ${cls} status-badge" style="font-size:.8rem;">${icon} ${text}</span>
+      ${limitText}
+      ${warningHtml}
+    </div>
+  `;
 }
 
 function queueBadge(d) {
@@ -2553,6 +2592,20 @@ async function fetchPending(btn) {
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-pending').textContent = j.count;
     state.pending.data = j.data; state.pending.page = 1;
+    state.pending.batchTimeMap = j.batchTimeMap || {};
+
+    // Render store batch times in card header
+    const batchTimesEl = document.getElementById('pending-batch-times');
+    if (batchTimesEl) {
+      if (j.batchTimeMap && Object.keys(j.batchTimeMap).length > 0) {
+        batchTimesEl.innerHTML = Object.entries(j.batchTimeMap).map(([code, time]) => 
+          `<span class="badge bg-info text-dark" style="font-size:.72rem; font-weight: 500;" title="รอบ Batch สาขา ${code} คือ ${time} นาที"><i class="bi bi-clock me-1"></i>Batch (${code}): ${time}m</span>`
+        ).join('');
+      } else {
+        batchTimesEl.innerHTML = '';
+      }
+    }
+
     renderSection('pending'); markUpdated();
   } catch(e) { setError('pending', e.message); } finally { setLoading('pending', false); }
 }
@@ -2608,6 +2661,55 @@ async function checkOrderConfirm(orderId, resultElId, btn) {
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<i class="bi bi-cloud-check me-1"></i>${t('col_checkConfirm')}`;
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+async function checkCLSLog(btn) {
+  const value = btn.getAttribute('data-value');
+  const statusSpan = btn.closest('.d-flex').querySelector('.log-status-msg');
+  if (!value) return;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" style="width:.7rem;height:.7rem;"></span> checking...`;
+  if (statusSpan) {
+    statusSpan.innerHTML = '';
+  }
+
+  try {
+    const r = await fetch(`${API_BASE}/api/order-log-check?value=${encodeURIComponent(value)}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+
+    if (statusSpan) {
+      if (data.found) {
+        if (data.hasError) {
+          let errorInfo = 'error';
+          if (data.errMessage) {
+            errorInfo = `error: ${data.errMessage}`;
+          } else if (data.errStack) {
+            const firstLine = data.errStack.split('\n')[0];
+            errorInfo = `error: ${firstLine}`;
+          }
+          statusSpan.innerHTML = `<span class="badge bg-danger" title="${escapeHtml(data.errStack || '')}" style="cursor:help;"><i class="bi bi-x-circle-fill me-1"></i>${escapeHtml(errorInfo)}</span>`;
+        } else {
+          statusSpan.innerHTML = `<span class="badge bg-success" title="พบ Log สร้าง Order เวลา: ${fmtDt(data.logTime)}"><i class="bi bi-check-circle-fill me-1"></i>มี Log</span>`;
+        }
+      } else {
+        statusSpan.innerHTML = `<span class="badge bg-secondary"><i class="bi bi-question-circle me-1"></i>ไม่พบ Log</span>`;
+      }
+    }
+  } catch (e) {
+    if (statusSpan) {
+      statusSpan.innerHTML = `<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>error</span>`;
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `Check log`;
   }
 }
 

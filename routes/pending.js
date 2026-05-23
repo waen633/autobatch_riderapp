@@ -21,7 +21,24 @@ router.get('/pending', async (req, res) => {
       .sort({ createdAt: -1 })
       .toArray();
 
-    res.json({ count: docs.length, data: docs });
+    // Fetch batchTime from lastmile.stores
+    const storesList = await c
+      .db('lastmile')
+      .collection('stores')
+      .find(
+        { code: codeFilter },
+        { projection: { code: 1, 'metadata.config.batch.batchTime': 1 } }
+      )
+      .toArray();
+
+    const batchTimeMap = {};
+    for (const store of storesList) {
+      if (store.metadata?.config?.batch?.batchTime !== undefined) {
+        batchTimeMap[store.code] = store.metadata.config.batch.batchTime;
+      }
+    }
+
+    res.json({ count: docs.length, data: docs, batchTimeMap });
   } catch (e) {
     console.error('[/api/pending]', e.message);
     res.status(500).json({ error: e.message });

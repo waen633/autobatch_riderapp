@@ -48,7 +48,7 @@ router.get('/jobs', async (req, res) => {
         {
           projection: {
             jobId: 1, orderIds: 1, status: 1, createdAt: 1, updatedAt: 1, updateStatuses: 1, storeId: 1,
-            'assignment.rider.id': 1, 'assignment.rider.name': 1, pickUpSLA: 1, sla: 1,
+            'assignment.rider.id': 1, 'assignment.rider.name': 1, 'assignment.assigner.type': 1, pickUpSLA: 1, sla: 1,
             'routeOptimizationResult.totalDistance': 1, 'routeOptimizationResult.travelDuration': 1,
             'routeOptimizationResult.visitDuration': 1, 'routeOptimizationResult.waitDuration': 1,
             'routeOptimizationResult.totalWeightGrams': 1, 'routeOptimizationResult.totalBoxDimensionVolumes': 1
@@ -64,6 +64,7 @@ router.get('/jobs', async (req, res) => {
       storeCode: storeIdToCode[safeStr(d.storeId)] || null,
       riderName: d.assignment?.rider?.name || null,
       riderId: d.assignment?.rider?.id ? safeStr(d.assignment.rider.id) : null,
+      assignerType: d.assignment?.assigner?.type || null,
       orderIds: Array.isArray(d.orderIds) ? d.orderIds : [],
       orderCount: Array.isArray(d.orderIds) ? d.orderIds.length : 0,
       pickUpSLA: d.pickUpSLA || null,

@@ -440,6 +440,9 @@
               <option value="10">🔄 ทุก 10 นาที / 10 min</option>
               <option value="30">🔄 ทุก 30 นาที / 30 min</option>
             </select>
+            <select id="riders-status-filter" class="form-select form-select-sm" style="width:180px" onchange="state.riders.statusFilter=this.value;state.riders.page=1;renderSection('riders')">
+              <option value="">All Status</option>
+            </select>
             <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="state.riders.search=this.value;state.riders.page=1;renderSection('riders')">
           </div>
           <div id="loading-riders" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm" style="color:#0077b6;"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
@@ -477,6 +480,11 @@
               <option value="5">🔄 ทุก 5 นาที / 5 min</option>
               <option value="10">🔄 ทุก 10 นาที / 10 min</option>
               <option value="30">🔄 ทุก 30 นาที / 30 min</option>
+            </select>
+            <select id="jobs-assigner-filter" class="form-select form-select-sm" style="width:120px" onchange="state.jobs.assignerFilter=this.value;state.jobs.page=1;renderSection('jobs')">
+              <option value="">All Assigner</option>
+              <option value="system">Auto Assign</option>
+              <option value="dispatcher">Re-assign</option>
             </select>
             <select id="jobs-status-filter" class="form-select form-select-sm" style="width:150px" onchange="state.jobs.statusFilter=this.value;state.jobs.page=1;renderSection('jobs')">
               <option value="" data-i18n="allStatus">All Status</option>
@@ -1131,8 +1139,8 @@ const ALL_TBLS = ['pending','riders','jobs','orders','batches'];
 const mkState = (extra={}) => ({ data:[], search:'', sortCol:null, sortDir:'asc', page:1, pageSize:20, ...extra });
 const state = {
   pending:   mkState(),
-  riders:    mkState(),
-  jobs:      mkState({ statusFilter:'' }),
+  riders:    mkState({ statusFilter:'' }),
+  jobs:      mkState({ statusFilter:'', assignerFilter:'' }),
   orders:    mkState(),
   batches:   mkState(),
   riderperf: mkState()
@@ -1174,6 +1182,13 @@ const COLS = {
     { id:'rider',       lk:'col_rider',       sk:'riderName',   r: d => d.riderName
         ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
+    { id:'assignerType',lk:'col_assigner',    sk:null,          r: d => {
+        const type = d.assignerType;
+        if (!type) return '–';
+        if (type === 'system') return `<span class="badge bg-success">Auto Assign</span>`;
+        if (type === 'dispatcher') return `<span class="badge" style="background-color: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid #f59e0b;">Re-assign</span>`;
+        return `<span class="badge bg-secondary">${type}</span>`;
+    }},
     { id:'distance',    lk:'col_distance',    sk:'totalDistance',  r: d => (d.routeOptimizationResult && d.routeOptimizationResult.totalDistance) ? `<small>${(d.routeOptimizationResult.totalDistance/1000).toFixed(2)} km</small>` : '–' },
     { id:'duration',    lk:'col_duration',    sk:'travelDuration', r: d => (d.routeOptimizationResult && d.routeOptimizationResult.travelDuration) ? `<small>${Math.round(d.routeOptimizationResult.travelDuration/60)} min</small>` : '–' },
     { id:'orderCount',  lk:'col_count',       sk:'orderCount',  r: d => `<span class="badge bg-secondary">${d.orderCount}</span>` },
@@ -1308,7 +1323,7 @@ const COLS = {
 const DEFAULT_COLS = {
   pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
-  jobs:    ['jobId','storeCode','rider','distance','duration','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
+  jobs:    ['jobId','storeCode','rider','assignerType','distance','duration','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
 
   orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
@@ -1444,6 +1459,52 @@ function pendingWaitHtml(d) {
       ${warningHtml}
     </div>
   `;
+}
+
+function getRiderStatus(d) {
+  if (d.queue === 'not_in_pool') return 'not_in_pool';
+  if (d.ready_for_auto_assign)   return 'ready';
+  if (!d.staff_online)           return 'offline';
+  if (!d.not_banned)             return 'banned';
+  if (!d.no_active_job) {
+    const s = d.job_on_hand_status || '';
+    return s || 'working';
+  }
+  if (!d.not_on_break) return 'on_break';
+  return 'not_ready';
+}
+
+function updateRidersFilterOptions() {
+  const counts = { all: state.riders.data.length };
+  state.riders.data.forEach(d => {
+    const st = getRiderStatus(d);
+    counts[st] = (counts[st] || 0) + 1;
+  });
+  
+  const sel = document.getElementById('riders-status-filter');
+  if (!sel) return;
+  const currentVal = state.riders.statusFilter;
+  
+  const tMap = {
+    'not_in_pool': t('rs_noPool') || 'No Pool',
+    'ready': t('rs_ready') || 'Ready',
+    'offline': t('rs_offline') || 'Offline',
+    'banned': t('rs_banned') || 'Banned',
+    'on_break': t('rs_onBreak') || 'On Break',
+    'not_ready': t('rs_notReady') || 'Not Ready',
+    'working': t('rs_working') || 'Working',
+    'job_picking_up': t('rs_picking') || 'Picking',
+    'job_picked_up': t('rs_pickedUp') || 'Picked Up',
+    'job_delivering': t('rs_delivering') || 'Delivering',
+    'job_accepted': t('rs_accepted') || 'Accepted',
+    'job_assigned': t('rs_accepted') || 'Assigned'
+  };
+  
+  sel.innerHTML = `<option value="">All Status (${counts.all})</option>` +
+    Object.keys(counts).filter(k => k !== 'all').sort().map(k => {
+      const lbl = tMap[k] || k;
+      return `<option value="${k}" ${k === currentVal ? 'selected' : ''}>${lbl} (${counts[k]})</option>`;
+    }).join('');
 }
 
 function queueBadge(d) {
@@ -1723,7 +1784,14 @@ function applyFilters(tbl) {
       data = data.filter(row => JSON.stringify(row).toLowerCase().includes(q));
     }
   }
-  if (tbl==='jobs' && state.jobs.statusFilter) {
+  if (tbl==='riders' && state.riders.statusFilter) {
+    data = data.filter(d => getRiderStatus(d) === state.riders.statusFilter);
+  }
+  if (tbl==='jobs') {
+    if (state.jobs.assignerFilter) {
+      data = data.filter(d => d.assignerType === state.jobs.assignerFilter);
+    }
+    if (state.jobs.statusFilter) {
     if (state.jobs.statusFilter === 'late_pickup') {
       data = data.filter(d => {
         const pickedUp = (d.updateStatuses || []).find(s => s.status === 'job_picked_up');
@@ -1736,6 +1804,7 @@ function applyFilters(tbl) {
       });
     } else {
       data = data.filter(d => d.status === state.jobs.statusFilter);
+    }
     }
   }
   const { sortCol, sortDir } = state[tbl];
@@ -1824,6 +1893,7 @@ function renderSection(tbl) {
     let cls = '';
     if (tbl==='riders') cls = row.queue==='not_in_pool' ? 'not-in-pool-row' : row.ready_for_auto_assign ? 'table-success' : '';
     else if (tbl==='stuck') cls = 'table-danger';
+    else if (tbl==='jobs' && row.assignerType === 'dispatcher') cls = 'table-warning';
     return `<tr class="${cls}">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}<td class="text-end"><button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), '${tbl}', ${idx})" title="Raw Data"><i class="bi bi-code-square"></i></button></td></tr>`;
   }).join('');
 
@@ -2621,6 +2691,7 @@ async function fetchRiders(btn) {
     document.getElementById('count-riders').textContent = j.count;
     const readyCount = (j.data || []).filter(r => r.ready_for_auto_assign && r.queue !== 'not_in_pool').length;
     document.getElementById('ready-count').textContent = readyCount;
+    updateRidersFilterOptions();
     renderSection('riders'); markUpdated();
   } catch(e) { setError('riders', e.message); } finally { setLoading('riders', false); }
 }

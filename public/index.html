@@ -482,9 +482,9 @@
               <option value="30">🔄 ทุก 30 นาที / 30 min</option>
             </select>
             <select id="jobs-assigner-filter" class="form-select form-select-sm" style="width:120px" onchange="state.jobs.assignerFilter=this.value;state.jobs.page=1;renderSection('jobs')">
-              <option value="">All Assigner</option>
-              <option value="system">Auto Assign</option>
-              <option value="dispatcher">Re-assign</option>
+              <option value="" data-i18n="allAssigner">All Assigner</option>
+              <option value="system" data-i18n="assignerSystem">Auto Assign</option>
+              <option value="dispatcher" data-i18n="assignerDispatcher">Re-assign</option>
             </select>
             <select id="jobs-status-filter" class="form-select form-select-sm" style="width:150px" onchange="state.jobs.statusFilter=this.value;state.jobs.page=1;renderSection('jobs')">
               <option value="" data-i18n="allStatus">All Status</option>
@@ -968,6 +968,10 @@ const i18n = {
     col_itemsConfirm: 'ยืนยัน Items', col_batchId: 'Batch ID',
     col_roStatus: 'RO Status', col_roStart: 'RO เริ่ม', col_roEnd: 'RO สิ้นสุด',
     col_distance: 'ระยะทาง', col_duration: 'ระยะเวลา',
+    col_assigner: 'ผู้จ่ายงาน',
+    allAssigner: 'ผู้จ่ายงานทั้งหมด',
+    assignerSystem: 'ระบบ (Auto)',
+    assignerDispatcher: 'dispatcher (Manual)',
     sectionRiderPerf: 'Rider Performance', sectionRiderPerfDesc: '% รับงาน / % ยกเลิก ตามช่วงเวลา',
     getRiderPerf: 'Get Performance', pressGetPerf: 'กด Get Performance เพื่อดูสถิติ Rider',
     rp_total: 'งาน', rp_accepted: 'รับ', rp_cancelled: 'ยกเลิก', rp_acceptRate: '% รับ', rp_cancelRate: '% ยกเลิก',
@@ -1021,6 +1025,10 @@ const i18n = {
     col_itemsConfirm: 'Items Confirm', col_batchId: 'Batch ID',
     col_roStatus: 'RO Status', col_roStart: 'RO Start', col_roEnd: 'RO End',
     col_distance: 'Distance', col_duration: 'Duration',
+    col_assigner: 'Assigner',
+    allAssigner: 'All Assigner',
+    assignerSystem: 'Auto Assign',
+    assignerDispatcher: 'Re-assign',
     sectionRiderPerf: 'Rider Performance', sectionRiderPerfDesc: '% Accept / % Cancel by Date Range',
     getRiderPerf: 'Get Performance', pressGetPerf: 'Click Get Performance to load rider stats',
     rp_total: 'Jobs', rp_accepted: 'Accepted', rp_cancelled: 'Cancelled', rp_acceptRate: '% Accept', rp_cancelRate: '% Cancel',
@@ -1185,8 +1193,8 @@ const COLS = {
     { id:'assignerType',lk:'col_assigner',    sk:null,          r: d => {
         const type = d.assignerType;
         if (!type) return '–';
-        if (type === 'system') return `<span class="badge bg-success">Auto Assign</span>`;
-        if (type === 'dispatcher') return `<span class="badge" style="background-color: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid #f59e0b;">Re-assign</span>`;
+        if (type === 'system') return `<span class="badge bg-success">${t('assignerSystem')}</span>`;
+        if (type === 'dispatcher') return `<span class="badge" style="background-color: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid #f59e0b;">${t('assignerDispatcher')}</span>`;
         return `<span class="badge bg-secondary">${type}</span>`;
     }},
     { id:'distance',    lk:'col_distance',    sk:'totalDistance',  r: d => (d.routeOptimizationResult && d.routeOptimizationResult.totalDistance) ? `<small>${(d.routeOptimizationResult.totalDistance/1000).toFixed(2)} km</small>` : '–' },

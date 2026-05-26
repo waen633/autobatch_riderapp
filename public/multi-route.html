@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Route Viewer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    html, body { height: 100%; margin: 0; font-family: Inter, system-ui, -apple-system, sans-serif; background: #f8fafc; }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    .topbar { padding: 12px 16px; border-bottom: 1px solid #dbe2ea; background: #fff; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 1000; position: relative; }
+    .title { font-size: 16px; font-weight: 600; color: #0f172a; margin-right: 8px; }
+    
+    .input-group { display: flex; gap: 8px; align-items: center; flex-grow: 1; max-width: 600px; }
+    .input-group input { flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
+    .input-group input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+    .btn { background: #0f172a; color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+    .btn:hover { background: #1e293b; }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    
+    .main-content { display: flex; flex: 1; overflow: hidden; }
+    
+    .sidebar { width: 320px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
+    .sidebar-header { padding: 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #1e293b; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+    .total-summary { font-size: 13px; color: #475569; font-weight: normal; }
+    
+    .job-card { padding: 16px; border-bottom: 1px solid #e2e8f0; transition: 0.1s; }
+    .job-card:hover { background: #f8fafc; }
+    .job-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .job-id { font-weight: 600; font-size: 14px; color: #0f172a; word-break: break-all; }
+    .job-color { width: 24px; height: 12px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+    
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+    .stat-label { color: #64748b; }
+    .stat-value { font-weight: 500; color: #334155; }
+    
+    #map { flex: 1; height: 100%; width: 100%; }
+    
+    .route-pin {
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 2px 6px;
+      line-height: 1.1;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .route-pin .id-line {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 1px;
+    }
+    
+    .empty-state { padding: 40px 20px; text-align: center; color: #64748b; font-size: 14px; }
+    .error-msg { color: #ef4444; font-size: 13px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="title">Multi-Route Compare</div>
+      <form class="input-group" id="search-form">
+        <input type="text" id="job-input" placeholder="Enter Job IDs separated by comma (e.g. JOB123, JOB456)" required />
+        <button type="submit" class="btn" id="search-btn">Compare Routes</button>
+      </form>
+    </div>
+    
+    <div class="main-content">
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <span>Route Summaries</span>
+          <span class="total-summary" id="total-summary">Total: 0 km</span>
+        </div>
+        <div id="job-list">
+          <div class="empty-state">Enter Job IDs to see route details and comparison.</div>
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const map = L.map('map', { zoomControl: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    map.setView([13.7563, 100.5018], 11);
+
+    // Color palettes for different jobs
+    const PALETTES = [
+      { delivery: '#dc2626', pickup: '#2563eb', bg: '#fee2e2' }, // Red / Blue
+      { delivery: '#16a34a', pickup: '#9333ea', bg: '#dcfce7' }, // Green / Purple
+      { delivery: '#ea580c', pickup: '#0284c7', bg: '#ffedd5' }, // Orange / Light Blue
+      { delivery: '#db2777', pickup: '#0d9488', bg: '#fce7f3' }, // Pink / Teal
+      { delivery: '#65a30d', pickup: '#4f46e5', bg: '#ecfccb' }  // Lime / Indigo
+    ];
+
+    let allLayers = [];
+
+    document.getElementById('search-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('job-input').value;
+      const jobIds = input.split(',').map(s => s.trim()).filter(Boolean);
+      
+      if (jobIds.length === 0) return;
+      
+      const btn = document.getElementById('search-btn');
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      
+      await loadMultipleJobs(jobIds);
+      
+      btn.disabled = false;
+      btn.textContent = 'Compare Routes';
+    });
+
+    async function loadMultipleJobs(jobIds) {
+      // Clear existing
+      allLayers.forEach(l => map.removeLayer(l));
+      allLayers = [];
+      document.getElementById('job-list').innerHTML = '';
+      
+      let grandTotalMeters = 0;
+      const allBounds = [];
+      let paletteIdx = 0;
+      
+      for (const jobId of jobIds) {
+        const palette = PALETTES[paletteIdx % PALETTES.length];
+        paletteIdx++;
+        
+        try {
+          const res = await fetch(`/api/job-route?jobId=${encodeURIComponent(jobId)}`);
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error || 'Failed to fetch');
+          
+          if (!data.rawResults || !data.rawResults.length) {
+             throw new Error('No route data found');
+          }
+          
+          const parsed = data.rawResults.map(s => { 
+            try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return null; } 
+          }).filter(Boolean);
+          
+          const { layers, totalMeters, bounds, pointsList } = buildLayersForJob(parsed, jobId, palette);
+          
+          layers.forEach(l => {
+            l.addTo(map);
+            allLayers.push(l);
+          });
+          
+          grandTotalMeters += totalMeters;
+          allBounds.push(...bounds);
+          
+          addJobCard(jobId, palette, totalMeters, data.metrics, null, pointsList);
+          
+        } catch (err) {
+          addJobCard(jobId, palette, 0, null, err.message, null);
+        }
+      }
+      
+      document.getElementById('total-summary').textContent = `Total: ${(grandTotalMeters / 1000).toFixed(2)} km`;
+      
+      if (allBounds.length > 0) {
+        map.fitBounds(allBounds, { padding: [32, 32] });
+      }
+    }
+
+    function decodePolyline(encoded, precision = 5) {
+      let index = 0, lat = 0, lng = 0;
+      const coordinates = [];
+      const factor = Math.pow(10, precision);
+
+      while (index < encoded.length) {
+        let result = 0, shift = 0, byte;
+        do { byte = encoded.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        result = 0; shift = 0;
+        do { byte = encoded.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        coordinates.push([lat / factor, lng / factor]);
+      }
+      return coordinates;
+    }
+
+    function buildLayersForJob(rawRoutes, jobId, palette) {
+      const layers = [];
+      const bounds = [];
+      let totalMeters = 0;
+      const pointsList = [];
+      
+      const shipLabel = v => { const l = String(v?.shipmentLabel||''); const m = l.match(/26LOTUS-[A-Za-z0-9-]+/); return m ? m[0] : (l||'–'); };
+      
+      const pinHtml = (isPickup, title, orderId) => {
+        const border = isPickup ? palette.pickup : palette.delivery;
+        const color = isPickup ? palette.pickup : palette.delivery;
+        return `<div class="route-pin" style="border-color:${border}; color:${color}">${title}<span class="id-line">${orderId}</span></div>`;
+      };
+      
+      const addPin = (point, isPickup, title, orderId, tip) => {
+        const mk = L.marker(point, { icon: L.divIcon({ className:'', html: pinHtml(isPickup, title, orderId), iconSize: null }) });
+        mk.bindTooltip(tip, { direction:'top' });
+        layers.push(mk);
+        bounds.push(point);
+      };
+
+      let pickupCounter = 0;
+      let deliveryCounter = 0;
+
+      rawRoutes.forEach(raw => {
+        const visits = Array.isArray(raw.visits) ? raw.visits : [];
+        const transitions = Array.isArray(raw.transitions) ? raw.transitions : [];
+        const pickups = visits.filter(v => v?.isPickup === true);
+        const deliveries = visits.filter(v => v?.isPickup !== true);
+        const lastPickup = pickups[pickups.length - 1] || null;
+
+        const legs = [];
+        for (let i = 1; i < transitions.length; i++) {
+          const t = transitions[i] || {};
+          const enc = t?.routePolyline?.points;
+          if (!enc) continue;
+          let pts = []; try { pts = decodePolyline(enc); } catch { pts = []; }
+          if (pts.length) legs.push({ pts, i, distanceMeters: t.travelDistanceMeters || 0 });
+        }
+
+        if (lastPickup && legs.length) {
+          pickupCounter++;
+          const pt = legs[0].pts[0];
+          const orderId = shipLabel(lastPickup);
+          const pLabel = `P${pickupCounter}`;
+          addPin(pt, true, pLabel, orderId, `<b>${jobId}</b><br>Pickup ${pickupCounter}: ${orderId}`);
+          pointsList.push({ type: 'Pickup', label: pLabel, orderId, lat: pt[0].toFixed(6), lng: pt[1].toFixed(6) });
+        }
+
+        legs.forEach((leg, idx) => {
+          const visit = deliveries[idx] || null;
+          const km = leg.distanceMeters > 0 ? ` · ${(leg.distanceMeters / 1000).toFixed(2)} km` : '';
+          
+          totalMeters += leg.distanceMeters;
+          
+          const pl = L.polyline(leg.pts, { color: palette.delivery, weight: 5, opacity: 0.8 });
+          
+          let orderId = shipLabel(visit);
+          let dLabel = '';
+          let typeLabel = '';
+          
+          if (visit) {
+            deliveryCounter++;
+            dLabel = `D${deliveryCounter}`;
+            typeLabel = 'Delivery';
+            
+            pl.bindTooltip(`<b>${jobId}</b><br>${dLabel}: ${orderId}${km}`, { sticky:true });
+            layers.push(pl);
+            bounds.push(...leg.pts);
+            
+            const pt = leg.pts[leg.pts.length-1];
+            addPin(pt, false, dLabel, orderId, `<b>${jobId}</b><br>${typeLabel}: ${orderId}${km}`);
+            pointsList.push({ type: typeLabel, label: dLabel, orderId, lat: pt[0].toFixed(6), lng: pt[1].toFixed(6) });
+          } else {
+            // It's a return leg. We can still draw the line but no pin/point needed.
+            pl.bindTooltip(`<b>${jobId}</b><br>Return to Store${km}`, { sticky:true });
+            layers.push(pl);
+            bounds.push(...leg.pts);
+          }
+        });
+      });
+      
+      return { layers, totalMeters, bounds, pointsList };
+    }
+
+    function copyLatLng(btn, lat, lng) {
+      const text = `${lat}, ${lng}`;
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          const orig = btn.innerText;
+          btn.innerText = 'Copied!';
+          setTimeout(() => { btn.innerText = orig; }, 1500);
+        });
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          const orig = btn.innerText;
+          btn.innerText = 'Copied!';
+          setTimeout(() => { btn.innerText = orig; }, 1500);
+        } catch (err) {}
+        document.body.removeChild(textArea);
+      }
+    }
+
+    function addJobCard(jobId, palette, totalMeters, metrics, errorMsg, pointsList) {
+      const list = document.getElementById('job-list');
+      
+      if (errorMsg) {
+        list.insertAdjacentHTML('beforeend', `
+          <div class="job-card" style="border-left: 4px solid #ef4444">
+            <div class="job-header">
+              <span class="job-id">${jobId}</span>
+            </div>
+            <div class="error-msg">⚠ ${errorMsg}</div>
+          </div>
+        `);
+        return;
+      }
+      
+      let metricsHtml = '';
+      if (metrics) {
+        const time = metrics.travelDuration ? Math.round(metrics.travelDuration/60) + ' min' : '-';
+        const weight = metrics.totalWeightGrams ? (metrics.totalWeightGrams/1000).toFixed(1) + ' kg' : '-';
+        metricsHtml = `
+          <div class="stat-row"><span class="stat-label">Travel Time:</span><span class="stat-value">${time}</span></div>
+          <div class="stat-row"><span class="stat-label">Total Weight:</span><span class="stat-value">${weight}</span></div>
+        `;
+      }
+
+      let pointsHtml = '';
+      if (pointsList && pointsList.length > 0) {
+        pointsHtml = `
+        <div style="margin-top: 10px;">
+          <button class="btn" style="background:#f1f5f9; color:#0f172a; font-size:12px; padding: 6px 8px; width:100%; border:1px solid #cbd5e1" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">Explain Coordinates ▼</button>
+          <div style="display:none; margin-top: 8px; font-size: 11px; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; max-height: 250px; overflow-y: auto;">
+            ${pointsList.map(p => `
+              <div style="margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #cbd5e1; position: relative;">
+                <b>${p.label}</b> (${p.type})<br>
+                <span style="color:#64748b;">Order: ${p.orderId}</span><br>
+                <code style="font-size: 10px;">Lat: ${p.lat}, Lng: ${p.lng}</code>
+                <button onclick="copyLatLng(this, '${p.lat}', '${p.lng}')" style="position:absolute; right: 0; bottom: 6px; font-size: 10px; padding: 2px 6px; background: #e2e8f0; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;">Copy</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        `;
+      }
+      
+      list.insertAdjacentHTML('beforeend', `
+        <div class="job-card" style="border-left: 4px solid ${palette.delivery}">
+          <div class="job-header">
+            <span class="job-id">${jobId}</span>
+            <div class="job-color" style="background: ${palette.delivery};"></div>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Distance:</span>
+            <span class="stat-value">${(totalMeters / 1000).toFixed(2)} km</span>
+          </div>
+          ${metricsHtml}
+          ${pointsHtml}
+        </div>
+      `);
+    }
+  </script>
+</body>
+</html>

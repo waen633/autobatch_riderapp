@@ -17,6 +17,7 @@ app.use('/api', require('./routes/riders'));
 app.use('/api', require('./routes/performance'));
 app.use('/api', require('./routes/diagnostics'));
 app.use('/api', require('./routes/analytics'));
+app.use('/api', require('./routes/storeConfig'));
 app.use('/api/ai', require('./routes/ai'));
 
 const { startSyncScheduler } = require('./sync/sheetsSync');

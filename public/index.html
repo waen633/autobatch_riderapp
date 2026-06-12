@@ -213,6 +213,31 @@
 
       /* Auto-refresh selects: full width */
       select[id^="ar-sel-"] { width: 100% !important; }
+
+      /* Navbar: reduce gap, shrink buttons */
+      .navbar-custom .container-fluid { gap: .25rem !important; }
+      .navbar-custom .d-flex.gap-3 { gap: .3rem !important; flex-wrap: wrap; }
+      #admin-mode-btn { font-size: .72rem; padding: .25rem .5rem; }
+      #last-updated { display: none; }
+
+      /* Jobs filter selects: let them shrink to fit */
+      #jobs-assigner-filter { width: auto !important; flex: 1 1 100px; min-width: 90px; }
+      #jobs-status-filter   { width: auto !important; flex: 1 1 120px; min-width: 110px; }
+
+      /* Search box: grow to fill remaining space */
+      .search-box { max-width: none !important; width: 100% !important; }
+
+      /* Rider pool filter selects */
+      #riders-pool-filter, #riders-status-filter { width: auto !important; flex: 1 1 auto; }
+
+      /* Store config grid: single column on very small */
+      .store-cfg-grid { grid-template-columns: 1fr 1fr !important; }
+    }
+
+    @media (max-width: 480px) {
+      /* Extra small: single col config grid, hide admin label */
+      .store-cfg-grid { grid-template-columns: 1fr !important; }
+      #admin-mode-btn .admin-label { display: none; }
     }
 
     @media (min-width: 768px) and (max-width: 1024px) {
@@ -221,6 +246,136 @@
       .scroll-table { overflow-x: auto; }
       .table { min-width: 560px; }
     }
+  /* ── Admin Button ───────────────────────────────────────────── */
+  #admin-mode-btn {
+    font-size: .78rem; font-weight: 600; transition: all .2s;
+    background:#f1f5f9; color:#64748b; border-color:#cbd5e1;
+  }
+  #admin-mode-btn:hover { background:#e2e8f0; color:#334155; }
+  #admin-mode-btn.has-active { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+  #admin-mode-btn.has-active:hover { background:#4338ca; border-color:#4338ca; }
+
+  /* ── Admin Panel Modal ──────────────────────────────────────── */
+  .admin-section-title {
+    font-size: .7rem; font-weight: 700; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .6px;
+    margin-bottom: .65rem;
+  }
+  .admin-perm-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 1rem; padding: .65rem 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .admin-perm-row:last-child { border-bottom: none; }
+  .admin-perm-info { flex: 1; }
+  .admin-perm-name { font-size: .88rem; font-weight: 600; color: #0f172a; }
+  .admin-perm-desc { font-size: .73rem; color: #64748b; margin-top: .15rem; line-height: 1.4; }
+  /* Toggle switch */
+  .admin-toggle { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; margin-top: 2px; cursor: pointer; }
+  .admin-toggle input { opacity: 0; width: 0; height: 0; }
+  .admin-slider {
+    position: absolute; inset: 0; background: #cbd5e1; border-radius: 24px; transition: .2s;
+  }
+  .admin-slider:before {
+    content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px;
+    background: #fff; border-radius: 50%; transition: .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .admin-toggle input:checked + .admin-slider { background: #4f46e5; }
+  .admin-toggle input:checked + .admin-slider:before { transform: translateX(18px); }
+
+  /* ── Job Row Expansion ───────────────────────────────────────── */
+  .job-expand-wrap { background:#f8fafc; border-top:2px solid #e2e8f0; }
+  .job-row-active { background: #ede9fe !important; outline: 2px solid #7c3aed; outline-offset: -2px; }
+  .jobs-tbody tr[data-popup] { cursor: pointer; }
+
+  /* ── Job Popup ──────────────────────────────────────────────── */
+  .job-popup {
+    position: fixed; bottom: 16px; right: 16px;
+    width: 390px; max-height: 85vh;
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
+    z-index: 1060; display: flex; flex-direction: column;
+    animation: popupIn .22s cubic-bezier(.34,1.46,.64,1);
+  }
+  @keyframes popupIn  { from { opacity:0; transform:scale(.93) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  @keyframes popupOut { from { opacity:1; transform:scale(1); } to { opacity:0; transform:scale(.93) translateY(8px); } }
+  .job-popup-header {
+    padding: .875rem 1rem; flex-shrink:0;
+    background: linear-gradient(135deg,#4f46e5,#7c3aed);
+    border-radius: 16px 16px 0 0; color:#fff;
+    display:flex; align-items:flex-start; gap:.5rem;
+  }
+  .job-popup-title  { flex:1; min-width:0; }
+  .job-popup-jobid  { font-size:.65rem; opacity:.7; font-family:monospace; }
+  .job-popup-rider  { font-size:.85rem; font-weight:700; margin-top:.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .job-popup-close  {
+    flex-shrink:0; background:rgba(255,255,255,.2); border:none; color:#fff;
+    border-radius:50%; width:26px; height:26px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:.9rem; transition:background .15s;
+  }
+  .job-popup-close:hover { background:rgba(255,255,255,.35); }
+  .job-popup-body   { padding:.875rem; flex:1; overflow-y:auto; }
+  .popup-metric-row { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.875rem; }
+  .popup-metric-badge {
+    display:inline-flex; align-items:center; gap:.3rem;
+    padding:.28rem .6rem; border-radius:8px; font-size:.74rem;
+    border:1px solid #e2e8f0; background:#f8fafc; color:#334155;
+  }
+  .popup-metric-badge.accent { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
+  .popup-order-chip {
+    display:inline-block; font-size:.63rem; font-family:monospace;
+    padding:.15rem .45rem; border-radius:5px; background:#f1f5f9;
+    border:1px solid #e2e8f0; color:#475569; margin:.1rem;
+  }
+
+  /* ── Store Config Panel ─────────────────────────────────────── */
+  .store-cfg-panel { background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:.75rem; }
+  .cfg-panel-header {
+    display:flex; align-items:center; gap:.5rem;
+    padding:.6rem 1rem; background:#f8fafc; border-bottom:1px solid #e2e8f0;
+    font-size:.78rem; font-weight:700; color:#4f46e5;
+  }
+  .cfg-panel-header .cfg-store-tag {
+    margin-left:auto; font-size:.68rem; font-weight:500;
+    color:#94a3b8; background:#f1f5f9; border-radius:6px; padding:.15rem .5rem;
+  }
+  /* Load metrics row */
+  .cfg-load-row {
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap:0; border-bottom:1px solid #f1f5f9;
+  }
+  .cfg-load-cell {
+    padding:.75rem 1rem; border-right:1px solid #f1f5f9;
+    display:flex; flex-direction:column; gap:.2rem;
+  }
+  .cfg-load-cell:last-child { border-right:none; }
+  .cfg-load-label { font-size:.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.5px; }
+  .cfg-load-nums { display:flex; align-items:baseline; gap:.3rem; margin-top:.1rem; }
+  .cfg-load-used { font-size:1.1rem; font-weight:700; color:#0f172a; line-height:1; }
+  .cfg-load-sep  { font-size:.75rem; color:#cbd5e1; font-weight:400; }
+  .cfg-load-max  { font-size:.75rem; color:#94a3b8; font-weight:500; }
+  .cfg-load-bar  { height:5px; background:#e2e8f0; border-radius:3px; overflow:hidden; margin-top:.3rem; }
+  .cfg-load-fill { height:100%; border-radius:3px; background:#4f46e5; transition:width .4s ease; }
+  .cfg-load-fill.warn   { background:#f59e0b; }
+  .cfg-load-fill.danger { background:#ef4444; }
+  .cfg-load-pct  { font-size:.65rem; font-weight:600; margin-top:.2rem; }
+  .cfg-load-pct.ok     { color:#4f46e5; }
+  .cfg-load-pct.warn   { color:#d97706; }
+  .cfg-load-pct.danger { color:#dc2626; }
+  /* Config info row */
+  .cfg-info-row {
+    display:flex; flex-wrap:wrap; gap:0;
+    padding:.5rem .75rem;
+  }
+  .cfg-info-chip {
+    display:flex; align-items:center; gap:.3rem;
+    padding:.25rem .6rem; margin:.2rem;
+    background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px;
+    font-size:.72rem; color:#334155;
+  }
+  .cfg-info-chip .chip-label { color:#94a3b8; font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
+  .cfg-info-chip .chip-val   { font-weight:700; color:#0f172a; }
   </style>
 </head>
 <body>
@@ -233,6 +388,7 @@
       <span class="text-muted fw-medium" id="last-updated" style="font-size: 0.8rem;"></span>
       <button class="btn btn-outline-secondary btn-sm" onclick="resetLayout()" title="Reset Layout"><i class="bi bi-grid-3x3-gap me-1"></i>Layout</button>
       <a href="multi-route.html" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-map me-1"></i>Compare Routes</a>
+      <button class="btn btn-sm" id="admin-mode-btn" data-bs-toggle="modal" data-bs-target="#adminModal" title="Admin Settings">🛡 <span class="admin-label">Admin</span></button>
       <button class="btn btn-outline-secondary btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
     </div>
   </div>
@@ -775,6 +931,76 @@
 </div>
 </div><!-- /page-analytics -->
 
+<!-- ADMIN PANEL MODAL -->
+<div class="modal fade" id="adminModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+    <div class="modal-content border-0" style="border-radius:16px; overflow:hidden;">
+
+      <!-- Header -->
+      <div class="modal-header py-3 px-4" style="background:linear-gradient(135deg,#1e1b4b,#4f46e5); color:#fff; border:none;">
+        <div>
+          <div class="fw-700" style="font-size:1.05rem; font-weight:700;">🛡 Admin Settings</div>
+          <div style="font-size:.75rem; opacity:.75; margin-top:1px;">จัดการ Permission ของ Feature ต่างๆ</div>
+        </div>
+        <button type="button" class="btn-close btn-close-white btn-sm ms-auto" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body p-4">
+
+        <!-- Section: AI Features -->
+        <div class="admin-section-title">🤖 AI Features</div>
+
+        <!-- Toggle: AI Chat Bot -->
+        <div class="admin-perm-row">
+          <div class="admin-perm-info">
+            <div class="admin-perm-name">AI Chat Bot (น้องบอท)</div>
+            <div class="admin-perm-desc">Floating chat widget มุมล่างขวา — ถาม-ตอบข้อมูล Job / Rider / Order</div>
+          </div>
+          <label class="admin-toggle">
+            <input type="checkbox" id="perm-ai-chat" onchange="applyPermissions()">
+            <span class="admin-slider"></span>
+          </label>
+        </div>
+
+        <!-- Toggle: AI Insight -->
+        <div class="admin-perm-row">
+          <div class="admin-perm-info">
+            <div class="admin-perm-name">AI Insight (Analytics Tab)</div>
+            <div class="admin-perm-desc">Evening Briefing — วิเคราะห์ข้อมูลและคาดการณ์พรุ่งนี้ด้วย AI</div>
+          </div>
+          <label class="admin-toggle">
+            <input type="checkbox" id="perm-ai-insight" onchange="applyPermissions()">
+            <span class="admin-slider"></span>
+          </label>
+        </div>
+
+        <hr class="my-3" style="border-color:#e2e8f0;">
+
+        <!-- Section: Dashboard Features -->
+        <div class="admin-section-title">📋 Dashboard Features</div>
+
+        <!-- Toggle: Store Config in Job Row -->
+        <div class="admin-perm-row">
+          <div class="admin-perm-info">
+            <div class="admin-perm-name">Store Config Limits (ใน Job row)</div>
+            <div class="admin-perm-desc">แสดง limit ของ store เมื่อกดเปิด Job row — ช่วย support เข้าใจว่าทำไม Job ถึงแยก</div>
+          </div>
+          <label class="admin-toggle">
+            <input type="checkbox" id="perm-job-config" onchange="applyPermissions()">
+            <span class="admin-slider"></span>
+          </label>
+        </div>
+
+      </div>
+
+      <div class="modal-footer px-4 py-3" style="background:#f8fafc; border-top:1px solid #e2e8f0;">
+        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Settings บันทึกใน browser — ไม่มีผลต่อ user อื่น</small>
+        <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" data-bs-dismiss="modal">ปิด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- COLUMN SELECTOR MODAL -->
 <div class="modal fade" id="colModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
@@ -888,6 +1114,80 @@ const API_BASE = (() => {
   const l = window.location;
   return (l.protocol === 'http:' || l.protocol === 'https:') ? l.origin : 'http://localhost:3000';
 })();
+
+// ─── PERMISSIONS ──────────────────────────────────────────────────────────────
+// Keys: aiChat | aiInsight | jobConfig
+const PERM_KEYS = ['aiChat', 'aiInsight', 'jobConfig'];
+
+function _loadPerms() {
+  const defaults = { aiChat: false, aiInsight: false, jobConfig: true };
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem('adminPerms') || '{}') }; }
+  catch { return defaults; }
+}
+function _savePerms(p) {
+  localStorage.setItem('adminPerms', JSON.stringify(p));
+}
+
+// Sync checkboxes → DOM → navbar button color
+function applyPermissions() {
+  const saved = _loadPerms();
+
+  // Read checkboxes (if modal is open) and persist
+  PERM_KEYS.forEach(k => {
+    const el = document.getElementById('perm-' + k.replace(/([A-Z])/g, '-$1').toLowerCase());
+    if (el) saved[k] = el.checked;
+  });
+  _savePerms(saved);
+
+  // Apply: AI Chat FAB
+  const fab = document.getElementById('ai-fab');
+  const win = document.getElementById('ai-chat-window');
+  if (fab) fab.style.display = saved.aiChat ? '' : 'none';
+  if (!saved.aiChat && win) { win.classList.remove('open'); if (window.aiState) aiState.open = false; }
+
+  // Apply: AI Insight section
+  const insightCard = document.querySelector('#page-analytics .card:has(#an-ai-insight)')
+    || document.getElementById('an-ai-insight')?.closest('.card');
+  if (insightCard) insightCard.style.display = saved.aiInsight ? '' : 'none';
+
+  // Navbar button: purple if any perm is ON
+  const btn = document.getElementById('admin-mode-btn');
+  if (btn) btn.classList.toggle('has-active', PERM_KEYS.some(k => saved[k]));
+}
+
+// Called when modal opens — restore checkbox state from localStorage
+function initAdminModal() {
+  const saved = _loadPerms();
+  PERM_KEYS.forEach(k => {
+    const el = document.getElementById('perm-' + k.replace(/([A-Z])/g, '-$1').toLowerCase());
+    if (el) el.checked = !!saved[k];
+  });
+}
+
+// Wire modal open event
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('adminModal');
+  if (modal) modal.addEventListener('show.bs.modal', initAdminModal);
+});
+
+// Compat stub so old code that calls these doesn't break
+function applyAdminMode() { applyPermissions(); }
+function toggleAdminMode() {}
+
+// ─── STORE CONFIG CACHE ───────────────────────────────────────────────────────
+const storeConfigCache = {};
+
+async function fetchStoreConfig(storeCode) {
+  if (storeConfigCache[storeCode]) return storeConfigCache[storeCode];
+  try {
+    const r = await fetch(`${API_BASE}/api/store-config?storeCode=${encodeURIComponent(storeCode)}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const cfg = (j.data || [])[0] || null;
+    storeConfigCache[storeCode] = cfg;
+    return cfg;
+  } catch { return null; }
+}
 
 // ─── CHART.JS PLUGINS ────────────────────────────────────────────────────────
 if (window.Chart) {
@@ -1903,7 +2203,13 @@ function renderSection(tbl) {
     if (tbl==='riders') cls = row.queue==='not_in_pool' ? 'not-in-pool-row' : row.ready_for_auto_assign ? 'table-success' : '';
     else if (tbl==='stuck') cls = 'table-danger';
     else if (tbl==='jobs' && row.assignerType === 'dispatcher') cls = 'table-warning';
-    return `<tr class="${cls}">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}<td class="text-end"><button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), '${tbl}', ${idx})" title="Raw Data"><i class="bi bi-code-square"></i></button></td></tr>`;
+    const isJobs = tbl === 'jobs';
+    const rowClick = isJobs ? `onclick="toggleRow(this,'${tbl}',${idx})"` : '';
+    const rowStyle = isJobs ? ' style="cursor:pointer;"' : '';
+    const btnIcon  = isJobs ? 'bi-layers' : 'bi-code-square';
+    const btnTitle = isJobs ? 'Job Detail' : 'Raw Data';
+    const btnCls   = isJobs ? 'btn-outline-primary' : 'btn-outline-secondary';
+    return `<tr class="${cls}"${rowStyle} ${rowClick}>${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}<td class="text-end"><button class="btn btn-sm ${btnCls} py-0 px-1" onclick="event.stopPropagation(); toggleRow(this.closest('tr'),'${tbl}',${idx})" title="${btnTitle}"><i class="bi ${btnIcon}"></i></button></td></tr>`;
   }).join('');
 
   // Trigger visual flash to indicate data update
@@ -1914,48 +2220,219 @@ function renderSection(tbl) {
   renderPagination(tbl, allData.length);
 }
 
-function toggleRow(tr, tbl, pageIdx) {
-  const next = tr.nextElementSibling;
-  if (next && next.classList.contains('expand-row')) {
-    next.remove();
-    return;
-  }
+// ── Shared cfg-panel builder (used by both popup and toggleRow) ────────────
+function _buildCfgPanel(rowData, cfg) {
+  const ro = cfg.routeOptimization || {};
+  const aa = cfg.autoAssign || {};
+  const bt = cfg.batch || {};
+  const lc = ro.loadCapacity || {};
+  const ror = rowData.routeOptimizationResult;
+  const orderCount  = rowData.orderIds ? rowData.orderIds.length : null;
+
+  const loadCell = (label, usedRaw, maxRaw, usedFmt, maxFmt) => {
+    if (usedRaw == null) return `<div class="cfg-load-cell"><div class="cfg-load-label">${label}</div><div class="cfg-load-nums"><span class="cfg-load-used">–</span></div></div>`;
+    const pct = maxRaw ? Math.min(100, (usedRaw / maxRaw) * 100) : 0;
+    const cls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : 'ok';
+    return `<div class="cfg-load-cell">
+      <div class="cfg-load-label">${label}</div>
+      <div class="cfg-load-nums">
+        <span class="cfg-load-used">${usedFmt}</span>
+        ${maxRaw != null ? `<span class="cfg-load-sep">/</span><span class="cfg-load-max">${maxFmt}</span>` : ''}
+      </div>
+      ${maxRaw != null ? `<div class="cfg-load-bar"><div class="cfg-load-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div><div class="cfg-load-pct ${cls}">${pct.toFixed(0)}% ที่ใช้</div>` : ''}
+    </div>`;
+  };
+
+  const chip = (label, val) => `<div class="cfg-info-chip"><span class="chip-label">${label}</span><span class="chip-val">${val}</span></div>`;
+
+  const volUsedCm3 = ror ? ror.totalBoxDimensionVolumes : null;
+  const volMaxCm3  = (lc.width != null && lc.height != null && lc.length != null) ? lc.width * lc.height * lc.length : null;
+
+  const loadCells = [
+    loadCell('Orders / Job', orderCount, ro.maximumOrders,
+      orderCount != null ? orderCount + ' orders' : '–',
+      ro.maximumOrders != null ? ro.maximumOrders + ' orders' : null),
+    loadCell('น้ำหนัก', ror ? ror.totalWeightGrams : null, lc.weight ?? null,
+      ror?.totalWeightGrams != null ? (ror.totalWeightGrams/1000).toFixed(1) + ' kg' : '–',
+      lc.weight != null ? (lc.weight/1000).toFixed(0) + ' kg' : null),
+    loadCell('ปริมาตร', volUsedCm3, volMaxCm3,
+      volUsedCm3 != null ? (volUsedCm3/1000).toFixed(1) + ' L' : '–',
+      volMaxCm3  != null ? (volMaxCm3/1000).toFixed(0)  + ' L' : null),
+    loadCell('ระยะทาง', ror?.totalDistance ?? null, null,
+      ror?.totalDistance ? (ror.totalDistance/1000).toFixed(2) + ' km' : '–', null),
+    loadCell('เวลาเดินทาง', ror?.travelDuration ?? null, null,
+      ror?.travelDuration ? Math.round(ror.travelDuration/60) + ' min' : '–', null),
+  ].join('');
+
+  const infoChips = [
+    bt.batchTime  != null ? chip('Batch',       bt.batchTime + ' min') : '',
+    aa.duration   != null ? chip('Auto-assign', Math.round(aa.duration/60000) + ' min') : '',
+    aa.radius     != null ? chip('Radius',      aa.radius + ' m') : '',
+    ro.stopTime   != null ? chip('Stop/Drop',   Math.round(ro.stopTime/60000) + ' min') : '',
+    ro.bufferTime != null ? chip('Buffer',       Math.round(ro.bufferTime/60000) + ' min') : '',
+    ro.slaTime    != null ? chip('SLA',         Math.round(ro.slaTime/60000) + ' min') : '',
+    lc.width      != null ? chip('Box',         `${lc.width}×${lc.height}×${lc.length} cm`) : '',
+    lc.weight     != null ? chip('Max Weight',  (lc.weight/1000).toFixed(0) + ' kg') : '',
+  ].join('');
+
+  return `<div class="store-cfg-panel">
+    <div class="cfg-panel-header">
+      <i class="bi bi-bar-chart-steps me-1"></i> Job vs Store Limits
+      <span style="font-size:.7rem;color:#64748b;font-weight:400;margin-left:4px;">— ทำไมถึงต้องแยก Job?</span>
+      <span class="cfg-store-tag">${cfg.name || rowData.storeCode} · ${rowData.storeCode}</span>
+    </div>
+    <div class="cfg-load-row">${loadCells}</div>
+    <div class="cfg-info-row">${infoChips}</div>
+  </div>`;
+}
+
+// ── Job Popup System ─────────────────────────────────────────────────────────
+const _jobPopups = {};
+
+function openJobPopup(tr, tbl, pageIdx) {
   const data = applyFilters(tbl);
   const { page, pageSize } = state[tbl];
-  const absIdx = (page-1)*pageSize + pageIdx;
+  const absIdx = (page - 1) * pageSize + pageIdx;
+  const rowData = data[absIdx];
+  if (!rowData) return;
+  const jobId = rowData.jobId;
+
+  // Toggle: close if already open
+  if (_jobPopups[jobId]) {
+    closeJobPopup(jobId);
+    return;
+  }
+
+  tr.classList.add('job-row-active');
+
+  const popup = document.createElement('div');
+  popup.className = 'job-popup';
+
+  // Cascade position per open popup count
+  const count = Object.keys(_jobPopups).length;
+  popup.style.right  = (16 + count * 44) + 'px';
+  popup.style.bottom = (16 + count * 44) + 'px';
+
+  const statusMap = {
+    job_created:    ['#dbeafe','#1e40af'], job_assigned:  ['#ede9fe','#5b21b6'],
+    job_accepted:   ['#ede9fe','#5b21b6'], job_picking_up:['#fef9c3','#78350f'],
+    job_picked_up:  ['#fef9c3','#78350f'], job_delivering:['#ffedd5','#c2410c'],
+    job_completed:  ['#dcfce7','#15803d'], job_cancelled: ['#fee2e2','#b91c1c'],
+  };
+  const [sbg, stxt] = statusMap[rowData.status] || ['#f1f5f9','#475569'];
+
+  const ror = rowData.routeOptimizationResult;
+  const metricBadge = (icon, val, accent) =>
+    `<span class="popup-metric-badge${accent?' accent':''}">${icon} ${val}</span>`;
+
+  const metricsRow = ror ? `<div class="popup-metric-row">
+    ${metricBadge('🚗', ror.totalDistance ? (ror.totalDistance/1000).toFixed(2)+' km' : '–')}
+    ${metricBadge('⏱', ror.travelDuration ? Math.round(ror.travelDuration/60)+' min' : '–')}
+    ${metricBadge('⚖️', ror.totalWeightGrams ? (ror.totalWeightGrams/1000).toFixed(1)+' kg' : '–', true)}
+    ${metricBadge('🧊', ror.totalBoxDimensionVolumes ? (ror.totalBoxDimensionVolumes/1000).toFixed(1)+' L' : '–', true)}
+  </div>` : '';
+
+  const ordersHtml = (rowData.orderIds || []).map((o, i) =>
+    `<span class="popup-order-chip">#${i+1} ${o}</span>`).join('');
+
+  const cfgSlotId = 'popup-cfg-' + jobId.replace(/\W/g,'');
+
+  popup.innerHTML = `
+    <div class="job-popup-header">
+      <div class="job-popup-title">
+        <div class="job-popup-jobid">${jobId}</div>
+        <div class="job-popup-rider">${rowData.riderName || '(ยังไม่มีไรเดอร์)'}</div>
+        <div style="margin-top:.35rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+          <span style="font-size:.65rem;padding:.15rem .55rem;border-radius:20px;background:${sbg};color:${stxt};font-weight:700;">${rowData.status||''}</span>
+          <span style="font-size:.65rem;color:rgba(255,255,255,.65);">${rowData.storeCode} · ${(rowData.orderIds||[]).length} orders</span>
+        </div>
+      </div>
+      <button class="job-popup-close" onclick="closeJobPopup('${jobId}')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="job-popup-body">
+      ${metricsRow}
+      ${ordersHtml ? `<div style="font-size:.62rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem;">Orders</div><div style="margin-bottom:.875rem;">${ordersHtml}</div>` : ''}
+      <div id="${cfgSlotId}">
+        <div class="store-cfg-panel" style="opacity:.45;">
+          <div class="cfg-panel-header"><i class="bi bi-hourglass-split me-1"></i>Loading store limits…</div>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(popup);
+  _jobPopups[jobId] = { el: popup, rowEl: tr };
+  _makePopupDraggable(popup);
+
+  if (rowData.storeCode) {
+    fetchStoreConfig(rowData.storeCode).then(cfg => {
+      const slot = document.getElementById(cfgSlotId);
+      if (!slot) return;
+      if (!cfg) { slot.innerHTML = ''; return; }
+      slot.innerHTML = _buildCfgPanel(rowData, cfg);
+    });
+  }
+}
+
+function _makePopupDraggable(popup) {
+  const header = popup.querySelector('.job-popup-header');
+  header.style.cursor = 'grab';
+  header.addEventListener('mousedown', e => {
+    if (e.target.closest('.job-popup-close')) return;
+    e.preventDefault();
+    // Snap from bottom/right anchor to top/left for free movement
+    const rect = popup.getBoundingClientRect();
+    popup.style.bottom = 'auto';
+    popup.style.right  = 'auto';
+    popup.style.top    = rect.top + 'px';
+    popup.style.left   = rect.left + 'px';
+    header.style.cursor = 'grabbing';
+    const ox = e.clientX - rect.left;
+    const oy = e.clientY - rect.top;
+    const onMove = e => {
+      popup.style.left = Math.max(0, Math.min(window.innerWidth  - popup.offsetWidth,  e.clientX - ox)) + 'px';
+      popup.style.top  = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, e.clientY - oy)) + 'px';
+    };
+    const onUp = () => {
+      header.style.cursor = 'grab';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+}
+
+function closeJobPopup(jobId) {
+  const entry = _jobPopups[jobId];
+  if (!entry) return;
+  entry.el.style.animation = 'popupOut .15s ease forwards';
+  setTimeout(() => {
+    entry.el.remove();
+    if (entry.rowEl) entry.rowEl.classList.remove('job-row-active');
+    delete _jobPopups[jobId];
+  }, 140);
+}
+
+function toggleRow(tr, tbl, pageIdx) {
+  // Jobs use popup system instead
+  if (tbl === 'jobs') { openJobPopup(tr, tbl, pageIdx); return; }
+
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('expand-row')) { next.remove(); return; }
+
+  const data = applyFilters(tbl);
+  const { page, pageSize } = state[tbl];
+  const absIdx = (page - 1) * pageSize + pageIdx;
   const rowData = data[absIdx];
   if (!rowData) return;
 
   const colCount = tr.children.length;
-  let detailHtml = `<div class="p-3 bg-light border rounded text-start" style="box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);"><div class="fw-bold mb-2 text-primary"><i class="bi bi-info-circle me-1"></i>Row Details (Raw Data)</div><pre style="font-size:0.75rem; margin:0; white-space:pre-wrap; color:#334155; word-wrap:break-word;">${JSON.stringify(rowData, null, 2)}</pre></div>`;
-
-  if (tbl === 'jobs' && rowData.routeOptimizationResult) {
-    const ror = rowData.routeOptimizationResult;
-    const d = ror.totalDistance ? (ror.totalDistance/1000).toFixed(2) + ' km' : '-';
-    const t = ror.travelDuration ? Math.round(ror.travelDuration/60) + ' min' : '-';
-    const v = ror.visitDuration ? Math.round(ror.visitDuration/60) + ' min' : '-';
-    const w = ror.waitDuration ? Math.round(ror.waitDuration/60) + ' min' : '-';
-    const weight = ror.totalWeightGrams ? (ror.totalWeightGrams/1000).toFixed(1) + ' kg' : '-';
-    const vol = ror.totalBoxDimensionVolumes ? (ror.totalBoxDimensionVolumes/1000).toFixed(1) + ' L' : '-';
-    
-    const metricsHtml = `
-      <div class="mb-3 p-3 bg-white border rounded" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <div class="fw-bold mb-2 text-success"><i class="bi bi-bar-chart-fill me-1"></i>Route Metrics</div>
-        <div class="d-flex flex-wrap gap-2">
-          ${_metaBadge('🚗 <b>Dist:</b> ' + d, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-          ${_metaBadge('⏱ <b>Travel:</b> ' + t, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-          ${_metaBadge('⏳ <b>Wait:</b> ' + w, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-          ${_metaBadge('📦 <b>Drop:</b> ' + v, { bg:'#f8fafc', text:'#334155', border:'#cbd5e1' })}
-          ${_metaBadge('⚖️ <b>Weight:</b> ' + weight, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
-          ${_metaBadge('🧊 <b>Vol:</b> ' + vol, { bg:'#fff7ed', text:'#c2410c', border:'#fed7aa' })}
-        </div>
-      </div>`;
-    detailHtml = metricsHtml + detailHtml;
-  }
-
   const newTr = document.createElement('tr');
   newTr.className = 'expand-row';
-  newTr.innerHTML = `<td colspan="${colCount}" class="p-0 border-0">${detailHtml}</td>`;
+  newTr.innerHTML = `<td colspan="${colCount}" class="p-0 border-0"><div class="p-3 bg-light">
+    <div class="fw-bold mb-2 text-primary"><i class="bi bi-info-circle me-1"></i>Row Details</div>
+    <pre style="font-size:.73rem;margin:0;white-space:pre-wrap;color:#334155;word-wrap:break-word;">${JSON.stringify(rowData, null, 2)}</pre>
+  </div></td>`;
   tr.after(newTr);
 }
 
@@ -3784,6 +4261,7 @@ function resetLayout() {
 }
 
 applyLang();
+applyPermissions();
 
 // ══════════════════════════════════════════════════════════
 // ANALYTICS TAB
@@ -4238,6 +4716,10 @@ function renderSpeedChart(res) {
 let _anAiHistory = [];
 let _anAiDataContext = ''; // เก็บ raw data ไว้ inject ใน follow-up ด้วย
 async function loadAIInsight() {
+  if (!_loadPerms().aiInsight) {
+    document.getElementById('an-ai-insight').innerHTML = '<span class="text-muted small"><i class="bi bi-lock me-1"></i>AI Insight ถูกปิดอยู่ — เปิดได้ที่ปุ่ม 🛡 Admin ใน Navbar</span>';
+    return;
+  }
   const sc = document.getElementById('an-storeCode').value.trim();
   if (!sc) return;
   const el = document.getElementById('an-ai-insight');
@@ -4582,7 +5064,7 @@ async function sendAIFollowup() {
 </style>
 
 <!-- Floating Action Button -->
-<button id="ai-fab" onclick="aiToggle()" title="ถามน้องบอท AI">
+<button id="ai-fab" onclick="aiToggle()" title="ถามน้องบอท AI" style="display:none">
   🤖
   <span class="ai-fab-badge" id="ai-fab-badge"></span>
 </button>
@@ -4662,6 +5144,7 @@ const aiState = {
 };
 
 function aiToggle() {
+  if (!_loadPerms().aiChat) return;
   aiState.open = !aiState.open;
   document.getElementById('ai-chat-window').classList.toggle('open', aiState.open);
   if (aiState.open) {

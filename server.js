@@ -23,8 +23,6 @@ app.use('/api', require('./routes/zones'));
 app.use('/api', require('./routes/tiktok'));
 app.use('/api/ai', require('./routes/ai'));
 
-const { startSyncScheduler } = require('./sync/sheetsSync');
-startSyncScheduler();
 
 app.listen(PORT, () => {
   console.log(`Dashboard running at http://localhost:${PORT}`);

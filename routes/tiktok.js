@@ -32,7 +32,8 @@ router.get('/tiktok/live', async (req, res) => {
       .find(riderQuery)
       .project({
         userId: 1, firstname: 1, lastname: 1, phone: 1,
-        status: 1, location: 1, locationDetail: 1, breakAt: 1
+        status: 1, location: 1, locationDetail: 1, breakAt: 1,
+        locationUpdatedAt: 1, updatedAt: 1
       })
       .toArray();
 
@@ -68,12 +69,14 @@ router.get('/tiktok/live', async (req, res) => {
       const zones = (staff.locationDetail?.stores || []).map(s => s.name).filter(Boolean);
       return {
         userId: uid,
+        firstname: staff.firstname || '',
         name: `${staff.firstname || ''} ${staff.lastname || ''}`.trim() || uid,
         phone: staff.phone || '',
         status: staff.status || 'UNKNOWN',
         lat, lng,
         zones,
         onBreak: !!staff.breakAt,
+        locationUpdatedAt: staff.locationUpdatedAt || staff.updatedAt || null,
         jobId: jobInfo?.jobId || null,
         jobStatus: jobInfo?.status || null
       };
@@ -281,6 +284,56 @@ router.get('/tiktok/performance', async (req, res) => {
   } catch (e) {
     console.error('[/api/tiktok/performance]', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/tiktok/config — service type config limits from lastmile.servicetypes
+router.get('/tiktok/config', async (req, res) => {
+  try {
+    const c = await getClient();
+    const doc = await c.db('lastmile').collection('servicetypes')
+      .findOne({ code: 'Tiktok_Express' }, {
+        projection: { 'metadata.config': 1, name: 1, updatedAt: 1 }
+      });
+    if (!doc) return res.status(404).json({ ok: false, error: 'servicetype Tiktok_Express not found' });
+
+    const cfg = doc.metadata?.config || {};
+    const ro  = cfg.routeOptimization || {};
+    const bat = cfg.batch || {};
+    const sla = cfg.sla || {};
+    const aa  = cfg.assignment?.autoAssign?.jobSurface || {};
+
+    res.json({
+      ok: true,
+      updatedAt: doc.updatedAt,
+      batch: {
+        batchTime:      bat.batchTime   ?? null,
+        windowOpen:     bat.batchWindowOpen   || null,
+        windowCutoff:   bat.batchWindowCutoff || null
+      },
+      routeOptimization: {
+        maximumOrders:  ro.maximumOrders  ?? null,
+        maxJobDistance: ro.maxJobDistance ?? null,
+        maxJobDuration: ro.maxJobDuration ?? null,
+        bufferTime:     ro.bufferTime     ?? null,
+        pickupAttemptNo: ro.pickupAttemptNo ?? null,
+        stopTime:       ro.stopTime       ?? null
+      },
+      sla: {
+        mode:                 sla.mode || null,
+        slaTime:              sla.slaTime ?? null,
+        fixedSlaCutoffTime:   sla.fixedSlaCutoffTime || null,
+        fixedSlaBeforeCutoff: sla.fixedSlaBeforeCutoff || null,
+        fixedSlaAfterCutoff:  sla.fixedSlaAfterCutoff || null
+      },
+      autoAssign: {
+        duration: aa.duration ?? null,
+        radius:   aa.radius   ?? null
+      }
+    });
+  } catch (e) {
+    console.error('[/api/tiktok/config]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

@@ -810,6 +810,17 @@
             </select>
             <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="debounceSearch('jobs', this.value)">
           </div>
+          <!-- TikTok service config info bar -->
+          <div id="tiktok-config-bar" style="background:rgba(254,44,85,0.06);border:1px solid rgba(254,44,85,0.18);border-radius:6px;padding:5px 10px;margin-bottom:6px;font-size:.72rem;color:#475569;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <span style="color:#fe2c55;font-weight:700;margin-right:2px;">⚙ Config</span>
+            <span id="cfg-batch">…</span>
+            <span style="color:#cbd5e1;">|</span>
+            <span id="cfg-ro">…</span>
+            <span style="color:#cbd5e1;">|</span>
+            <span id="cfg-sla">…</span>
+            <span style="color:#cbd5e1;">|</span>
+            <span id="cfg-aa">…</span>
+          </div>
           <div id="loading-jobs" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-jobs" class="alert alert-danger py-1 d-none small mb-2"></div>
           <div id="jobs-dash" class="mb-2 d-flex flex-wrap gap-1" style="min-height:24px;"></div>
@@ -1529,6 +1540,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modal = document.getElementById('adminModal');
   if (modal) modal.addEventListener('show.bs.modal', initAdminModal);
   initZoneSelector();
+  fetchTiktokConfig();
 });
 
 // Compat stub so old code that calls these doesn't break
@@ -3892,6 +3904,32 @@ function setRpView(v) {
   renderRiderPerfTable();
 }
 
+async function fetchTiktokConfig() {
+  try {
+    const r = await fetch(`${API_BASE}/api/tiktok/config`);
+    const j = await r.json();
+    if (!j.ok) return;
+
+    const msToMin = ms => ms != null ? Math.round(ms / 60000) + ' min' : '–';
+    const mToKm  = m  => m  != null ? (m / 1000).toFixed(0) + ' km'  : '–';
+
+    const bat = j.batch || {};
+    const ro  = j.routeOptimization || {};
+    const sla = j.sla || {};
+    const aa  = j.autoAssign || {};
+
+    const el = id => document.getElementById(id);
+    if (el('cfg-batch')) el('cfg-batch').innerHTML =
+      `<b>Batch:</b> ${bat.batchTime ?? '–'} min | ช่วงเวลา ${bat.windowOpen || '–'} – ${bat.windowCutoff || '–'}`;
+    if (el('cfg-ro')) el('cfg-ro').innerHTML =
+      `<b>Max orders/job:</b> ${ro.maximumOrders ?? '–'} | Max dist: ${mToKm(ro.maxJobDistance)} | Buffer: ${msToMin(ro.bufferTime)}`;
+    if (el('cfg-sla')) el('cfg-sla').innerHTML =
+      `<b>SLA:</b> ${msToMin(sla.slaTime)} | Cutoff ${sla.fixedSlaCutoffTime || '–'} → ก่อน ${sla.fixedSlaBeforeCutoff || '–'} / หลัง ${sla.fixedSlaAfterCutoff || '–'}`;
+    if (el('cfg-aa')) el('cfg-aa').innerHTML =
+      `<b>Auto-assign:</b> timeout ${msToMin(aa.duration)} | radius ${mToKm(aa.radius)}`;
+  } catch (_) {}
+}
+
 async function fetchRiderPerf(btn) {
   applyCooldown(btn);
   const { from, to } = getInputs();
@@ -4538,16 +4576,20 @@ function getStatusDotColor(r) {
   return r.eligible ? '#22c55e' : '#facc15';
 }
 
-function makeRiderIcon(storeColor, dotColor) {
+function makeRiderIcon(storeColor, dotColor, label) {
+  const labelHtml = label
+    ? `<div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(15,15,15,0.72);color:#fff;font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;pointer-events:none;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${label}</div>`
+    : '';
   return L.divIcon({
     className: '',
-    html: `<div style="position:relative;width:32px;height:32px;">
+    html: `<div style="position:relative;width:32px;height:${label ? 52 : 32}px;">
       <div style="width:32px;height:32px;border-radius:50%;background:${storeColor};border:2.5px solid rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 2px 6px rgba(0,0,0,0.35);line-height:1;">&#x1F3CD;</div>
       <div style="position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:${dotColor};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>
+      ${labelHtml}
     </div>`,
-    iconSize: [32, 32],
+    iconSize: [32, label ? 52 : 32],
     iconAnchor: [16, 16],
-    popupAnchor: [0, -16]
+    popupAnchor: [0, -20]
   });
 }
 
@@ -4631,14 +4673,20 @@ async function fetchLiveMap() {
         : '';
       const statusColor = rider.status === 'ONLINE' ? '#16a34a' : '#94a3b8';
       const breakBadge = rider.onBreak ? '<span style="font-size:.7rem;color:#f59e0b;"> ☕ On Break</span>' : '';
+      const gpsTime = rider.locationUpdatedAt
+        ? new Date(rider.locationUpdatedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Bangkok' })
+        : null;
+      const gpsLine = gpsTime ? `<br><small style="color:#64748b;">📍 GPS อัพเดต: ${gpsTime}</small>` : '';
+      const label = rider.firstname || rider.name.split(' ')[0] || '';
 
-      L.marker([rider.lat, rider.lng], { icon: makeRiderIcon(sc, dc) }).addTo(liveMap)
-        .bindTooltip(`<b>${rider.name}</b><br><small>${rider.status}${rider.jobStatus ? ' · ' + rider.jobStatus : ''}</small>`, { permanent: false, offset: [0, -16] })
+      L.marker([rider.lat, rider.lng], { icon: makeRiderIcon(sc, dc, label) }).addTo(liveMap)
+        .bindTooltip(`<b>${label}</b>${gpsTime ? `<br><span style="font-size:.75rem;color:#94a3b8;">GPS ${gpsTime}</span>` : ''}<br><small>${rider.status}${rider.jobStatus ? ' · ' + rider.jobStatus : ''}</small>`, { permanent: false, offset: [0, -20] })
         .bindPopup(`<div style="min-width:190px;line-height:1.7;">
           <b>${rider.name}</b>${breakBadge}<br>
           <small>📞 ${rider.phone || '–'}</small><br>
           <small style="color:${statusColor};">● ${rider.status}</small><br>
           <small style="color:#64748b;">Zones: ${(rider.zones || []).join(', ') || '–'}</small>
+          ${gpsLine}
           ${jobLine}
         </div>`);
     });

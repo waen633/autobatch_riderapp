@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lotus Auto-Batching Dashboard</title>
+  <title>TikTok MVP</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -520,7 +520,7 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-custom py-2">
   <div class="container-fluid">
-    <span class="navbar-brand navbar-brand-text"><i class="bi bi-speedometer2 me-2 text-success"></i><span data-i18n="navTitle">Lotus Auto-Batching Dashboard</span></span>
+    <span class="navbar-brand navbar-brand-text"><i class="bi bi-lightning-charge-fill me-2" style="color:#fe2c55;"></i><span data-i18n="navTitle">TikTok MVP</span></span>
     <div class="d-flex align-items-center gap-3">
       <span class="text-muted fw-medium" id="last-updated" style="font-size: 0.8rem;"></span>
       <button class="btn btn-outline-secondary btn-sm" onclick="resetLayout()" title="Reset Layout"><i class="bi bi-grid-3x3-gap me-1"></i>Layout</button>
@@ -554,20 +554,21 @@
     <div class="card-body py-2">
       <div class="row g-2 align-items-end">
         <div class="col-auto">
-          <label class="form-label mb-1 fw-semibold" data-i18n="storeCode">Store Code</label>
-          <input type="text" class="form-control form-control-sm" id="storeCode" value="1104" placeholder="1104,6304,5022" style="width:160px" list="storeCodeHistory">
-          <datalist id="storeCodeHistory"></datalist>
-          <div class="form-text mt-0" style="font-size:.7rem;" data-i18n="storeCodeHint">หลายสาขาคั่นด้วย ,</div>
-        </div>
-        <div class="col-auto">
-          <label class="form-label mb-1 fw-semibold">Zones</label>
-          <div style="position:relative; width:200px;">
-            <input type="text" class="form-control form-control-sm" id="zoneSearch" placeholder="Search zones..." style="width:200px">
-            <div id="zoneDropdown" class="zone-dropdown" style="display:none;">
-              <div id="zoneList" style="max-height:250px; overflow-y:auto;"></div>
+          <label class="form-label mb-1 fw-semibold">Zone</label>
+          <div style="position:relative; width:230px;">
+            <div style="position:relative;">
+              <i class="bi bi-search" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.8rem;pointer-events:none;"></i>
+              <input type="text" class="form-control form-control-sm ps-4" id="zoneSearch" placeholder="พิมพ์เพื่อค้นหา zone..." style="width:230px;">
+            </div>
+            <div id="zoneDropdown" class="zone-dropdown" style="display:none; width:300px;">
+              <div id="zoneDropdownHeader" style="padding:.4rem .75rem; border-bottom:1px solid #e2e8f0; font-size:.75rem; color:#64748b; display:flex; justify-content:space-between; align-items:center;">
+                <span id="zoneCountLabel">Loading...</span>
+                <button onclick="clearAllZones()" style="background:none;border:none;color:#ef4444;font-size:.72rem;cursor:pointer;padding:0;">ล้างทั้งหมด</button>
+              </div>
+              <div id="zoneList" style="max-height:280px; overflow-y:auto;"></div>
             </div>
           </div>
-          <div id="zoneSelected" style="font-size:.7rem; margin-top:.3rem;"></div>
+          <div id="zoneSelected" style="font-size:.7rem; margin-top:.3rem; max-width:400px; flex-wrap:wrap; display:flex; gap:.2rem;"></div>
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="fromLabel">From</label>
@@ -1558,85 +1559,105 @@ async function initZoneSelector() {
   const dropdown = document.getElementById('zoneDropdown');
   if (!searchInput) return;
 
-  // Fetch zones from API
+  // Loading state
+  searchInput.placeholder = 'กำลังโหลด zones...';
+  searchInput.disabled = true;
+
   try {
     const r = await fetch(`${API_BASE}/api/zones`);
     if (!r.ok) throw new Error('Failed to fetch zones');
     const j = await r.json();
     allZones = j.data || [];
     renderZoneList(allZones);
+    searchInput.placeholder = `พิมพ์เพื่อค้นหา zone... (${allZones.length})`;
   } catch (e) {
     console.error('Error fetching zones:', e);
+    searchInput.placeholder = 'โหลด zones ไม่ได้ — ลองใหม่';
+  } finally {
+    searchInput.disabled = false;
   }
 
-  // Search handler
   searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    const filtered = query
-      ? allZones.filter(z => z.name.toLowerCase().includes(query) || z.code?.toLowerCase().includes(query))
+    const q = e.target.value.toLowerCase();
+    const filtered = q
+      ? allZones.filter(z => z.name.toLowerCase().includes(q) || (z.code || '').toLowerCase().includes(q))
       : allZones;
     renderZoneList(filtered);
-  });
-
-  // Show dropdown on focus
-  searchInput.addEventListener('focus', () => {
     dropdown.style.display = 'block';
   });
 
-  // Close dropdown when clicking outside
+  searchInput.addEventListener('focus', () => {
+    renderZoneList(allZones);
+    dropdown.style.display = 'block';
+  });
+
   document.addEventListener('click', (e) => {
-    if (e.target !== searchInput && !dropdown.contains(e.target)) {
+    const wrapper = searchInput.closest('.col-auto');
+    if (wrapper && !wrapper.contains(e.target)) {
       dropdown.style.display = 'none';
+      searchInput.value = '';
     }
   });
 }
 
 function renderZoneList(zones) {
   const zoneList = document.getElementById('zoneList');
-  zoneList.innerHTML = zones.map(zone => `
-    <div class="zone-item ${selectedZones.find(z => z.id === zone.id) ? 'selected' : ''}">
-      <input
-        type="checkbox"
-        id="zone-${zone.id}"
-        ${selectedZones.find(z => z.id === zone.id) ? 'checked' : ''}
-        onchange="toggleZone('${zone.id}', '${zone.name}', this.checked)">
-      <label for="zone-${zone.id}" style="margin: 0; flex: 1; cursor: pointer;">
-        <strong>${zone.name}</strong>
-        ${zone.code ? `<br><small style="color:#94a3b8;">${zone.code}</small>` : ''}
-      </label>
-    </div>
-  `).join('');
-}
+  const countLabel = document.getElementById('zoneCountLabel');
+  if (countLabel) countLabel.textContent = `${zones.length} zone${zones.length !== 1 ? 's' : ''}`;
 
-function toggleZone(id, name, checked) {
-  const zoneObj = allZones.find(z => z.id === id);
-  if (!zoneObj) return;
-
-  if (checked) {
-    if (!selectedZones.find(z => z.id === id)) {
-      selectedZones.push(zoneObj);
-    }
-  } else {
-    selectedZones = selectedZones.filter(z => z.id !== id);
+  if (!zones.length) {
+    zoneList.innerHTML = '<div style="padding:.75rem;color:#94a3b8;font-size:.82rem;text-align:center;">ไม่พบ zone</div>';
+    return;
   }
 
+  zoneList.innerHTML = zones.map(zone => {
+    const sel = !!selectedZones.find(z => z.id === zone.id);
+    const safeId = zone.id.replace(/[^a-z0-9]/gi, '');
+    return `<div class="zone-item${sel ? ' selected' : ''}" onclick="toggleZone('${zone.id}')">
+      <input type="checkbox" id="zchk-${safeId}" ${sel ? 'checked' : ''} onclick="event.stopPropagation();toggleZone('${zone.id}')">
+      <label for="zchk-${safeId}" style="margin:0;flex:1;cursor:pointer;line-height:1.35;">
+        ${zone.name}
+        ${zone.businessUnit ? `<span style="font-size:.68rem;color:#0ea5e9;margin-left:.35rem;">${zone.businessUnit}</span>` : ''}
+      </label>
+    </div>`;
+  }).join('');
+}
+
+function toggleZone(id) {
+  const zoneObj = allZones.find(z => z.id === id);
+  if (!zoneObj) return;
+  const idx = selectedZones.findIndex(z => z.id === id);
+  if (idx >= 0) selectedZones.splice(idx, 1);
+  else selectedZones.push(zoneObj);
+  // re-render current visible list
+  const q = document.getElementById('zoneSearch')?.value.toLowerCase() || '';
+  const filtered = q ? allZones.filter(z => z.name.toLowerCase().includes(q)) : allZones;
+  renderZoneList(filtered);
+  updateZoneDisplay();
+}
+
+function clearAllZones() {
+  selectedZones = [];
+  renderZoneList(allZones);
   updateZoneDisplay();
 }
 
 function updateZoneDisplay() {
   const selectedDiv = document.getElementById('zoneSelected');
   const searchInput = document.getElementById('zoneSearch');
+  if (!selectedDiv) return;
 
   if (selectedZones.length === 0) {
     selectedDiv.innerHTML = '';
-    searchInput.placeholder = 'Search zones...';
+    if (searchInput && !searchInput.value) searchInput.placeholder = `พิมพ์เพื่อค้นหา zone... (${allZones.length})`;
     return;
   }
 
-  const badges = selectedZones.map(z => `<span class="zone-badge">${z.name}</span>`).join('');
-  selectedDiv.innerHTML = `<div style="margin-top:.3rem;">${badges}</div>`;
-  searchInput.value = '';
-  searchInput.placeholder = `${selectedZones.length} zone(s) selected`;
+  selectedDiv.innerHTML = selectedZones.map(z =>
+    `<span class="zone-badge" style="cursor:pointer;" onclick="toggleZone('${z.id}')" title="คลิกเพื่อยกเลิก">
+      ${z.name} <i class="bi bi-x"></i>
+    </span>`
+  ).join('');
 }
 
 function getSelectedZoneNames() {
@@ -1675,7 +1696,7 @@ if (window.Chart) {
 let lang = localStorage.getItem('lang') || 'th';
 const i18n = {
   th: {
-    navTitle: 'Lotus Auto-Batching Dashboard',
+    navTitle: 'TikTok MVP',
     storeCode: 'Store Code',
     storeCodeHint: 'หลายสาขาคั่นด้วย ,',
     fromLabel: 'From', toLabel: 'To', reset: 'รีเซ็ต',
@@ -1733,7 +1754,7 @@ const i18n = {
     col_checkConfirm: 'เช็ค Log', confirmFound: 'อัปเดตยืนยันแล้ว', confirmNotFound: 'ไม่พบ Log', confirmError: 'Error', confirmChecking: 'กำลังเช็ค…'
   },
   en: {
-    navTitle: 'Lotus Auto-Batching Dashboard',
+    navTitle: 'TikTok MVP',
     storeCode: 'Store Code', storeCodeHint: 'Multiple stores: separate by ,',
     fromLabel: 'From', toLabel: 'To', reset: 'Reset',
     today: 'Today', day3: '3 Days', day7: '7 Days',
@@ -2515,11 +2536,10 @@ function renderInputHistory(key) {
 }
 
 function getInputs() {
-  const sc = document.getElementById('storeCode').value.trim();
-  saveInputHistory('storeCode', sc);
   const from = new Date(document.getElementById('fromDate').value).toISOString();
   const to   = new Date(document.getElementById('toDate').value).toISOString();
-  return { storeCode: sc, from, to };
+  const zoneName = getSelectedZoneNames().join(',');
+  return { storeCode: '', zoneName, from, to };
 }
 
 // ─── SORT & FILTER ────────────────────────────────────────────────────────────
@@ -3595,10 +3615,11 @@ function applyCooldown(btn) {
 
 async function fetchPending(btn) {
   applyCooldown(btn);
-  const { storeCode } = getInputs();
+  const { zoneName } = getInputs();
   setLoading('pending', true);
   try {
-    const r = await fetch(`${API_BASE}/api/pending?storeCode=${encodeURIComponent(storeCode)}`);
+    const url = `${API_BASE}/api/tiktok/pending${zoneName ? '?zoneName=' + encodeURIComponent(zoneName) : ''}`;
+    const r = await fetch(url);
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-pending').textContent = j.count;
     state.pending.data = j.data; state.pending.page = 1;
@@ -3622,14 +3643,25 @@ async function fetchPending(btn) {
 
 async function fetchRiders(btn) {
   applyCooldown(btn);
-  const { storeCode } = getInputs();
+  const { zoneName } = getInputs();
   setLoading('riders', true);
   try {
-    const r = await fetch(`${API_BASE}/api/riders?storeCode=${encodeURIComponent(storeCode)}`);
+    const url = `${API_BASE}/api/tiktok/riders${zoneName ? '?zoneName=' + encodeURIComponent(zoneName) : ''}`;
+    const r = await fetch(url);
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
-    state.riders.data = j.data; state.riders.page = 1;
+    // Normalise tiktok rider fields to match existing column renderer expectations
+    state.riders.data = (j.data || []).map(d => ({
+      ...d,
+      queue: d.status === 'ONLINE' ? 1 : 'not_in_pool',
+      storeCode: (d.zones || []).join(', '),
+      ready_for_auto_assign: d.status === 'ONLINE' && !d.onBreak && !d.jobId,
+      not_banned: true, staff_online: d.status === 'ONLINE',
+      no_active_job: !d.jobId, not_on_break: !d.onBreak,
+      job_on_hand_id: d.jobId, job_on_hand_status: d.jobStatus
+    }));
+    state.riders.page = 1;
     document.getElementById('count-riders').textContent = j.count;
-    const readyCount = (j.data || []).filter(r => r.ready_for_auto_assign && r.queue !== 'not_in_pool').length;
+    const readyCount = state.riders.data.filter(r => r.ready_for_auto_assign).length;
     document.getElementById('ready-count').textContent = readyCount;
     updateRidersFilterOptions();
     renderSection('riders'); markUpdated();
@@ -3638,10 +3670,12 @@ async function fetchRiders(btn) {
 
 async function fetchJobs(btn) {
   applyCooldown(btn);
-  const { storeCode, from, to } = getInputs();
+  const { from, to, zoneName } = getInputs();
   setLoading('jobs', true);
   try {
-    const r = await fetch(`${API_BASE}/api/jobs?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    const params = new URLSearchParams({ from, to });
+    if (zoneName) params.set('zoneName', zoneName);
+    const r = await fetch(`${API_BASE}/api/tiktok/jobs?${params}`);
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-jobs').textContent = j.count;
     state.jobs.data = j.data; state.jobs.page = 1;
@@ -3860,13 +3894,13 @@ function setRpView(v) {
 
 async function fetchRiderPerf(btn) {
   applyCooldown(btn);
-  const { storeCode, from, to } = getInputs();
+  const { from, to } = getInputs();
   const loadEl = document.getElementById('loading-riderperf');
   const errEl  = document.getElementById('error-riderperf');
   loadEl.classList.remove('d-none');
   errEl.classList.add('d-none');
   try {
-    const r = await fetch(`${API_BASE}/api/rider-performance?storeCode=${encodeURIComponent(storeCode)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    const r = await fetch(`${API_BASE}/api/tiktok/performance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
     document.getElementById('count-riderperf').textContent = j.count;
     state.riderperf.data = j.data; state.riderperf.page = 1; state.riderperf.search = '';
@@ -4527,21 +4561,38 @@ function makeStoreIcon(storeColor) {
   });
 }
 
+const ZONE_PALETTE = ['#0ea5e9','#a855f7','#f59e0b','#10b981','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899'];
+let _zoneColorMap = {};
+
+function getZoneColor(name) {
+  if (!_zoneColorMap[name]) {
+    const idx = Object.keys(_zoneColorMap).length;
+    _zoneColorMap[name] = ZONE_PALETTE[idx % ZONE_PALETTE.length];
+  }
+  return _zoneColorMap[name];
+}
+
+function getTiktokDotColor(r) {
+  if (r.onBreak) return '#f59e0b';
+  if (r.jobStatus === 'job_delivering') return '#3b82f6';
+  if (['job_picking_up','job_picked_up','job_accepted','job_assigned'].includes(r.jobStatus)) return '#f97316';
+  if (r.status === 'ONLINE') return '#22c55e';
+  return '#94a3b8';
+}
+
 async function fetchLiveMap() {
-  const { storeCode } = getInputs();
+  const zoneName = getSelectedZoneNames().join(',');
   const loadEl = document.getElementById('loading-map');
   const errEl  = document.getElementById('error-map');
   loadEl.classList.remove('d-none');
   errEl.classList.add('d-none');
   try {
-    const r = await fetch(`${API_BASE}/api/live?storeCode=${encodeURIComponent(storeCode)}`);
+    const url = `${API_BASE}/api/tiktok/live${zoneName ? '?zoneName=' + encodeURIComponent(zoneName) : ''}`;
+    const r = await fetch(url);
     const j = await r.json();
-    if (!r.ok) throw new Error(j.error);
+    if (!r.ok) throw new Error(j.error || j.message);
 
-    // Reset store colors for fresh assignment each fetch
-    _storeColorMap = {}; _paletteIdx = 0;
-    (j.stores || []).forEach(s => getStoreColor(s.storeCode));
-    (j.riders || []).forEach(r => getStoreColor(r.storeCode));
+    _zoneColorMap = {};
 
     // Init map
     if (liveMap) { liveMap.remove(); liveMap = null; }
@@ -4550,57 +4601,63 @@ async function fetchLiveMap() {
     liveMap = L.map('live-map', { zoomControl: true, attributionControl: false });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(liveMap);
 
-    const bounds = [];
+    const totalBounds = L.latLngBounds();
 
-    // Store markers
-    (j.stores || []).forEach(s => {
-      if (s.lat == null) return;
-      bounds.push([s.lat, s.lng]);
-      const sc = getStoreColor(s.storeCode);
-      L.circle([s.lat, s.lng], {
-        radius: s.radius || 100,
-        color: sc, fillColor: sc, fillOpacity: 0.1, weight: 2, dashArray: '5'
-      }).addTo(liveMap);
-      L.marker([s.lat, s.lng], { icon: makeStoreIcon(sc) }).addTo(liveMap)
-        .bindTooltip(`<b>${s.storeCode}</b> ${s.name || ''}`, { permanent: false, offset: [0, -18] })
-        .bindPopup(`<b>${s.storeCode}</b><br>${s.name || ''}<br><small>Radius: ${s.radius}m</small>`);
+    // ── Zone polygons ──────────────────────────────────────────────
+    (j.zones || []).forEach(z => {
+      if (!z.geometry) return;
+      const color = getZoneColor(z.name);
+      try {
+        const layer = L.geoJSON({ type: 'Feature', geometry: z.geometry }, {
+          style: { color, weight: 2.5, fillColor: color, fillOpacity: 0.07, dashArray: '6,4' }
+        }).addTo(liveMap);
+        layer.bindTooltip(`<b>${z.name}</b>`, { permanent: false, sticky: true });
+        const b = layer.getBounds();
+        if (b.isValid()) totalBounds.extend(b);
+      } catch (_) {}
     });
 
-    // Rider markers
-    (j.riders || []).forEach(r => {
-      if (r.lat == null) return;
-      bounds.push([r.lat, r.lng]);
-      const sc = getStoreColor(r.storeCode);
-      const dc = getStatusDotColor(r);
-      const statusLine = r.jobId
-        ? `<br><span style="font-size:.78rem;"><b>Job:</b> <code>${r.jobId}</code><br><b>Status:</b> ${r.jobStatus}</span>`
+    // ── Rider markers ──────────────────────────────────────────────
+    (j.riders || []).forEach(rider => {
+      if (rider.lat == null) return;
+      totalBounds.extend([rider.lat, rider.lng]);
+      // colour by first matching zone
+      const riderZone = (rider.zones || []).find(zn => _zoneColorMap[zn]) || (rider.zones || [])[0] || '';
+      const sc = riderZone ? getZoneColor(riderZone) : '#64748b';
+      const dc = getTiktokDotColor(rider);
+
+      const jobLine = rider.jobId
+        ? `<br><small><b>Job:</b> <code>${rider.jobId}</code> — ${rider.jobStatus}</small>`
         : '';
-      const poolLine = r.inPool
-        ? `<span style="color:#16a34a;font-size:.78rem;">&#x25CF; In Pool${r.eligible ? ' &#x2713; Ready' : ''}</span>`
-        : `<span style="color:#94a3b8;font-size:.78rem;">&#x25CB; Not in Pool</span>`;
-      L.marker([r.lat, r.lng], { icon: makeRiderIcon(sc, dc) }).addTo(liveMap)
-        .bindTooltip(`<b>${r.name}</b><br>${r.jobStatus || (r.inPool ? 'In Pool' : 'No Pool')}`, { permanent: false, offset: [0, -16] })
-        .bindPopup(`<div style="min-width:175px;line-height:1.65;">
-          <b>${r.name}</b><br>
-          <span style="font-size:.78rem;">&#x1F4DE; ${r.phone || '&ndash;'}</span><br>
-          ${poolLine}${statusLine}
+      const statusColor = rider.status === 'ONLINE' ? '#16a34a' : '#94a3b8';
+      const breakBadge = rider.onBreak ? '<span style="font-size:.7rem;color:#f59e0b;"> ☕ On Break</span>' : '';
+
+      L.marker([rider.lat, rider.lng], { icon: makeRiderIcon(sc, dc) }).addTo(liveMap)
+        .bindTooltip(`<b>${rider.name}</b><br><small>${rider.status}${rider.jobStatus ? ' · ' + rider.jobStatus : ''}</small>`, { permanent: false, offset: [0, -16] })
+        .bindPopup(`<div style="min-width:190px;line-height:1.7;">
+          <b>${rider.name}</b>${breakBadge}<br>
+          <small>📞 ${rider.phone || '–'}</small><br>
+          <small style="color:${statusColor};">● ${rider.status}</small><br>
+          <small style="color:#64748b;">Zones: ${(rider.zones || []).join(', ') || '–'}</small>
+          ${jobLine}
         </div>`);
     });
 
-    if (bounds.length) liveMap.fitBounds(bounds, { padding: [40, 40] });
+    if (totalBounds.isValid()) liveMap.fitBounds(totalBounds, { padding: [30, 30] });
+    else liveMap.setView([13.75, 100.52], 11); // Bangkok fallback
 
-    // Update dynamic store color legend
+    // Update legend with zone colours
     const legendEl = document.getElementById('store-legend');
     if (legendEl) {
-      const entries = Object.entries(_storeColorMap);
+      const entries = Object.entries(_zoneColorMap);
       legendEl.innerHTML = entries.length
-        ? '<b style="color:#475569;">Stores:</b> ' + entries.map(([code, color]) =>
-            `<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${color};vertical-align:middle;margin-right:2px;border:1px solid rgba(0,0,0,0.15);"></span>${code}</span>`
+        ? '<b style="color:#475569;">Zones:</b> ' + entries.map(([name, color]) =>
+            `<span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${color};vertical-align:middle;margin-right:3px;border:1px solid rgba(0,0,0,0.15);"></span>${name.replace('zone_district_','')}</span>`
           ).join('')
         : '';
     }
 
-    document.getElementById('count-map').textContent = j.riders?.length ?? 0;
+    document.getElementById('count-map').textContent = j.riderCount ?? j.riders?.length ?? 0;
     markUpdated();
   } catch(e) {
     errEl.textContent = `⚠ ${e.message}`;

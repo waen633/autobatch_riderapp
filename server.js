@@ -20,6 +20,7 @@ app.use('/api', require('./routes/diagnostics'));
 app.use('/api', require('./routes/analytics'));
 app.use('/api', require('./routes/storeConfig'));
 app.use('/api', require('./routes/zones'));
+app.use('/api', require('./routes/tiktok'));
 app.use('/api/ai', require('./routes/ai'));
 
 const { startSyncScheduler } = require('./sync/sheetsSync');

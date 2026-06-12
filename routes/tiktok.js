@@ -3,26 +3,6 @@ const { getClient } = require('../lib/db');
 
 const router = express.Router();
 
-// Temporary probe to find which collections exist
-router.get('/tiktok/probe', async (req, res) => {
-  try {
-    const c = await getClient();
-    const results = {};
-    const dbNames = ['4pl-fleet', '4pl-oms', 'lastmile'];
-    for (const db of dbNames) {
-      try {
-        const cols = await c.db(db).listCollections().toArray();
-        results[db] = cols.map(c => c.name);
-      } catch (e) {
-        results[db] = `error: ${e.message}`;
-      }
-    }
-    res.json(results);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // GET /api/tiktok/live?zoneName=zone_district_prawet,zone_district_bang_kapi
 router.get('/tiktok/live', async (req, res) => {
   try {

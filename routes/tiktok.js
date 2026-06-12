@@ -302,22 +302,30 @@ router.get('/tiktok/config', async (req, res) => {
     const bat = cfg.batch || {};
     const sla = cfg.sla || {};
     const aa  = cfg.assignment?.autoAssign?.jobSurface || {};
+    const lc  = ro.fleet?.loadCapacity || {};
 
     res.json({
       ok: true,
       updatedAt: doc.updatedAt,
       batch: {
-        batchTime:      bat.batchTime   ?? null,
-        windowOpen:     bat.batchWindowOpen   || null,
-        windowCutoff:   bat.batchWindowCutoff || null
+        batchTime:    bat.batchTime       ?? null,
+        windowOpen:   bat.batchWindowOpen  || null,
+        windowCutoff: bat.batchWindowCutoff || null
       },
       routeOptimization: {
-        maximumOrders:  ro.maximumOrders  ?? null,
-        maxJobDistance: ro.maxJobDistance ?? null,
-        maxJobDuration: ro.maxJobDuration ?? null,
-        bufferTime:     ro.bufferTime     ?? null,
+        maximumOrders:   ro.maximumOrders   ?? null,
+        maxJobDistance:  ro.maxJobDistance  ?? null,
+        maxJobDuration:  ro.maxJobDuration  ?? null,
+        bufferTime:      ro.bufferTime      ?? null,
         pickupAttemptNo: ro.pickupAttemptNo ?? null,
-        stopTime:       ro.stopTime       ?? null
+        stopTime:        ro.stopTime        ?? null,
+        slaTime:         sla.slaTime        ?? null,
+        loadCapacity: {
+          width:  lc.width  ?? null,
+          height: lc.height ?? null,
+          length: lc.length ?? null,
+          weight: lc.weight ?? null
+        }
       },
       sla: {
         mode:                 sla.mode || null,

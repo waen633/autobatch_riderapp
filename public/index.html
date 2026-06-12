@@ -1549,6 +1549,7 @@ function toggleAdminMode() {}
 
 // ─── STORE CONFIG CACHE ───────────────────────────────────────────────────────
 const storeConfigCache = {};
+let _tiktokCfg = null; // cached TikTok service config for job popup
 
 async function fetchStoreConfig(storeCode) {
   if (storeConfigCache[storeCode]) return storeConfigCache[storeCode];
@@ -2753,7 +2754,7 @@ function _buildCfgPanel(rowData, cfg) {
   const infoChips = [
     bt.batchTime  != null ? chip('Batch',       bt.batchTime + ' min') : '',
     aa.duration   != null ? chip('Auto-assign', Math.round(aa.duration/60000) + ' min') : '',
-    aa.radius     != null ? chip('Radius',      aa.radius + ' m') : '',
+    aa.radius     != null ? chip('Radius',      aa.radius >= 1000 ? (aa.radius/1000).toFixed(0)+' km' : aa.radius+' m') : '',
     ro.stopTime   != null ? chip('Stop/Drop',   Math.round(ro.stopTime/60000) + ' min') : '',
     ro.bufferTime != null ? chip('Buffer',       Math.round(ro.bufferTime/60000) + ' min') : '',
     ro.slaTime    != null ? chip('SLA',         Math.round(ro.slaTime/60000) + ' min') : '',
@@ -2765,7 +2766,7 @@ function _buildCfgPanel(rowData, cfg) {
     <div class="cfg-panel-header">
       <i class="bi bi-bar-chart-steps me-1"></i> Job vs Store Limits
       <span style="font-size:.7rem;color:#64748b;font-weight:400;margin-left:4px;">— ทำไมถึงต้องแยก Job?</span>
-      <span class="cfg-store-tag">${cfg.name || rowData.storeCode} · ${rowData.storeCode}</span>
+      <span class="cfg-store-tag">${(() => { const sc = rowData.storeCode; const isId = /^[0-9a-f]{24}$/i.test(sc); return (cfg.name || sc) + (!isId && sc && sc !== '–' && sc !== cfg.name ? ' · ' + sc : ''); })()}</span>
     </div>
     <div class="cfg-load-row">${loadCells}</div>
     <div class="cfg-info-row">${infoChips}</div>
@@ -2830,7 +2831,7 @@ function openJobPopup(tr, tbl, pageIdx) {
         <div class="job-popup-rider">${rowData.riderName || '(ยังไม่มีไรเดอร์)'}</div>
         <div style="margin-top:.35rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
           <span style="font-size:.65rem;padding:.15rem .55rem;border-radius:20px;background:${sbg};color:${stxt};font-weight:700;">${rowData.status||''}</span>
-          <span style="font-size:.65rem;color:rgba(255,255,255,.65);">${rowData.storeCode} · ${(rowData.orderIds||[]).length} orders</span>
+          <span style="font-size:.65rem;color:rgba(255,255,255,.65);">${/^[0-9a-f]{24}$/i.test(rowData.storeCode) ? '' : (rowData.storeCode && rowData.storeCode !== '–' ? rowData.storeCode + ' · ' : '')}${(rowData.orderIds||[]).length} orders</span>
         </div>
       </div>
       <button class="job-popup-close" onclick="closeJobPopup('${jobId}')"><i class="bi bi-x-lg"></i></button>
@@ -2849,7 +2850,11 @@ function openJobPopup(tr, tbl, pageIdx) {
   _jobPopups[jobId] = { el: popup, rowEl: tr };
   _makePopupDraggable(popup);
 
-  if (rowData.storeCode) {
+  // TikTok mode: use cached tiktok service config
+  if (_tiktokCfg) {
+    const slot = document.getElementById(cfgSlotId);
+    if (slot) slot.innerHTML = _buildCfgPanel(rowData, _tiktokCfg);
+  } else if (rowData.storeCode && rowData.storeCode !== '–') {
     fetchStoreConfig(rowData.storeCode).then(cfg => {
       const slot = document.getElementById(cfgSlotId);
       if (!slot) return;
@@ -3918,6 +3923,16 @@ async function fetchTiktokConfig() {
     const sla = j.sla || {};
     const aa  = j.autoAssign || {};
 
+    // Cache in shape _buildCfgPanel expects
+    _tiktokCfg = {
+      name: 'Tiktok_Express',
+      code: 'Tiktok_Express',
+      batch: bat,
+      routeOptimization: { ...ro },  // includes loadCapacity & slaTime
+      sla,
+      autoAssign: aa
+    };
+
     const el = id => document.getElementById(id);
     if (el('cfg-batch')) el('cfg-batch').innerHTML =
       `<b>Batch:</b> ${bat.batchTime ?? '–'} min | ช่วงเวลา ${bat.windowOpen || '–'} – ${bat.windowCutoff || '–'}`;
@@ -4578,7 +4593,7 @@ function getStatusDotColor(r) {
 
 function makeRiderIcon(storeColor, dotColor, label) {
   const labelHtml = label
-    ? `<div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(15,15,15,0.72);color:#fff;font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;pointer-events:none;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${label}</div>`
+    ? `<div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(15,15,15,0.75);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;pointer-events:none;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${label}</div>`
     : '';
   return L.divIcon({
     className: '',

@@ -166,6 +166,49 @@
       .card-body .row.g-2 .btn-group .btn { flex: 1; }
       #storeCode { width: 100% !important; }
 
+      .zone-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 4px;
+      }
+      .zone-item {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .zone-item:hover {
+        background-color: #f1f5f9;
+      }
+      .zone-item input[type="checkbox"] {
+        cursor: pointer;
+      }
+      .zone-item.selected {
+        background-color: #eff6ff;
+        border-left: 3px solid #0284c7;
+        padding-left: calc(0.75rem - 3px);
+      }
+      .zone-badge {
+        display: inline-block;
+        background-color: #dbeafe;
+        color: #0c4a6e;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-right: 0.3rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+
       /* Card headers: allow wrap */
       .card-header { flex-wrap: wrap !important; row-gap: .4rem; }
       .card-header > div.d-flex { flex-wrap: wrap !important; gap: .3rem !important; }
@@ -376,6 +419,100 @@
   }
   .cfg-info-chip .chip-label { color:#94a3b8; font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
   .cfg-info-chip .chip-val   { font-weight:700; color:#0f172a; }
+  /* ══════════════════════════════════════════════
+     DISPATCHER TAB STYLES
+  ══════════════════════════════════════════════ */
+  /* KPI strip */
+  .dp-kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.75rem; margin-bottom:1rem; }
+  .dp-kpi-card {
+    background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+    padding:1rem 1.25rem; display:flex; flex-direction:column; gap:.25rem;
+    box-shadow:0 2px 6px rgba(0,0,0,.04); transition:box-shadow .2s;
+  }
+  .dp-kpi-card:hover { box-shadow:0 4px 14px rgba(0,0,0,.08); }
+  .dp-kpi-icon { font-size:1.5rem; line-height:1; }
+  .dp-kpi-val  { font-size:1.8rem; font-weight:700; color:#0f172a; line-height:1.1; }
+  .dp-kpi-lbl  { font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.5px; }
+  .dp-kpi-sub  { font-size:.75rem; color:#94a3b8; margin-top:.1rem; }
+  .dp-kpi-card.danger { border-left:4px solid #ef4444; }
+  .dp-kpi-card.warn   { border-left:4px solid #f59e0b; }
+  .dp-kpi-card.ok     { border-left:4px solid #10b981; }
+  .dp-kpi-card.info   { border-left:4px solid #6366f1; }
+
+  /* Order table */
+  .dp-age-chip {
+    display:inline-flex; align-items:center; gap:.3rem;
+    padding:.2rem .5rem; border-radius:20px; font-size:.75rem; font-weight:600;
+  }
+  .dp-age-chip.fresh  { background:#dcfce7; color:#166534; }
+  .dp-age-chip.mid    { background:#fef3c7; color:#92400e; }
+  .dp-age-chip.late   { background:#fee2e2; color:#991b1b; }
+
+  .dp-phase-badge {
+    display:inline-block; padding:.2rem .55rem; border-radius:20px;
+    font-size:.7rem; font-weight:700; letter-spacing:.3px; text-transform:uppercase;
+  }
+  .dp-phase-badge.pending  { background:#ede9fe; color:#5b21b6; }
+  .dp-phase-badge.batched  { background:#dbeafe; color:#1e40af; }
+  .dp-phase-badge.assigned { background:#dcfce7; color:#166534; }
+
+  /* Rider picker modal */
+  #riderPickerModal .rider-option {
+    display:flex; align-items:center; gap:.75rem; padding:.65rem .9rem;
+    border:1px solid #e2e8f0; border-radius:8px; margin-bottom:.4rem;
+    cursor:pointer; transition:all .15s;
+  }
+  #riderPickerModal .rider-option:hover { border-color:#6366f1; background:#f5f3ff; }
+  #riderPickerModal .rider-option.selected { border-color:#6366f1; background:#ede9fe; }
+  #riderPickerModal .rider-option.ineligible { opacity:.45; cursor:not-allowed; pointer-events:none; }
+  .rider-avatar {
+    width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#8b5cf6);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:.9rem; flex-shrink:0;
+  }
+
+  /* Activity log */
+  .dp-log-item {
+    display:flex; gap:.75rem; padding:.65rem 0; border-bottom:1px solid #f1f5f9;
+    align-items:flex-start;
+  }
+  .dp-log-item:last-child { border-bottom:none; }
+  .dp-log-dot {
+    width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0;
+  }
+  .dp-log-dot.reassign { background:#6366f1; }
+  .dp-log-dot.break_start { background:#f59e0b; }
+  .dp-log-dot.break_end   { background:#10b981; }
+  .dp-log-meta { font-size:.72rem; color:#94a3b8; margin-top:.15rem; }
+
+  /* Break notification toasts */
+  #break-toast-container {
+    position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999;
+    display:flex; flex-direction:column-reverse; gap:.5rem;
+    pointer-events:none;
+  }
+  .break-toast {
+    background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12);
+    padding:.85rem 1rem; min-width:260px; max-width:320px;
+    display:flex; gap:.75rem; align-items:flex-start;
+    pointer-events:auto; border-left:4px solid #f59e0b;
+    animation: toastIn .3s cubic-bezier(.34,1.56,.64,1);
+    transition: opacity .3s, transform .3s;
+  }
+  .break-toast.break-end { border-left-color:#10b981; }
+  .break-toast.removing { opacity:0; transform:translateX(20px); }
+  @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
+  .toast-icon { font-size:1.4rem; line-height:1; flex-shrink:0; margin-top:1px; }
+  .toast-body { flex:1; }
+  .toast-title { font-size:.8rem; font-weight:700; color:#0f172a; }
+  .toast-sub   { font-size:.72rem; color:#64748b; margin-top:.1rem; }
+  .toast-close { background:none; border:none; color:#94a3b8; font-size:.9rem; cursor:pointer; padding:0; line-height:1; }
+
+  /* Enhanced perf table */
+  .perf-metric-good { color:#059669; font-weight:600; }
+  .perf-metric-warn { color:#d97706; font-weight:600; }
+  .perf-metric-bad  { color:#dc2626; font-weight:600; }
+  .perf-metric-na   { color:#94a3b8; font-size:.8rem; }
   </style>
 </head>
 <body>
@@ -388,7 +525,7 @@
       <span class="text-muted fw-medium" id="last-updated" style="font-size: 0.8rem;"></span>
       <button class="btn btn-outline-secondary btn-sm" onclick="resetLayout()" title="Reset Layout"><i class="bi bi-grid-3x3-gap me-1"></i>Layout</button>
       <a href="multi-route.html" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-map me-1"></i>Compare Routes</a>
-      <button class="btn btn-sm" id="admin-mode-btn" data-bs-toggle="modal" data-bs-target="#adminModal" title="Admin Settings">🛡 <span class="admin-label">Admin</span></button>
+      <button class="btn btn-sm d-none" id="admin-mode-btn" data-bs-toggle="modal" data-bs-target="#adminModal" title="Admin Settings">🛡 <span class="admin-label">Admin</span></button>
       <button class="btn btn-outline-secondary btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
     </div>
   </div>
@@ -399,6 +536,9 @@
   <ul class="nav nav-tabs mb-0" id="mainTabs">
     <li class="nav-item">
       <a class="nav-link active" href="#" id="tab-dashboard" onclick="switchTab('dashboard');return false;"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" id="tab-dispatcher" onclick="switchTab('dispatcher');return false;"><i class="bi bi-headset me-1"></i>Dispatcher <span id="dp-pending-badge" class="badge bg-danger ms-1" style="display:none;font-size:.65rem;"></span></a>
     </li>
     <li class="nav-item">
       <a class="nav-link" href="#" id="tab-analytics" onclick="switchTab('analytics');return false;"><i class="bi bi-bar-chart-line me-1"></i>Analytics &amp; Report</a>
@@ -418,6 +558,16 @@
           <input type="text" class="form-control form-control-sm" id="storeCode" value="1104" placeholder="1104,6304,5022" style="width:160px" list="storeCodeHistory">
           <datalist id="storeCodeHistory"></datalist>
           <div class="form-text mt-0" style="font-size:.7rem;" data-i18n="storeCodeHint">หลายสาขาคั่นด้วย ,</div>
+        </div>
+        <div class="col-auto">
+          <label class="form-label mb-1 fw-semibold">Zones</label>
+          <div style="position:relative; width:200px;">
+            <input type="text" class="form-control form-control-sm" id="zoneSearch" placeholder="Search zones..." style="width:200px">
+            <div id="zoneDropdown" class="zone-dropdown" style="display:none;">
+              <div id="zoneList" style="max-height:250px; overflow-y:auto;"></div>
+            </div>
+          </div>
+          <div id="zoneSelected" style="font-size:.7rem; margin-top:.3rem;"></div>
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="fromLabel">From</label>
@@ -910,7 +1060,7 @@
   </div>
 
   <!-- SECTION E: AI Insight Panel -->
-  <div class="card mb-3">
+  <div class="card mb-3 d-none">
     <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #10b981;">
       <span><i class="bi bi-moon-stars me-2 text-success"></i>Evening Briefing — คาดการณ์พรุ่งนี้</span>
       <button class="btn btn-outline-success btn-sm" onclick="loadAIInsight()"><i class="bi bi-arrow-repeat me-1"></i>Refresh</button>
@@ -930,6 +1080,215 @@
 
 </div>
 </div><!-- /page-analytics -->
+
+<!-- ═══════════════════════════════════════════════════════
+     DISPATCHER TAB
+     ═══════════════════════════════════════════════════════ -->
+<div id="page-dispatcher" style="display:none;">
+<div class="container-fluid px-3 py-3">
+
+  <!-- FILTER BAR -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label mb-1 fw-semibold" style="font-size:.8rem;">Store Code</label>
+          <input type="text" class="form-control form-control-sm" id="dp-storeCode" placeholder="1104,5022" style="width:200px">
+        </div>
+        <div class="col-auto">
+          <label class="form-label mb-1 fw-semibold" style="font-size:.8rem;">Dispatcher Name</label>
+          <input type="text" class="form-control form-control-sm" id="dp-dispatcherName" placeholder="ชื่อ Dispatcher" style="width:180px" value="Dispatcher">
+        </div>
+        <div class="col-auto ms-auto d-flex gap-2 align-items-end">
+          <button class="btn btn-primary btn-sm" onclick="loadDispatcher()"><i class="bi bi-arrow-repeat me-1"></i>โหลดข้อมูล</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="loadActivityLog()"><i class="bi bi-journal-text me-1"></i>Activity Log</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="dp-kpi-strip" id="dp-kpi-strip">
+    <div class="dp-kpi-card info">
+      <span class="dp-kpi-icon">📋</span>
+      <span class="dp-kpi-val" id="dp-kpi-total">—</span>
+      <span class="dp-kpi-lbl">Pending Orders</span>
+      <span class="dp-kpi-sub">รอ batch / assign</span>
+    </div>
+    <div class="dp-kpi-card warn">
+      <span class="dp-kpi-icon">⏳</span>
+      <span class="dp-kpi-val" id="dp-kpi-unassigned">—</span>
+      <span class="dp-kpi-lbl">Unassigned</span>
+      <span class="dp-kpi-sub">ยังไม่มี rider</span>
+    </div>
+    <div class="dp-kpi-card danger">
+      <span class="dp-kpi-icon">🔥</span>
+      <span class="dp-kpi-val" id="dp-kpi-atrisk">—</span>
+      <span class="dp-kpi-lbl">SLA At-Risk</span>
+      <span class="dp-kpi-sub">อายุ &gt; 45 นาที</span>
+    </div>
+    <div class="dp-kpi-card ok">
+      <span class="dp-kpi-icon">🛵</span>
+      <span class="dp-kpi-val" id="dp-kpi-eligible">—</span>
+      <span class="dp-kpi-lbl">Eligible Riders</span>
+      <span class="dp-kpi-sub">พร้อม assign</span>
+    </div>
+  </div>
+
+  <!-- ORDER LIST -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #6366f1;">
+      <span><i class="bi bi-list-ul me-2 text-indigo"></i><strong>Order List</strong> — Manual Assignment</span>
+      <div class="d-flex gap-2 align-items-center">
+        <input type="text" id="dp-search" class="form-control form-control-sm" placeholder="ค้นหา order / ลูกค้า..." style="width:220px" oninput="filterDispatchOrders()">
+        <select class="form-select form-select-sm" id="dp-phase-filter" style="width:130px" onchange="filterDispatchOrders()">
+          <option value="">ทุก Phase</option>
+          <option value="pending">Pending</option>
+          <option value="batched">Batched</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="scroll-table" style="max-height:420px;">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-dark sticky-header">
+            <tr>
+              <th>Order / Consignment</th>
+              <th>ลูกค้า</th>
+              <th>Store</th>
+              <th>Phase</th>
+              <th>เวลาสร้าง Order</th>
+              <th>SLA Due</th>
+              <th>อายุ</th>
+              <th>Rider ปัจจุบัน</th>
+              <th style="width:100px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="dp-order-tbody">
+            <tr class="empty-row"><td colspan="9" class="text-center py-3">กด "โหลดข้อมูล" เพื่อดู orders</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENHANCED RIDER PERFORMANCE -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #10b981;">
+      <span><i class="bi bi-person-lines-fill me-2 text-success"></i><strong>Rider Performance</strong> — Enhanced Metrics</span>
+      <div class="d-flex gap-2">
+        <input type="date" class="form-control form-control-sm" id="dp-perf-from" style="width:140px">
+        <input type="date" class="form-control form-control-sm" id="dp-perf-to" style="width:140px">
+        <button class="btn btn-success btn-sm" onclick="loadDispatcherPerf()"><i class="bi bi-arrow-repeat me-1"></i>โหลด</button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="scroll-table" style="max-height:360px;">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-dark sticky-header">
+            <tr>
+              <th>Rider</th>
+              <th>Store</th>
+              <th class="text-end">Total</th>
+              <th class="text-end">Completed</th>
+              <th class="text-end">Completion%</th>
+              <th class="text-end">Cancel%</th>
+              <th class="text-end">On-Time%</th>
+              <th class="text-end">Avg Dist (km)</th>
+              <th class="text-end">Total Dist (km)</th>
+              <th class="text-end">Avg Time (min)</th>
+              <th class="text-end">Break (min)</th>
+            </tr>
+          </thead>
+          <tbody id="dp-perf-tbody">
+            <tr class="empty-row"><td colspan="11" class="text-center py-3">เลือกวันที่แล้วกด "โหลด"</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BREAK HISTORY & ACTIVITY LOG -->
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #f59e0b;">
+          <span><i class="bi bi-cup-hot me-2 text-warning"></i><strong>Break Events</strong></span>
+          <select class="form-select form-select-sm" id="dp-break-days" style="width:120px;" onchange="reloadBreakEvents()">
+            <option value="1">วันนี้</option>
+            <option value="3">3 วัน</option>
+            <option value="7" selected>7 วัน</option>
+            <option value="30">30 วัน</option>
+          </select>
+        </div>
+        <div class="card-body p-0">
+          <div class="scroll-table" style="max-height:300px;">
+            <table class="table table-sm mb-0">
+              <thead class="table-dark sticky-header">
+                <tr><th>Rider</th><th>วันที่</th><th>เริ่มพัก</th><th>กลับมา</th><th>ระยะเวลา</th><th>สถานะ</th></tr>
+              </thead>
+              <tbody id="dp-break-tbody">
+                <tr class="empty-row"><td colspan="5" class="text-center py-3">โหลดข้อมูลเพื่อดู break events</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center" style="border-top:3px solid #8b5cf6;">
+          <span><i class="bi bi-clock-history me-2" style="color:#8b5cf6;"></i><strong>Activity Log</strong> — Manual Actions</span>
+          <button class="btn btn-outline-secondary btn-sm" onclick="loadActivityLog()"><i class="bi bi-arrow-repeat"></i></button>
+        </div>
+        <div class="card-body" style="max-height:300px; overflow-y:auto;" id="dp-activity-log">
+          <div class="text-muted text-center py-3" style="font-size:.85rem;">ยังไม่มี activity</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /page-dispatcher -->
+
+<!-- RIDER PICKER MODAL (Manual Reassign) -->
+<div class="modal fade" id="riderPickerModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0" style="border-radius:16px; overflow:hidden;">
+      <div class="modal-header py-3 px-4" style="background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;border:none;">
+        <div>
+          <div style="font-size:1rem;font-weight:700;">🛵 Manual Assignment</div>
+          <div id="rp-order-info" style="font-size:.78rem;opacity:.8;margin-top:2px;"></div>
+        </div>
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <!-- Reason -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.85rem;">เหตุผลในการ Assign</label>
+          <input type="text" class="form-control form-control-sm" id="rp-reason" placeholder="เช่น ลูกค้าขอ, rider เดิม unavailable...">
+        </div>
+        <!-- Rider search -->
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold" style="font-size:.85rem;">เลือก Rider</span>
+          <input type="text" class="form-control form-control-sm" id="rp-search" placeholder="ค้นหาชื่อ rider..." style="width:200px" oninput="filterRiderOptions()">
+        </div>
+        <div id="rp-rider-list" style="max-height:320px;overflow-y:auto;"></div>
+        <div class="mt-2 text-muted" id="rp-no-riders" style="display:none;font-size:.85rem;text-align:center;">ไม่พบ rider ที่ eligible</div>
+      </div>
+      <div class="modal-footer border-0 px-4 pb-4 pt-0">
+        <div class="me-auto text-muted" style="font-size:.78rem;" id="rp-selected-info">ยังไม่ได้เลือก rider</div>
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+        <button class="btn btn-primary btn-sm" id="rp-confirm-btn" onclick="confirmReassign()" disabled>
+          <i class="bi bi-check2-circle me-1"></i>ยืนยัน Assign
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BREAK TOAST CONTAINER -->
+<div id="break-toast-container"></div>
 
 <!-- ADMIN PANEL MODAL -->
 <div class="modal fade" id="adminModal" tabindex="-1">
@@ -1168,6 +1527,7 @@ function initAdminModal() {
 document.addEventListener('DOMContentLoaded', () => {
   const modal = document.getElementById('adminModal');
   if (modal) modal.addEventListener('show.bs.modal', initAdminModal);
+  initZoneSelector();
 });
 
 // Compat stub so old code that calls these doesn't break
@@ -1187,6 +1547,100 @@ async function fetchStoreConfig(storeCode) {
     storeConfigCache[storeCode] = cfg;
     return cfg;
   } catch { return null; }
+}
+
+// ─── ZONE SELECTOR ────────────────────────────────────────────────────────
+let allZones = [];
+let selectedZones = [];
+
+async function initZoneSelector() {
+  const searchInput = document.getElementById('zoneSearch');
+  const dropdown = document.getElementById('zoneDropdown');
+  if (!searchInput) return;
+
+  // Fetch zones from API
+  try {
+    const r = await fetch(`${API_BASE}/api/zones`);
+    if (!r.ok) throw new Error('Failed to fetch zones');
+    const j = await r.json();
+    allZones = j.data || [];
+    renderZoneList(allZones);
+  } catch (e) {
+    console.error('Error fetching zones:', e);
+  }
+
+  // Search handler
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    const filtered = query
+      ? allZones.filter(z => z.name.toLowerCase().includes(query) || z.code?.toLowerCase().includes(query))
+      : allZones;
+    renderZoneList(filtered);
+  });
+
+  // Show dropdown on focus
+  searchInput.addEventListener('focus', () => {
+    dropdown.style.display = 'block';
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (e.target !== searchInput && !dropdown.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+}
+
+function renderZoneList(zones) {
+  const zoneList = document.getElementById('zoneList');
+  zoneList.innerHTML = zones.map(zone => `
+    <div class="zone-item ${selectedZones.find(z => z.id === zone.id) ? 'selected' : ''}">
+      <input
+        type="checkbox"
+        id="zone-${zone.id}"
+        ${selectedZones.find(z => z.id === zone.id) ? 'checked' : ''}
+        onchange="toggleZone('${zone.id}', '${zone.name}', this.checked)">
+      <label for="zone-${zone.id}" style="margin: 0; flex: 1; cursor: pointer;">
+        <strong>${zone.name}</strong>
+        ${zone.code ? `<br><small style="color:#94a3b8;">${zone.code}</small>` : ''}
+      </label>
+    </div>
+  `).join('');
+}
+
+function toggleZone(id, name, checked) {
+  const zoneObj = allZones.find(z => z.id === id);
+  if (!zoneObj) return;
+
+  if (checked) {
+    if (!selectedZones.find(z => z.id === id)) {
+      selectedZones.push(zoneObj);
+    }
+  } else {
+    selectedZones = selectedZones.filter(z => z.id !== id);
+  }
+
+  updateZoneDisplay();
+}
+
+function updateZoneDisplay() {
+  const selectedDiv = document.getElementById('zoneSelected');
+  const searchInput = document.getElementById('zoneSearch');
+
+  if (selectedZones.length === 0) {
+    selectedDiv.innerHTML = '';
+    searchInput.placeholder = 'Search zones...';
+    return;
+  }
+
+  const badges = selectedZones.map(z => `<span class="zone-badge">${z.name}</span>`).join('');
+  selectedDiv.innerHTML = `<div style="margin-top:.3rem;">${badges}</div>`;
+  searchInput.value = '';
+  searchInput.placeholder = `${selectedZones.length} zone(s) selected`;
+}
+
+function getSelectedZoneNames() {
+  return selectedZones.map(z => z.name);
 }
 
 // ─── CHART.JS PLUGINS ────────────────────────────────────────────────────────
@@ -4268,14 +4722,20 @@ applyPermissions();
 // ══════════════════════════════════════════════════════════
 
 function switchTab(tab) {
-  document.getElementById('page-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
-  document.getElementById('page-analytics').style.display = tab === 'analytics' ? '' : 'none';
-  document.getElementById('tab-dashboard').classList.toggle('active', tab === 'dashboard');
-  document.getElementById('tab-analytics').classList.toggle('active', tab === 'analytics');
+  document.getElementById('page-dashboard').style.display  = tab === 'dashboard'  ? '' : 'none';
+  document.getElementById('page-analytics').style.display  = tab === 'analytics'  ? '' : 'none';
+  document.getElementById('page-dispatcher').style.display = tab === 'dispatcher' ? '' : 'none';
+  document.getElementById('tab-dashboard').classList.toggle('active',  tab === 'dashboard');
+  document.getElementById('tab-analytics').classList.toggle('active',  tab === 'analytics');
+  document.getElementById('tab-dispatcher').classList.toggle('active', tab === 'dispatcher');
   if (tab === 'analytics') {
-    // pre-fill storeCode from dashboard
     const sc = document.getElementById('storeCode')?.value || '';
     document.getElementById('an-storeCode').value = sc;
+  }
+  if (tab === 'dispatcher') {
+    const sc = document.getElementById('storeCode')?.value || '';
+    document.getElementById('dp-storeCode').value = sc;
+    initDispatcherDates();
   }
 }
 
@@ -5064,7 +5524,7 @@ async function sendAIFollowup() {
 </style>
 
 <!-- Floating Action Button -->
-<button id="ai-fab" onclick="aiToggle()" title="ถามน้องบอท AI" style="display:none">
+<button id="ai-fab" onclick="aiToggle()" title="ถามน้องบอท AI" style="display:none !important">
   🤖
   <span class="ai-fab-badge" id="ai-fab-badge"></span>
 </button>
@@ -5341,6 +5801,381 @@ async function aiSend() {
     aiState.loading = false;
     document.getElementById('ai-send-btn').disabled = false;
   }
+}
+
+// ══════════════════════════════════════════════════════════
+// DISPATCHER TAB
+// ══════════════════════════════════════════════════════════
+let _dpOrders = [];
+let _dpRiders = [];
+let _dpSelectedOrder = null;
+let _dpSelectedRider = null;
+let _dpBreakPollInterval = null;
+let _dpLastBreakSince = new Date().toISOString();
+
+function initDispatcherDates() {
+  const today = new Date();
+  const fmt = d => d.toISOString().slice(0, 10);
+  const fromEl = document.getElementById('dp-perf-from');
+  const toEl   = document.getElementById('dp-perf-to');
+  if (fromEl && !fromEl.value) fromEl.value = fmt(new Date(today - 6 * 86400000));
+  if (toEl   && !toEl.value)   toEl.value   = fmt(today);
+}
+
+async function loadDispatcher() {
+  const sc = document.getElementById('dp-storeCode').value.trim();
+  if (!sc) return alert('กรุณาระบุ Store Code');
+  setDpKpi('—','—','—','—');
+  document.getElementById('dp-order-tbody').innerHTML = '<tr><td colspan="9" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary me-2"></div>กำลังโหลด...</td></tr>';
+
+  try {
+    const [ordRes, ridRes] = await Promise.all([
+      fetch(`${API_BASE}/api/dispatch/orders?storeCode=${encodeURIComponent(sc)}`).then(r => r.json()),
+      fetch(`${API_BASE}/api/dispatch/eligible-riders?storeCode=${encodeURIComponent(sc)}`).then(r => r.json()),
+    ]);
+
+    _dpOrders = ordRes.data || [];
+    _dpRiders = ridRes.data || [];
+
+    const eligibleCount = _dpRiders.filter(r => r.eligible).length;
+    const unassigned    = _dpOrders.filter(o => !o.assignedRiderId).length;
+    const atRisk        = _dpOrders.filter(o => (o.ageMin || 0) > 45).length;
+    setDpKpi(_dpOrders.length, unassigned, atRisk, eligibleCount);
+
+    // badge on tab
+    const badge = document.getElementById('dp-pending-badge');
+    if (_dpOrders.length > 0) { badge.textContent = _dpOrders.length; badge.style.display = ''; }
+    else badge.style.display = 'none';
+
+    renderDispatchOrders(_dpOrders);
+    loadBreakEvents(sc);
+    startBreakPolling(sc);
+  } catch (e) {
+    document.getElementById('dp-order-tbody').innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function setDpKpi(total, unassigned, atRisk, eligible) {
+  document.getElementById('dp-kpi-total').textContent     = total;
+  document.getElementById('dp-kpi-unassigned').textContent = unassigned;
+  document.getElementById('dp-kpi-atrisk').textContent    = atRisk;
+  document.getElementById('dp-kpi-eligible').textContent  = eligible;
+}
+
+function renderDispatchOrders(orders) {
+  const tbody = document.getElementById('dp-order-tbody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9" class="text-center py-4">ไม่มี pending orders ขณะนี้ ✅</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => {
+    const age = o.ageMin !== null ? o.ageMin : null;
+    const ageClass = age === null ? '' : age > 45 ? 'late' : age > 25 ? 'mid' : 'fresh';
+    const ageLabel = age === null ? '—' : `${age} นาที`;
+    const createdFmt = o.createdAt ? new Date(o.createdAt).toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '—';
+    const createdDate = o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short' }) : '';
+    const slaDue = o.slaDue ? new Date(o.slaDue).toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' }) : '—';
+    const phaseClass = o.phase === 'batched' ? 'batched' : 'pending';
+    const rider = o.assignedRiderName ? `<span class="badge bg-success-subtle text-success">${o.assignedRiderName}</span>` : '<span class="text-muted" style="font-size:.75rem;">—</span>';
+    return `<tr>
+      <td><div style="font-size:.82rem;font-weight:600;">${o.consignment || o.orderId || '—'}</div><div style="font-size:.7rem;color:#94a3b8;">${o.internalOrderId || ''}</div></td>
+      <td style="font-size:.82rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${o.customerName}">${o.customerName}</td>
+      <td><span class="badge bg-secondary-subtle text-secondary">${o.storeCode}</span></td>
+      <td><span class="dp-phase-badge ${phaseClass}">${o.phase}</span></td>
+      <td><div style="font-size:.82rem;">${createdFmt}</div><div style="font-size:.7rem;color:#94a3b8;">${createdDate}</div></td>
+      <td style="font-size:.82rem;${age > 45 ? 'color:#dc2626;font-weight:600;' : ''}">${slaDue}</td>
+      <td><span class="dp-age-chip ${ageClass}">${ageLabel}</span></td>
+      <td>${rider}</td>
+      <td><button class="btn btn-sm btn-outline-primary" style="font-size:.72rem;padding:.2rem .55rem;" onclick="openRiderPicker(${JSON.stringify(o).replace(/"/g,'&quot;')})"><i class="bi bi-person-plus me-1"></i>Assign</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterDispatchOrders() {
+  const q     = document.getElementById('dp-search').value.toLowerCase();
+  const phase = document.getElementById('dp-phase-filter').value;
+  const filtered = _dpOrders.filter(o => {
+    const matchQ = !q || (o.consignment||'').toLowerCase().includes(q) || (o.orderId||'').toLowerCase().includes(q) || (o.customerName||'').toLowerCase().includes(q);
+    const matchP = !phase || o.phase === phase;
+    return matchQ && matchP;
+  });
+  renderDispatchOrders(filtered);
+}
+
+// ── Rider Picker Modal ──────────────────────────────────────
+function openRiderPicker(order) {
+  _dpSelectedOrder = order;
+  _dpSelectedRider = null;
+  document.getElementById('rp-order-info').textContent = `Order: ${order.consignment || order.orderId} | ลูกค้า: ${order.customerName} | Store: ${order.storeCode}`;
+  document.getElementById('rp-reason').value = '';
+  document.getElementById('rp-search').value = '';
+  document.getElementById('rp-confirm-btn').disabled = true;
+  document.getElementById('rp-selected-info').textContent = 'ยังไม่ได้เลือก rider';
+  renderRiderOptions(_dpRiders.filter(r => r.storeCode === order.storeCode || _dpRiders.length < 5));
+  new bootstrap.Modal(document.getElementById('riderPickerModal')).show();
+}
+
+function renderRiderOptions(riders) {
+  const list = document.getElementById('rp-rider-list');
+  const noEl = document.getElementById('rp-no-riders');
+  const eligible = riders.filter(r => r.eligible);
+  const others   = riders.filter(r => !r.eligible);
+  const all = [...eligible, ...others];
+
+  if (!all.length) { list.innerHTML = ''; noEl.style.display = ''; return; }
+  noEl.style.display = 'none';
+
+  list.innerHTML = all.map(r => {
+    const initials = (r.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    const flags = r.flags || {};
+    const issues = Object.entries(flags).filter(([,v])=>!v).map(([k])=>k.replace(/_/g,' ')).join(', ');
+    const statusBadge = r.eligible
+      ? '<span class="badge bg-success-subtle text-success" style="font-size:.65rem;">Eligible</span>'
+      : `<span class="badge bg-danger-subtle text-danger" style="font-size:.65rem;">${issues||'Not eligible'}</span>`;
+    return `<div class="rider-option ${r.eligible ? '' : 'ineligible'}" data-uid="${r.userId}" onclick="selectRider(this,'${r.userId}','${(r.name||'').replace(/'/g,"\\'")}')">
+      <div class="rider-avatar">${initials}</div>
+      <div style="flex:1;">
+        <div style="font-size:.85rem;font-weight:600;">${r.name||r.userId}</div>
+        <div style="font-size:.72rem;color:#64748b;">${r.phone||''} ${r.inPool ? '• In Pool' : ''} ${r.jobOnHand ? `• งาน: ${r.jobOnHand.status}` : ''}</div>
+      </div>
+      <div>${statusBadge}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterRiderOptions() {
+  const q = document.getElementById('rp-search').value.toLowerCase();
+  const filtered = _dpRiders.filter(r => !q || (r.name||'').toLowerCase().includes(q) || (r.userId||'').includes(q));
+  renderRiderOptions(filtered);
+}
+
+function selectRider(el, userId, name) {
+  document.querySelectorAll('#rp-rider-list .rider-option').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  _dpSelectedRider = { userId, name };
+  document.getElementById('rp-selected-info').textContent = `เลือก: ${name}`;
+  document.getElementById('rp-confirm-btn').disabled = false;
+}
+
+async function confirmReassign() {
+  if (!_dpSelectedOrder || !_dpSelectedRider) return;
+  const reason = document.getElementById('rp-reason').value.trim();
+  const dispatcherName = document.getElementById('dp-dispatcherName').value.trim() || 'Dispatcher';
+  const btn = document.getElementById('rp-confirm-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/dispatch/reassign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId:       _dpSelectedOrder.orderId,
+        consignment:   _dpSelectedOrder.consignment,
+        storeCode:     _dpSelectedOrder.storeCode,
+        fromRiderId:   _dpSelectedOrder.assignedRiderId,
+        fromRiderName: _dpSelectedOrder.assignedRiderName,
+        toRiderId:     _dpSelectedRider.userId,
+        toRiderName:   _dpSelectedRider.name,
+        reason,
+        dispatcherName,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+
+    bootstrap.Modal.getInstance(document.getElementById('riderPickerModal'))?.hide();
+    showBreakToast('assign', `✅ Assigned: ${_dpSelectedRider.name}`, `Order ${_dpSelectedOrder.consignment || _dpSelectedOrder.orderId}`);
+    loadActivityLog();
+    loadDispatcher();
+  } catch(e) {
+    alert(`Error: ${e.message}`);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>ยืนยัน Assign';
+  }
+}
+
+// ── Enhanced Rider Performance ──────────────────────────────
+async function loadDispatcherPerf() {
+  const sc   = document.getElementById('dp-storeCode').value.trim();
+  const from = document.getElementById('dp-perf-from').value;
+  const to   = document.getElementById('dp-perf-to').value;
+  if (!sc || !from || !to) return alert('กรุณาระบุ Store Code และวันที่');
+
+  const fromISO = new Date(from + 'T00:00:00+07:00').toISOString();
+  const toISO   = new Date(to   + 'T23:59:59+07:00').toISOString();
+  const tbody   = document.getElementById('dp-perf-tbody');
+  tbody.innerHTML = '<tr><td colspan="11" class="text-center py-3"><div class="spinner-border spinner-border-sm text-success me-2"></div>กำลังโหลด...</td></tr>';
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/dispatch/rider-performance?storeCode=${encodeURIComponent(sc)}&from=${encodeURIComponent(fromISO)}&to=${encodeURIComponent(toISO)}`);
+    const data = await res.json();
+    if (!data.data?.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="11" class="text-center py-3">ไม่มีข้อมูลในช่วงนี้</td></tr>'; return; }
+
+    tbody.innerHTML = data.data.map(r => {
+      const pctClass = v => v >= 80 ? 'perf-metric-good' : v >= 60 ? 'perf-metric-warn' : 'perf-metric-bad';
+      return `<tr>
+        <td><div style="font-weight:600;font-size:.85rem;">${r.riderName}</div><div style="font-size:.7rem;color:#94a3b8;">${r.riderId?.slice(-6)||''}</div></td>
+        <td><span class="badge bg-secondary-subtle text-secondary">${r.storeCode}</span></td>
+        <td class="text-end fw-semibold">${r.total}</td>
+        <td class="text-end">${r.completed}</td>
+        <td class="text-end ${pctClass(r.completionRate)}">${r.completionRate}%</td>
+        <td class="text-end ${r.cancelRate > 20 ? 'perf-metric-bad' : r.cancelRate > 10 ? 'perf-metric-warn' : 'perf-metric-good'}">${r.cancelRate}%</td>
+        <td class="text-end ${pctClass(r.onTimeRate)}">${r.onTimeRate}%</td>
+        <td class="text-end">${r.avgDistanceKm ?? '<span class="perf-metric-na">N/A</span>'}</td>
+        <td class="text-end">${r.totalDistanceKm ?? '<span class="perf-metric-na">N/A</span>'}</td>
+        <td class="text-end">${r.avgDurationMin ?? '<span class="perf-metric-na">N/A</span>'}</td>
+        <td class="text-end ${r.totalBreakMin > 60 ? 'perf-metric-warn' : ''}">${r.totalBreakMin}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-3">Error: ${e.message}</td></tr>`;
+  }
+}
+
+// ── Activity Log ────────────────────────────────────────────
+async function loadActivityLog() {
+  const sc = document.getElementById('dp-storeCode')?.value?.trim() || '';
+  try {
+    const param = sc ? `storeCode=${encodeURIComponent(sc)}&days=7` : '';
+    const res  = await fetch(`${API_BASE}/api/dispatch/activity-log?${param}`);
+    const data = await res.json();
+    const el   = document.getElementById('dp-activity-log');
+    if (!data.data?.length) { el.innerHTML = '<div class="text-muted text-center py-3" style="font-size:.85rem;">ยังไม่มี activity</div>'; return; }
+
+    el.innerHTML = data.data.map(item => {
+      const dotClass = item.action === 'manual_reassign' ? 'reassign' : item.action;
+      const ts = item.timestamp
+        ? new Date(item.timestamp).toLocaleString('th-TH', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' })
+        : '—';
+
+      let detail = '';
+      if (item.action === 'manual_reassign') {
+        // DB record (source='db'): has jobId + orderIds
+        if (item.source === 'db') {
+          const orders = item.orderIds?.length ? item.orderIds.slice(0,3).join(', ') + (item.orderIds.length > 3 ? '…' : '') : '—';
+          const statusBadge = item.jobStatus
+            ? `<span class="badge bg-secondary-subtle text-secondary" style="font-size:.65rem;">${item.jobStatus}</span>`
+            : '';
+          detail = `<strong>${item.dispatcherName}</strong> dispatch → <strong>${item.toRiderName || item.toRiderId || '—'}</strong>`
+                 + ` Job <span style="font-family:monospace;font-size:.78rem;">${item.jobId || '—'}</span> ${statusBadge}`
+                 + `<div style="font-size:.7rem;color:#94a3b8;">Orders: ${orders}</div>`;
+        } else {
+          // Session log record
+          detail = `<strong>${item.dispatcherName}</strong> assign <strong>${item.toRiderName||item.toRiderId}</strong>`
+                 + (item.fromRiderName ? ` (จาก ${item.fromRiderName})` : '')
+                 + ` → Order <strong>${item.consignment||item.orderId||'—'}</strong>`
+                 + (item.reason ? ` <span class="text-muted">[${item.reason}]</span>` : '');
+        }
+      } else if (item.action === 'break_start') {
+        detail = `<strong>${item.riderName}</strong> เริ่มพัก`;
+      } else if (item.action === 'break_end') {
+        detail = `<strong>${item.riderName}</strong> กลับมาแล้ว พร้อมรับงาน`;
+      }
+
+      return `<div class="dp-log-item">
+        <div class="dp-log-dot ${dotClass}"></div>
+        <div><div style="font-size:.82rem;">${detail}</div><div class="dp-log-meta">${ts} · Store ${item.storeCode||'—'}</div></div>
+      </div>`;
+    }).join('');
+  } catch(e) { /* silent */ }
+}
+
+// ── Break Events ────────────────────────────────────────────
+// Build userIds query string from already-fetched riders (avoids re-doing zone lookup)
+function _dpUserIdsParam() {
+  return _dpRiders.map(r => r.userId).filter(Boolean).join(',');
+}
+
+function reloadBreakEvents() {
+  const sc = document.getElementById('dp-storeCode')?.value?.trim() || '';
+  if (sc) loadBreakEvents(sc);
+}
+
+async function loadBreakEvents(sc) {
+  const tbody = document.getElementById('dp-break-tbody');
+  const days  = parseInt(document.getElementById('dp-break-days')?.value || '7');
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  try {
+    const uids = _dpUserIdsParam();
+    const param = uids
+      ? `userIds=${encodeURIComponent(uids)}&since=${since}`
+      : `storeCode=${encodeURIComponent(sc)}&since=${since}`;
+    const res  = await fetch(`${API_BASE}/api/dispatch/break-events?${param}`);
+    const data = await res.json();
+    const events = data.events || [];
+    if (!events.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="5" class="text-center py-3">ไม่มี break events วันนี้</td></tr>'; return; }
+
+    tbody.innerHTML = events.map(e => {
+      const d     = e.startAt ? new Date(e.startAt) : null;
+      const date  = d ? d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' }) : '—';
+      const start = d ? d.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' }) : '—';
+      const end   = e.endAt ? new Date(e.endAt).toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' }) : '—';
+      const durMin = (e.startAt && e.endAt) ? Math.round((new Date(e.endAt) - new Date(e.startAt)) / 60000) : null;
+      const dur   = durMin !== null ? `${durMin} นาที` : e.active ? '<span class="text-warning fw-semibold">กำลังพัก</span>' : '—';
+      const badge = e.active ? '<span class="badge bg-warning-subtle text-warning">On Break</span>' : '<span class="badge bg-success-subtle text-success">Returned</span>';
+      return `<tr><td style="font-size:.82rem;font-weight:600;">${e.riderName}</td><td style="font-size:.75rem;color:#64748b;">${date}</td><td style="font-size:.82rem;">${start}</td><td style="font-size:.82rem;">${end}</td><td style="font-size:.82rem;">${dur}</td><td>${badge}</td></tr>`;
+    }).join('');
+  } catch(e) { /* silent */ }
+}
+
+// ── Break Polling & Toast Notifications ─────────────────────
+function startBreakPolling(sc) {
+  if (_dpBreakPollInterval) clearInterval(_dpBreakPollInterval);
+  _dpLastBreakSince = new Date().toISOString();
+  _dpBreakPollInterval = setInterval(() => pollBreakEvents(sc), 30000);
+}
+
+async function pollBreakEvents(sc) {
+  try {
+    const uids = _dpUserIdsParam();
+    const param = uids
+      ? `userIds=${encodeURIComponent(uids)}&since=${encodeURIComponent(_dpLastBreakSince)}`
+      : `storeCode=${encodeURIComponent(sc)}&since=${encodeURIComponent(_dpLastBreakSince)}`;
+    const res  = await fetch(`${API_BASE}/api/dispatch/break-events?${param}`);
+    const data = await res.json();
+    _dpLastBreakSince = new Date().toISOString();
+    (data.events || []).forEach(e => {
+      if (e.type === 'break_start') {
+        showBreakToast('break_start', `☕ ${e.riderName} เริ่มพัก`, `เวลา ${new Date(e.startAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}`);
+        pushActivityLogLocal({ action:'break_start', riderName: e.riderName, startAt: e.startAt });
+      } else if (e.type === 'break_end') {
+        showBreakToast('break_end', `🟢 ${e.riderName} กลับมาแล้ว`, `พร้อมรับงาน`);
+        pushActivityLogLocal({ action:'break_end', riderName: e.riderName, endAt: e.endAt });
+      }
+    });
+    if (data.events?.length) { loadBreakEvents(sc); loadActivityLog(); }
+  } catch(e) { /* silent */ }
+}
+
+function showBreakToast(type, title, sub) {
+  const container = document.getElementById('break-toast-container');
+  const toast = document.createElement('div');
+  toast.className = `break-toast${type === 'break_end' || type === 'assign' ? ' break-end' : ''}`;
+  const icon = type === 'break_start' ? '☕' : type === 'break_end' ? '🟢' : '✅';
+  toast.innerHTML = `<span class="toast-icon">${icon}</span>
+    <div class="toast-body"><div class="toast-title">${title}</div><div class="toast-sub">${sub}</div></div>
+    <button class="toast-close" onclick="this.closest('.break-toast').remove()">✕</button>`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.classList.add('removing'); setTimeout(() => toast.remove(), 300); }, 6000);
+}
+
+function pushActivityLogLocal(item) {
+  // Mirror break events into the activity log display without a round-trip
+  const el = document.getElementById('dp-activity-log');
+  if (!el) return;
+  const noEl = el.querySelector('.text-muted');
+  if (noEl) noEl.remove();
+  const div = document.createElement('div');
+  div.className = 'dp-log-item';
+  const ts = new Date().toLocaleString('th-TH', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' });
+  const dotClass = item.action === 'break_start' ? 'break_start' : 'break_end';
+  const detail = item.action === 'break_start'
+    ? `<strong>${item.riderName}</strong> เริ่มพัก`
+    : `<strong>${item.riderName}</strong> กลับมาแล้ว พร้อมรับงาน`;
+  div.innerHTML = `<div class="dp-log-dot ${dotClass}"></div>
+    <div><div style="font-size:.82rem;">${detail}</div><div class="dp-log-meta">${ts}</div></div>`;
+  el.prepend(div);
 }
 </script>
 </body>

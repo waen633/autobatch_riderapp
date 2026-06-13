@@ -84,6 +84,110 @@ pm2 save && pm2 startup
 
 ---
 
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          CLIENT (Browser)                           │
+│                                                                     │
+│   public/index.html  (Vanilla JS — Single File ~5,500 lines)        │
+│   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐  │
+│   │ Zone Map │ │  Riders  │ │ Pending  │ │  Jobs    │ │ Perf.  │  │
+│   │ Leaflet  │ │  Pool    │ │ Orders   │ │+ Config  │ │ Chart  │  │
+│   └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘  │
+│   ┌────────────────────────────────────┐  ┌────────────────────┐   │
+│   │       AI Chat Widget (floating)    │  │  Dispatcher Tab    │   │
+│   │  OpenRouter → claude-3-haiku       │  │  Manual Reassign   │   │
+│   └────────────────────────────────────┘  └────────────────────┘   │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │ HTTP / REST  (fetch + polling 30s)
+┌────────────────────────────▼────────────────────────────────────────┐
+│                     Node.js + Express  (server.js)                  │
+│                                                                     │
+│  routes/                                                            │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌─────────────────┐  │
+│  │  zones.js  │ │ tiktok.js  │ │dispatch.js │ │  jobs / riders  │  │
+│  │/api/zones  │ │/api/tiktok/│ │/api/dispatch│ │ orders/pending  │  │
+│  └────────────┘ └────────────┘ └────────────┘ └─────────────────┘  │
+│  ┌────────────┐ ┌────────────┐ ┌────────────────────────────────┐  │
+│  │   ai.js    │ │analytics.js│ │        diagnostics.js          │  │
+│  │/api/ai/chat│ │/api/analyt.│ │    /api/job-diagnostics        │  │
+│  └─────┬──────┘ └────────────┘ └───────────────┬────────────────┘  │
+│        │                                        │                   │
+│  lib/  │                                        │                   │
+│  ┌─────▼──────┐ ┌────────────┐ ┌───────────────▼────────────────┐  │
+│  │ aiTools.js │ │eligibility │ │           cls.js               │  │
+│  │toolExecutor│ │    .js     │ │     Tencent Cloud CLS          │  │
+│  └────────────┘ └────────────┘ └────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │                         db.js                                  │ │
+│  │          MongoDB Singleton — getClient() with reconnect        │ │
+│  └───────────────────────────┬────────────────────────────────────┘ │
+└──────────────────────────────│─────────────────────────────────────┘
+                               │ MongoDB Driver (READ-ONLY)
+┌──────────────────────────────▼─────────────────────────────────────┐
+│              MongoDB Replica Set  10.134.4.16:27017                 │
+│                                                                     │
+│  ┌─────────────────┐  ┌───────────────┐  ┌──────────────────────┐  │
+│  │    4pl-oms       │  │  4pl-fleet    │  │       lastmile       │  │
+│  │ pendingorders    │  │  staffs       │  │   servicetypes       │  │
+│  │ autobatchingjobs │  │  jobs         │  │   (TikTok config)    │  │
+│  │ orders / batches │  │  riderbreaklg │  └──────────────────────┘  │
+│  └─────────────────┘  └───────────────┘  ┌──────────────────────┐  │
+│                                           │ 4pl-address-and-     │  │
+│                                           │      zoning          │  │
+│                                           │   geographies        │  │
+│                                           │  (zone polygons)     │  │
+│                                           └──────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+
+External Services
+  ┌─────────────────────────┐   ┌──────────────────────────┐
+  │   OpenRouter API        │   │   Tencent Cloud CLS       │
+  │  anthropic/claude-3-    │   │  allnow-prod-log topic    │
+  │  haiku (paid)           │   │  (job diagnostic search)  │
+  └─────────────────────────┘   └──────────────────────────┘
+```
+
+### Data Flow — Zone Live Map
+```
+Browser                     Express                    MongoDB
+  │                            │                          │
+  ├─ GET /api/zones ──────────►│                          │
+  │                            ├─ geographies.find() ────►│
+  │                            │◄─ polygon docs ──────────┤
+  │◄─ zone list (GeoJSON) ─────┤                          │
+  │                            │                          │
+  ├─ GET /api/tiktok/live ────►│                          │
+  │   ?zoneName=BKK-N          ├─ staffs.find() ─────────►│
+  │                            │   serviceTypes=Tiktok    │
+  │                            │◄─ rider positions ───────┤
+  │◄─ { zones[], riders[] } ───┤                          │
+  │                            │                          │
+  │  Leaflet renders polygons  │                          │
+  │  + places rider markers    │                          │
+```
+
+### Data Flow — AI Chat (Tool Calling)
+```
+Browser                    routes/ai.js               External
+  │                            │                          │
+  ├─ POST /api/ai/chat ───────►│                          │
+  │  { message, history }      ├─ OpenRouter API ────────►│
+  │                            │  (claude-3-haiku)        │
+  │                            │◄─ tool_call response ────┤
+  │                            │                          │
+  │                            ├─ toolExecutor.js         │
+  │                            │  (calls internal APIs)   │
+  │                            │                          │
+  │                            ├─ OpenRouter API ────────►│
+  │                            │  (tool result + context) │
+  │                            │◄─ final text response ───┤
+  │◄─ { reply } ───────────────┤                          │
+```
+
+---
+
 ## 📁 โครงสร้างไฟล์
 
 ```

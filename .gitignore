@@ -17,3 +17,12 @@ Thumbs.db
 .idea/
 
 project_pricing_estimate.md
+
+# SQLite permissions DB
+data/permissions.db
+
+# Claude worktrees
+.claude/worktrees/
+
+# Skill notes
+skil.md

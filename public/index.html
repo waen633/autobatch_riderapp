@@ -16,6 +16,25 @@
   <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/material_green.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack.min.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script>
+    // ── Auth guard — ตั้ง promise ให้ initCurrentUser รอได้ ───────────────
+    window._authReady = new Promise(function(resolve) {
+      var token = sessionStorage.getItem('kc_token');
+      if (token) { resolve(token); return; }
+      fetch('/api/auth/token', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.access_token) {
+            sessionStorage.setItem('kc_token', d.access_token);
+            resolve(d.access_token);
+          } else {
+            window.location.href = '/login.html';
+            resolve(null);
+          }
+        })
+        .catch(function() { window.location.href = '/login.html'; resolve(null); });
+    });
+  </script>
   <style>
     body { background: #f8fafc; font-family: 'Inter', 'Prompt', sans-serif; font-size: 13.5px; color: #1e293b; }
     .card { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; }
@@ -133,8 +152,42 @@
     .no-drag, .no-drag * { pointer-events: all !important; cursor: auto; }
     .no-drag button, .no-drag .btn { cursor: pointer; }
     .grid-stack { background: transparent; }
-    .grid-stack-item-content { overflow: hidden !important; border-radius: 0; }
-    .grid-stack-item-content > .card { height: 100%; overflow: hidden; }
+    /* item-content เติมเต็ม item ทั้งหมด */
+    .grid-stack-item-content {
+      position: absolute !important;
+      inset: 4px !important;
+      overflow: hidden !important;
+      border-radius: 0;
+    }
+    /* card เติมเต็ม item-content เป็น flex column */
+    .grid-stack-item-content > .card {
+      height: 100% !important;
+      overflow: hidden;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    /* card-body เติมพื้นที่ที่เหลือ */
+    .grid-stack-item-content > .card > .card-body {
+      flex: 1 1 0 !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      padding: 0.5rem !important;
+    }
+    /* ทุก sibling ของ scroll-table ต้องไม่ยืดหดตาม flex */
+    .grid-stack-item-content > .card > .card-body > *:not(.scroll-table) {
+      flex-shrink: 0 !important;
+      flex-grow: 0 !important;
+    }
+    /* scroll-table เติมพื้นที่ที่เหลือและ scroll ได้เอง */
+    .grid-stack-item-content > .card > .card-body > .scroll-table {
+      flex: 1 1 0 !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow-y: auto !important;
+      overflow-x: auto;
+    }
     .grid-stack-item > .ui-resizable-se,
     .grid-stack-item > .ui-resizable-sw,
     .grid-stack-item > .ui-resizable-ne,
@@ -388,7 +441,12 @@
       <span class="text-muted fw-medium" id="last-updated" style="font-size: 0.8rem;"></span>
       <button class="btn btn-outline-secondary btn-sm" onclick="resetLayout()" title="Reset Layout"><i class="bi bi-grid-3x3-gap me-1"></i>Layout</button>
       <a href="multi-route.html" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-map me-1"></i>Compare Routes</a>
-      <button class="btn btn-sm" id="admin-mode-btn" data-bs-toggle="modal" data-bs-target="#adminModal" title="Admin Settings">🛡 <span class="admin-label">Admin</span></button>
+      <button class="btn btn-sm d-none" id="admin-mode-btn" data-bs-toggle="modal" data-bs-target="#adminModal" title="Admin Settings">🛡 <span class="admin-label">Admin</span></button>
+      <button class="btn btn-outline-secondary btn-sm d-none" id="user-mgmt-btn" data-bs-toggle="modal" data-bs-target="#userMgmtModal" title="User Management"><i class="bi bi-people-fill me-1"></i>Users</button>
+      <span class="text-muted d-none align-items-center gap-1" id="user-info-badge" style="font-size:0.8rem;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;background:#f8fafc;">
+        <i class="bi bi-person-circle"></i> <span id="user-display-name"></span>
+      </span>
+      <button class="btn btn-outline-danger btn-sm d-none" id="logout-btn" onclick="doLogout()" title="Logout"><i class="bi bi-box-arrow-right"></i></button>
       <button class="btn btn-outline-secondary btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
     </div>
   </div>
@@ -417,7 +475,11 @@
           <label class="form-label mb-1 fw-semibold" data-i18n="storeCode">Store Code</label>
           <input type="text" class="form-control form-control-sm" id="storeCode" value="1104" placeholder="1104,6304,5022" style="width:160px" list="storeCodeHistory">
           <datalist id="storeCodeHistory"></datalist>
-          <div class="form-text mt-0" style="font-size:.7rem;" data-i18n="storeCodeHint">หลายสาขาคั่นด้วย ,</div>
+          <!-- แสดงเฉพาะ user ที่ไม่ใช่ admin — แก้ไขไม่ได้ -->
+          <div id="storeCode-readonly-wrap" style="display:none;">
+            <div id="storeCode-badges" class="d-flex flex-wrap gap-1 mt-1"></div>
+            <input type="hidden" id="storeCode-hidden">
+          </div>
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="fromLabel">From</label>
@@ -788,6 +850,10 @@
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold">Store Code</label>
           <input type="text" class="form-control form-control-sm" id="an-storeCode" value="" placeholder="1104" style="width:160px">
+          <div id="an-storeCode-readonly-wrap" style="display:none;">
+            <div id="an-storeCode-badges" class="d-flex flex-wrap gap-1 mt-1"></div>
+            <input type="hidden" id="an-storeCode-hidden">
+          </div>
         </div>
         <div class="col-auto ms-auto">
           <button class="btn btn-primary btn-sm" onclick="loadAnalytics()"><i class="bi bi-arrow-repeat me-1"></i>โหลดข้อมูล</button>
@@ -1071,6 +1137,147 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════
+     USER MANAGEMENT MODAL
+     ══════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="userMgmtModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:min(98vw,1100px);">
+    <div class="modal-content" style="max-height:90vh;">
+
+      <!-- Header -->
+      <div class="modal-header py-2 px-3" style="border-bottom:1px solid #e2e8f0;">
+        <h6 class="modal-title mb-0 fw-bold"><i class="bi bi-people-fill me-2 text-primary"></i>User Management</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="px-3 py-2 d-flex flex-wrap align-items-center gap-2" style="border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+        <button class="btn btn-sm btn-primary" onclick="umOpenAdd()">
+          <i class="bi bi-person-plus-fill me-1"></i>Add User
+        </button>
+        <label class="btn btn-sm btn-outline-success mb-0" style="cursor:pointer;">
+          <i class="bi bi-upload me-1"></i>Import CSV
+          <input type="file" accept=".csv" id="um-import-file" style="display:none;" onchange="umImportCSV(this)">
+        </label>
+        <button class="btn btn-sm btn-outline-secondary" onclick="umDownloadTemplate()">
+          <i class="bi bi-download me-1"></i>Template CSV
+        </button>
+        <button class="btn btn-sm btn-outline-primary" onclick="umLoad()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+        <span class="text-muted small ms-auto" id="um-status"></span>
+      </div>
+
+      <!-- Table -->
+      <div class="modal-body p-0" style="overflow-y:auto;">
+        <div id="um-import-result" class="mx-3 mt-2" style="display:none;"></div>
+        <table class="table table-sm table-hover mb-0" id="um-table">
+          <thead class="table-dark" style="position:sticky;top:0;z-index:1;">
+            <tr>
+              <th style="min-width:160px;">ชื่อ / อีเมล</th>
+              <th style="min-width:80px;">Role</th>
+              <th style="min-width:160px;">Allowed Stores</th>
+              <th>Feature Flags</th>
+              <th style="min-width:110px;"></th>
+            </tr>
+          </thead>
+          <tbody id="um-tbody">
+            <tr><td colspan="5" class="text-center text-muted py-4">กด Refresh เพื่อโหลด</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add / Edit User Modal ────────────────────────────────────────────────── -->
+<div class="modal fade" id="umEditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:680px;">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0 fw-bold" id="umEditTitle"><i class="bi bi-person-plus-fill me-2"></i>Add User</h6>
+        <button type="button" class="btn-close btn-sm" onclick="umCloseEdit()"></button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+
+        <!-- Alert -->
+        <div id="umEditAlert" class="alert py-2 small d-none mb-3"></div>
+
+        <!-- Identity section -->
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold small mb-1">Username <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" id="ume-username" placeholder="john.doe">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold small mb-1">Role <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" id="ume-role">
+              <option value="user">user — Staff ทั่วไป</option>
+              <option value="admin">admin — ผู้ดูแลระบบ</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold small mb-1">First Name</label>
+            <input type="text" class="form-control form-control-sm" id="ume-firstname" placeholder="John">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold small mb-1">Last Name</label>
+            <input type="text" class="form-control form-control-sm" id="ume-lastname" placeholder="Doe">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small mb-1">Email</label>
+            <input type="email" class="form-control form-control-sm" id="ume-email" placeholder="john@example.com">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small mb-1" id="ume-pass-label">Password <span class="text-danger">*</span></label>
+            <input type="password" class="form-control form-control-sm" id="ume-password" placeholder="ขั้นต่ำ 8 ตัว">
+            <div class="form-text mt-0" id="ume-pass-hint" style="font-size:.7rem;color:#94a3b8;"></div>
+          </div>
+        </div>
+
+        <hr class="my-2">
+
+        <!-- Store & Flags -->
+        <div class="mb-2">
+          <label class="form-label fw-semibold small mb-1">Allowed Stores</label>
+          <input type="text" class="form-control form-control-sm" id="ume-stores" placeholder="1104,5022 หรือ * = ทุกสาขา">
+          <div class="form-text mt-0" style="font-size:.7rem;color:#94a3b8;">หลายสาขาคั่นด้วย ,  |  เว้นว่างไว้ก่อน แล้ว assign ทีหลัง</div>
+        </div>
+
+        <div class="mb-1">
+          <label class="form-label fw-semibold small mb-2">Feature Flags</label>
+          <div class="d-flex flex-wrap gap-2" id="ume-flags">
+            <!-- rendered by JS -->
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="umCloseEdit()">ยกเลิก</button>
+        <button class="btn btn-sm btn-primary" id="ume-save-btn" onclick="umSaveEdit()">
+          <i class="bi bi-check-lg me-1"></i>บันทึก
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Import Result Modal ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="umImportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:560px;">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0 fw-bold"><i class="bi bi-upload me-2 text-success"></i>Import Result</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="um-import-body" style="max-height:60vh;overflow-y:auto;"></div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-sm btn-primary" data-bs-dismiss="modal" onclick="umLoad()">ตกลง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Break Log Modal -->
 <div class="modal fade" id="breakModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
@@ -1114,6 +1321,161 @@ const API_BASE = (() => {
   const l = window.location;
   return (l.protocol === 'http:' || l.protocol === 'https:') ? l.origin : 'http://localhost:3000';
 })();
+
+// ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
+function getToken() { return sessionStorage.getItem('kc_token') || ''; }
+
+// Global fetch wrapper — injects Bearer token into every /api/ call
+const _origFetch = window.fetch.bind(window);
+window.fetch = function(url, opts = {}) {
+  const token = getToken();
+  if (token && typeof url === 'string' && url.includes('/api/')) {
+    opts = { ...opts, headers: { 'Authorization': `Bearer ${token}`, ...(opts.headers || {}) } };
+  }
+  return _origFetch(url, opts).then(async res => {
+    if (res.status === 401) {
+      // Token may have expired — try to refresh via session
+      const r2 = await _origFetch('/api/auth/token', { credentials: 'include' });
+      if (r2.ok) {
+        const d = await r2.json();
+        if (d.access_token) {
+          sessionStorage.setItem('kc_token', d.access_token);
+          opts.headers = { ...opts.headers, 'Authorization': `Bearer ${d.access_token}` };
+          return _origFetch(url, opts);
+        }
+      }
+      sessionStorage.removeItem('kc_token');
+      window.location.href = '/login.html?error=session_expired';
+    }
+    return res;
+  });
+};
+
+function doLogout() {
+  sessionStorage.removeItem('kc_token');
+  window.location.href = '/api/auth/logout';
+}
+
+// ─── CURRENT USER + FEATURE FLAGS ────────────────────────────────────────────
+window._currentUser = null;
+window._featureFlags = {};
+
+async function initCurrentUser() {
+  try {
+    // รอ auth guard ให้ได้ token ก่อนเสมอ (แก้ race condition)
+    const token = await window._authReady;
+    if (!token) return;
+    const r = await _origFetch(`${API_BASE}/api/me`, {
+      credentials: 'include',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!r.ok) return;
+    const user = await r.json();
+    window._currentUser = user;
+    window._featureFlags = user.feature_flags || {};
+    applyFeatureFlags(user);
+  } catch(e) { console.warn('initCurrentUser failed', e); }
+}
+
+function applyFeatureFlags(user) {
+  const flags = user.feature_flags || {};
+  const isAdmin = (user.roles || []).includes('admin');
+
+  // Show user info in navbar
+  const badge = document.getElementById('user-info-badge');
+  const nameEl = document.getElementById('user-display-name');
+  const logoutBtn = document.getElementById('logout-btn');
+  if (badge) { badge.style.display = 'flex'; badge.classList.remove('d-none'); }
+  if (nameEl) nameEl.textContent = user.name || user.username || user.email || 'User';
+  if (logoutBtn) { logoutBtn.style.display = ''; logoutBtn.classList.remove('d-none'); }
+
+  // Show User Management button + Admin Settings modal — admin only
+  const umBtn = document.getElementById('user-mgmt-btn');
+  if (umBtn && isAdmin) { umBtn.style.display = ''; umBtn.classList.remove('d-none'); }
+  const adminBtn = document.getElementById('admin-mode-btn');
+  if (adminBtn && isAdmin) { adminBtn.style.display = ''; adminBtn.classList.remove('d-none'); }
+
+  // Hide tabs per flags
+  const tabDash = document.getElementById('tab-dashboard')?.parentElement;
+  const tabAn   = document.getElementById('tab-analytics')?.parentElement;
+  if (tabDash && flags.tab_dashboard === false) tabDash.style.display = 'none';
+  if (tabAn   && flags.tab_analytics === false) tabAn.style.display = 'none';
+  if (flags.tab_dashboard === false && flags.tab_analytics !== false) switchTab('analytics');
+
+  // ── Store Code: admin = กรอกได้ตามปกติ, user = lock ตาม assigned stores ──
+  const stores = (user.allowed_stores && user.allowed_stores !== '*' && user.allowed_stores !== '')
+    ? user.allowed_stores.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  if (isAdmin) {
+    // Admin: ใช้ input ปกติ ไม่แตะอะไร
+  } else if (stores.length > 0) {
+    // User: ซ่อน input, แสดง badge แก้ไขไม่ได้, ใช้ hidden input ส่งค่า
+    _lockStoreInput('storeCode', 'storeCode-readonly-wrap', 'storeCode-badges', 'storeCode-hidden', stores);
+    _lockStoreInput('an-storeCode', 'an-storeCode-readonly-wrap', 'an-storeCode-badges', 'an-storeCode-hidden', stores);
+  } else {
+    // User ที่ยังไม่ได้ assign store — แสดง placeholder บอกให้ติดต่อ admin
+    const scInput = document.getElementById('storeCode');
+    const scInput2 = document.getElementById('an-storeCode');
+    if (scInput) { scInput.value = ''; scInput.placeholder = 'ติดต่อ Admin เพื่อ assign สาขา'; scInput.readOnly = true; scInput.style.color = '#94a3b8'; }
+    if (scInput2) { scInput2.value = ''; scInput2.placeholder = 'ติดต่อ Admin'; scInput2.readOnly = true; scInput2.style.color = '#94a3b8'; }
+  }
+
+  // Hide sections per flags
+  _applySectionFlag('section_pending',  '[gs-id="pending"]');
+  _applySectionFlag('section_riders',   '[gs-id="riders"]');
+  _applySectionFlag('section_jobs',     '[gs-id="jobs"]');
+  _applySectionFlag('section_stuck',    '[gs-id="stuck"]');
+  _applySectionFlag('section_orders',   '[gs-id="orders"]');
+  _applySectionFlag('section_batches',  '[gs-id="batches"]');
+  _applySectionFlag('section_live_map', '[gs-id="map"]');
+
+  // AI chat FAB controlled by existing perm system + our flag
+  if (flags.section_ai_chat === false) {
+    const fab = document.getElementById('ai-fab');
+    if (fab) fab.style.display = 'none';
+  }
+}
+
+function _applySectionFlag(flagKey, selector) {
+  const flags = window._featureFlags;
+  if (flags[flagKey] === false) {
+    const el = document.querySelector(selector);
+    if (el) el.style.display = 'none';
+  }
+}
+
+function _lockStoreInput(inputId, wrapId, badgesId, hiddenId, stores) {
+  const input  = document.getElementById(inputId);
+  const wrap   = document.getElementById(wrapId);
+  const badges = document.getElementById(badgesId);
+  const hidden = document.getElementById(hiddenId);
+  if (!input || !wrap || !badges || !hidden) return;
+
+  const joined = stores.join(',');
+
+  // ซ่อน text input, แสดง readonly wrap
+  input.style.display = 'none';
+  wrap.style.display = 'block';
+
+  // สร้าง store badges
+  badges.innerHTML = stores.map(s =>
+    `<span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:0.78rem;font-weight:600;padding:4px 10px;border-radius:6px;">${s}</span>`
+  ).join('');
+
+  // Hidden input เก็บค่าจริง
+  hidden.value = joined;
+
+  // Override .value ของ original input ให้ getter คืนค่า stores เสมอ
+  // โค้ดเดิมใช้ document.getElementById('storeCode').value — patch ให้ส่งค่า stores
+  Object.defineProperty(input, 'value', {
+    get() { return joined; },
+    set(v) { hidden.value = v; },
+    configurable: true,
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => { initCurrentUser(); });
 
 // ─── PERMISSIONS ──────────────────────────────────────────────────────────────
 // Keys: aiChat | aiInsight | jobConfig
@@ -2035,6 +2397,7 @@ function setDateRange(days) {
     fpFrom.set('maxDate', null);
     const maxTo = new Date(start);
     maxTo.setDate(maxTo.getDate() + 7);
+    maxTo.setHours(23, 59, 59, 999); // ให้ end ของวันเสมอ ไม่งั้น end=23:59 เกิน maxTo
     fpTo.set('minDate', start);
     fpTo.set('maxDate', maxTo);
     fpTo.setDate(end, false);
@@ -5342,6 +5705,294 @@ async function aiSend() {
     document.getElementById('ai-send-btn').disabled = false;
   }
 }
+
+// ─── USER MANAGEMENT ──────────────────────────────────────────────────────────
+const FLAG_LABELS = {
+  tab_dashboard:   'Tab: Dashboard',
+  tab_analytics:   'Tab: Analytics',
+  section_pending: 'Pending Orders',
+  section_riders:  'Rider Pool',
+  section_jobs:    'Jobs',
+  section_stuck:   'Stuck Jobs',
+  section_orders:  'Order Query',
+  section_batches: 'Batch Query',
+  section_ai_chat: 'AI Chat',
+  section_live_map:'Live Map',
+};
+
+// merged view: Keycloak users + permissionsDb permissions
+let _umKcUsers = [];   // from Keycloak
+let _umPerms   = [];   // from permissionsDb
+let _umMerged  = [];   // joined
+let _umEditId  = null; // null = add, string = edit
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+async function umLoad() {
+  document.getElementById('um-status').textContent = 'กำลังโหลด…';
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(`${API_BASE}/api/admin/keycloak/users`),
+      fetch(`${API_BASE}/api/admin/users`),
+    ]);
+    if (!r1.ok) throw new Error('Keycloak: ' + await r1.text());
+    _umKcUsers = await r1.json();
+    _umPerms   = r2.ok ? await r2.json() : [];
+    _umMerged  = _umKcUsers.map(kc => {
+      const perm = _umPerms.find(p => p.keycloak_user_id === kc.id) || {};
+      return {
+        id: kc.id, username: kc.username,
+        firstName: kc.firstName || '', lastName: kc.lastName || '',
+        email: kc.email || '', enabled: kc.enabled,
+        roles: kc.realmRoles || [],
+        allowed_stores: perm.allowed_stores || '',
+        feature_flags: perm.feature_flags || { ...DEFAULT_FLAGS },
+        inDb: !!perm.keycloak_user_id,
+      };
+    });
+    umRender();
+    document.getElementById('um-status').textContent = `${_umMerged.length} users`;
+  } catch(e) {
+    document.getElementById('um-status').textContent = '❌ ' + e.message;
+  }
+}
+
+// ── Render table ─────────────────────────────────────────────────────────────
+function umRender() {
+  const tbody = document.getElementById('um-tbody');
+  if (!_umMerged.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-5">ยังไม่มี user</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _umMerged.map((u, i) => {
+    const displayName = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username;
+    const role = u.roles.includes('admin') ? 'admin' : u.roles.includes('user') ? 'user' : '—';
+    const roleBadge = role === 'admin'
+      ? '<span class="badge" style="background:#4f46e5;font-size:.7rem;">admin</span>'
+      : role === 'user'
+        ? '<span class="badge bg-secondary" style="font-size:.7rem;">user</span>'
+        : '<span class="badge bg-light text-muted" style="font-size:.7rem;">—</span>';
+    const storesBadge = u.allowed_stores
+      ? `<span style="font-size:.78rem;color:#0f172a;">${escHtml(u.allowed_stores)}</span>`
+      : '<span class="text-muted" style="font-size:.75rem;">ยังไม่ assign</span>';
+    const flagOn  = Object.values(u.feature_flags).filter(v => v !== false).length;
+    const flagAll = Object.keys(FLAG_LABELS).length;
+    const notInDb = !u.inDb ? '<span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;" title="ยังไม่เคย login">New</span>' : '';
+    return `<tr>
+      <td>
+        <div class="fw-semibold" style="font-size:.82rem;">${escHtml(displayName)}${notInDb}</div>
+        <div class="text-muted" style="font-size:.72rem;">${escHtml(u.email || u.username)}</div>
+      </td>
+      <td>${roleBadge}</td>
+      <td>${storesBadge}</td>
+      <td>
+        <span class="badge bg-light text-dark border" style="font-size:.72rem;">${flagOn}/${flagAll} เปิด</span>
+      </td>
+      <td class="text-end" style="white-space:nowrap;">
+        <button class="btn btn-xs btn-outline-primary me-1" style="font-size:.72rem;padding:2px 8px;" onclick="umOpenEdit(${i})">
+          <i class="bi bi-pencil-fill"></i> Edit
+        </button>
+        <button class="btn btn-xs btn-outline-danger" style="font-size:.72rem;padding:2px 8px;" onclick="umDelete('${escHtml(u.id)}','${escHtml(displayName)}')">
+          <i class="bi bi-trash3-fill"></i>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Add / Edit form ───────────────────────────────────────────────────────────
+function _umBuildFlagChecks(flags) {
+  return Object.keys(FLAG_LABELS).map(k => `
+    <label class="d-flex align-items-center gap-1 px-2 py-1 rounded" style="font-size:.78rem;border:1px solid #e2e8f0;cursor:pointer;background:#fff;">
+      <input type="checkbox" class="form-check-input mt-0" id="umf-${k}" ${flags[k] !== false ? 'checked' : ''}>
+      ${FLAG_LABELS[k]}
+    </label>`).join('');
+}
+
+function umOpenAdd() {
+  _umEditId = null;
+  document.getElementById('umEditTitle').innerHTML = '<i class="bi bi-person-plus-fill me-2 text-primary"></i>Add User';
+  document.getElementById('ume-username').value = '';
+  document.getElementById('ume-username').disabled = false;
+  document.getElementById('ume-role').value = 'user';
+  document.getElementById('ume-firstname').value = '';
+  document.getElementById('ume-lastname').value = '';
+  document.getElementById('ume-email').value = '';
+  document.getElementById('ume-password').value = '';
+  document.getElementById('ume-password').placeholder = 'ขั้นต่ำ 8 ตัว (required)';
+  document.getElementById('ume-pass-hint').textContent = '';
+  document.getElementById('ume-stores').value = '';
+  document.getElementById('ume-flags').innerHTML = _umBuildFlagChecks({ ...DEFAULT_FLAGS });
+  document.getElementById('umEditAlert').className = 'alert py-2 small d-none mb-3';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('umEditModal')).show();
+}
+
+function umOpenEdit(i) {
+  const u = _umMerged[i];
+  _umEditId = u.id;
+  document.getElementById('umEditTitle').innerHTML = '<i class="bi bi-pencil-fill me-2 text-warning"></i>Edit User';
+  document.getElementById('ume-username').value = u.username;
+  document.getElementById('ume-username').disabled = true;
+  document.getElementById('ume-role').value = u.roles.includes('admin') ? 'admin' : 'user';
+  document.getElementById('ume-firstname').value = u.firstName;
+  document.getElementById('ume-lastname').value = u.lastName;
+  document.getElementById('ume-email').value = u.email;
+  document.getElementById('ume-password').value = '';
+  document.getElementById('ume-password').placeholder = 'เว้นว่าง = ไม่เปลี่ยน password';
+  document.getElementById('ume-pass-hint').textContent = 'กรอกเฉพาะเมื่อต้องการ reset password';
+  document.getElementById('ume-stores').value = u.allowed_stores;
+  document.getElementById('ume-flags').innerHTML = _umBuildFlagChecks(u.feature_flags);
+  document.getElementById('umEditAlert').className = 'alert py-2 small d-none mb-3';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('umEditModal')).show();
+}
+
+function umCloseEdit() {
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('umEditModal')).hide();
+}
+
+function _umGetFlags() {
+  const flags = {};
+  Object.keys(FLAG_LABELS).forEach(k => {
+    flags[k] = !!document.getElementById(`umf-${k}`)?.checked;
+  });
+  return flags;
+}
+
+function _umSetAlert(msg, type = 'danger') {
+  const el = document.getElementById('umEditAlert');
+  el.className = `alert alert-${type} py-2 small mb-3`;
+  el.textContent = msg;
+}
+
+async function umSaveEdit() {
+  const btn = document.getElementById('ume-save-btn');
+  const isAdd = !_umEditId;
+  const username   = document.getElementById('ume-username').value.trim();
+  const role       = document.getElementById('ume-role').value;
+  const firstName  = document.getElementById('ume-firstname').value.trim();
+  const lastName   = document.getElementById('ume-lastname').value.trim();
+  const email      = document.getElementById('ume-email').value.trim();
+  const password   = document.getElementById('ume-password').value;
+  const stores     = document.getElementById('ume-stores').value.trim();
+  const flags      = _umGetFlags();
+
+  if (isAdd && !username) return _umSetAlert('กรุณาใส่ Username');
+  if (isAdd && password.length < 8) return _umSetAlert('Password ต้องมีอย่างน้อย 8 ตัว');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก…';
+
+  try {
+    let r;
+    if (isAdd) {
+      r = await fetch(`${API_BASE}/api/admin/keycloak/users`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, firstName, lastName, password, role, allowed_stores: stores, feature_flags: flags }),
+      });
+    } else {
+      r = await fetch(`${API_BASE}/api/admin/keycloak/users/${encodeURIComponent(_umEditId)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, firstName, lastName, password: password || undefined, role, allowed_stores: stores, feature_flags: flags }),
+      });
+    }
+    const data = await r.json();
+    if (!r.ok) return _umSetAlert(data.error || 'เกิดข้อผิดพลาด');
+
+    umCloseEdit();
+    await umLoad();
+  } catch(e) {
+    _umSetAlert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>บันทึก';
+  }
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function umDelete(id, name) {
+  if (!confirm(`ลบ user "${name}" ออกจากระบบทั้งหมด?\n\nAction นี้จะลบออกจาก Keycloak ด้วย ไม่สามารถ undo ได้`)) return;
+  try {
+    const r = await fetch(`${API_BASE}/api/admin/keycloak/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error(await r.text());
+    await umLoad();
+  } catch(e) { alert('Delete failed: ' + e.message); }
+}
+
+// ── Import CSV ────────────────────────────────────────────────────────────────
+// Template columns: username,firstName,lastName,email,password,role,allowed_stores
+function umDownloadTemplate() {
+  const header = 'username,firstName,lastName,email,password,role,allowed_stores';
+  const example = [
+    'john.doe,John,Doe,john@example.com,Changeme@1234,user,1104',
+    'jane.smith,Jane,Smith,jane@example.com,Changeme@1234,user,1104|5022',
+    'ops.admin,OPS,Admin,ops@example.com,Admin@9999,admin,*',
+  ].join('\n');
+  const blob = new Blob([header + '\n' + example], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'user_import_template.csv'; a.click();
+}
+
+function umParseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = line.split(',').map(v => v.trim());
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+    // Support | separator for multiple stores
+    if (obj.allowed_stores) obj.allowed_stores = obj.allowed_stores.replace(/\|/g, ',');
+    return obj;
+  });
+}
+
+async function umImportCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const users = umParseCSV(text);
+  input.value = '';
+
+  if (!users.length) return alert('ไม่พบข้อมูลใน CSV');
+
+  // Preview confirm
+  if (!confirm(`พบ ${users.length} user ใน CSV\nต้องการ import ทั้งหมดใช่ไหม?\n\n(Password ที่ว่างจะถูก set เป็น Changeme@1234 และ user ต้องเปลี่ยนตอน login ครั้งแรก)`)) return;
+
+  document.getElementById('um-status').textContent = `กำลัง import ${users.length} users…`;
+
+  try {
+    const r = await fetch(`${API_BASE}/api/admin/keycloak/users/import`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ users }),
+    });
+    const data = await r.json();
+
+    // Show result modal
+    const successRows = data.results.filter(r => r.ok);
+    const failRows    = data.results.filter(r => !r.ok);
+    let html = `<div class="mb-2"><strong class="text-success">✓ สำเร็จ ${successRows.length}</strong> | <strong class="text-danger">✗ ล้มเหลว ${failRows.length}</strong> จาก ${data.total} users</div>`;
+    if (successRows.length) {
+      html += `<div class="mb-2 small text-success">${successRows.map(r => `✓ ${r.username}`).join('<br>')}</div>`;
+    }
+    if (failRows.length) {
+      html += `<div class="small text-danger">${failRows.map(r => `✗ ${r.username}: ${r.error}`).join('<br>')}</div>`;
+    }
+    document.getElementById('um-import-body').innerHTML = html;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('umImportModal')).show();
+    await umLoad();
+  } catch(e) {
+    alert('Import error: ' + e.message);
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Load when modal opens
+document.addEventListener('DOMContentLoaded', () => {
+  const umModal = document.getElementById('userMgmtModal');
+  if (umModal) umModal.addEventListener('show.bs.modal', umLoad);
+});
 </script>
 </body>
 </html>

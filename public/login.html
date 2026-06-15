@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - TikTok MVP</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(720px 420px at 20% 18%, rgba(61, 143, 98, 0.20), transparent 62%),
+        radial-gradient(620px 360px at 78% 72%, rgba(59, 114, 255, 0.12), transparent 64%),
+        linear-gradient(180deg, rgba(255,255,255,0.82) 0, rgba(248,250,252,0.88) 170px, #f8fafc 100%);
+      color: #0f172a;
+      font-family: Inter, Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .card {
+      width: min(100%, 380px);
+      padding: 44px 38px;
+      background: rgba(255, 255, 255, 0.56);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+      text-align: center;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: #3d8f62;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .logo-mark {
+      color: #e94155;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+      font-size: 1.42rem;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin-bottom: 30px;
+      color: #64748b;
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      min-height: 46px;
+      padding: 12px 16px;
+      background: #3d8f62;
+      border: 1px solid #3d8f62;
+      border-radius: 10px;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.25;
+      text-decoration: none;
+      box-shadow: 0 10px 18px rgba(61, 143, 98, 0.22);
+      transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .btn:hover,
+    .btn:focus {
+      background: #2f7650;
+      border-color: #2f7650;
+      box-shadow: 0 12px 22px rgba(61, 143, 98, 0.26);
+      outline: none;
+    }
+
+    .error {
+      display: none;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      background: rgba(233, 65, 85, 0.10);
+      border: 1px solid rgba(233, 65, 85, 0.30);
+      border-radius: 10px;
+      color: #b42335;
+      font-size: 0.86rem;
+      font-weight: 700;
+      line-height: 1.4;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <main class="card" aria-label="Login">
+    <div class="logo" aria-label="TikTok MVP">
+      <span class="logo-mark" aria-hidden="true">⚡</span>
+      <span>TikTok MVP</span>
+    </div>
+    <h1>Autobatch Dashboard</h1>
+    <p>Lotus's Last-mile Operations</p>
+    <div class="error" id="errBox"></div>
+    <a class="btn" href="/api/auth/login">เข้าสู่ระบบด้วย SSO</a>
+  </main>
+
+  <script>
+    const err = new URLSearchParams(location.search).get('error');
+    if (err) {
+      const box = document.getElementById('errBox');
+      box.style.display = 'block';
+      box.textContent = 'Login failed: ' + err;
+    }
+
+    fetch('/api/auth/token', { credentials: 'include' })
+      .then(response => {
+        if (response.ok) location.href = '/';
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

@@ -17,7 +17,23 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack.min.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body { background: #f8fafc; font-family: 'Inter', 'Prompt', sans-serif; font-size: 13.5px; color: #1e293b; }
+	    body { background: #f8fafc; font-family: 'Inter', 'Prompt', sans-serif; font-size: 13.5px; color: #1e293b; }
+	    body[data-menu-dashboard="false"] #page-dashboard,
+	    body[data-menu-dashboard="false"] #tab-dashboard,
+	    body[data-menu-dashboard="false"] #mainTabs li:has(#tab-dashboard),
+	    body[data-menu-dispatcher="false"] #page-dispatcher,
+	    body[data-menu-dispatcher="false"] #tab-dispatcher,
+	    body[data-menu-dispatcher="false"] #mainTabs li:has(#tab-dispatcher),
+	    body[data-menu-analytics="false"] #page-analytics,
+	    body[data-menu-analytics="false"] #tab-analytics,
+	    body[data-menu-analytics="false"] #mainTabs li:has(#tab-analytics),
+	    body[data-menu-route-tools="false"] #route-tools-link,
+	    body[data-menu-ai-chat="false"] #ai-fab,
+	    body[data-menu-ai-chat="false"] #ai-chat-window,
+	    body[data-menu-admin="false"] #admin-mode-btn {
+	      display: none !important;
+	      pointer-events: none !important;
+	    }
     .card { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; }
     .card-header { background: #ffffff !important; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0 !important; font-size: 1rem; font-weight: 600; padding: 0.8rem 1.25rem !important; color: #0f172a; }
     .card-pending { border-top: 3px solid #f59e0b; }
@@ -524,8 +540,10 @@
     <div class="d-flex align-items-center gap-3">
       <span class="text-muted fw-medium" id="last-updated" style="font-size: 0.8rem;"></span>
       <button class="btn btn-outline-secondary btn-sm" onclick="resetLayout()" title="Reset Layout"><i class="bi bi-grid-3x3-gap me-1"></i>Layout</button>
-      <a href="multi-route.html" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-map me-1"></i>Compare Routes</a>
-      <button class="btn btn-sm d-none" id="admin-mode-btn" data-bs-toggle="modal" data-bs-target="#adminModal" title="Admin Settings">🛡 <span class="admin-label">Admin</span></button>
+      <a href="multi-route.html" target="_blank" class="btn btn-outline-primary btn-sm d-none" id="route-tools-link"><i class="bi bi-map me-1"></i>Route Tools</a>
+      <button class="btn btn-outline-danger btn-sm d-none" id="admin-mode-btn" data-bs-toggle="modal" data-bs-target="#adminModal" title="Admin Settings"><i class="bi bi-shield-lock me-1"></i><span class="admin-label">Admin</span></button>
+      <span class="text-muted small d-none" id="auth-user-label"></span>
+      <button class="btn btn-outline-secondary btn-sm d-none" id="logout-btn" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>Logout</button>
       <button class="btn btn-outline-secondary btn-sm" id="lang-btn" onclick="toggleLang()">EN</button>
     </div>
   </div>
@@ -534,15 +552,6 @@
 <div class="container-fluid px-3 pt-2 pb-0">
   <!-- TAB NAV -->
   <ul class="nav nav-tabs mb-0" id="mainTabs">
-    <li class="nav-item">
-      <a class="nav-link active" href="#" id="tab-dashboard" onclick="switchTab('dashboard');return false;"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#" id="tab-dispatcher" onclick="switchTab('dispatcher');return false;"><i class="bi bi-headset me-1"></i>Dispatcher <span id="dp-pending-badge" class="badge bg-danger ms-1" style="display:none;font-size:.65rem;"></span></a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#" id="tab-analytics" onclick="switchTab('analytics');return false;"><i class="bi bi-bar-chart-line me-1"></i>Analytics &amp; Report</a>
-    </li>
   </ul>
 </div>
 
@@ -1302,70 +1311,124 @@
 <!-- BREAK TOAST CONTAINER -->
 <div id="break-toast-container"></div>
 
+<!-- LOGIN SUCCESS TOAST -->
+<div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index:11000;">
+  <div id="login-success-toast" class="toast align-items-center text-bg-success border-0" role="status" aria-live="polite" aria-atomic="true" data-bs-delay="3000">
+    <div class="d-flex">
+      <div class="toast-body fw-semibold">✅ Login successful</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
 <!-- ADMIN PANEL MODAL -->
 <div class="modal fade" id="adminModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
-    <div class="modal-content border-0" style="border-radius:16px; overflow:hidden;">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content border-0" style="border-radius:12px; overflow:hidden;">
 
       <!-- Header -->
-      <div class="modal-header py-3 px-4" style="background:linear-gradient(135deg,#1e1b4b,#4f46e5); color:#fff; border:none;">
+      <div class="modal-header py-3 px-4" style="background:#0f172a; color:#fff; border:none;">
         <div>
-          <div class="fw-700" style="font-size:1.05rem; font-weight:700;">🛡 Admin Settings</div>
-          <div style="font-size:.75rem; opacity:.75; margin-top:1px;">จัดการ Permission ของ Feature ต่างๆ</div>
+          <div class="fw-700" style="font-size:1.05rem; font-weight:700;"><i class="bi bi-shield-lock me-2"></i>Admin User Management</div>
+          <div style="font-size:.75rem; opacity:.75; margin-top:1px;">จัดการผู้ใช้ Role ผ่าน Keycloak และ Menu access ผ่าน Application DB</div>
         </div>
         <button type="button" class="btn-close btn-close-white btn-sm ms-auto" data-bs-dismiss="modal"></button>
       </div>
 
       <div class="modal-body p-4">
+        <div id="admin-alert" class="alert d-none py-2"></div>
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <div class="admin-section-title">User Detail</div>
+            <input type="hidden" id="admin-user-id">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Username</label>
+                <input class="form-control form-control-sm" id="admin-username" autocomplete="off">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Email</label>
+                <input class="form-control form-control-sm" id="admin-email" autocomplete="off">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">First name</label>
+                <input class="form-control form-control-sm" id="admin-first-name" autocomplete="off">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Last name</label>
+                <input class="form-control form-control-sm" id="admin-last-name" autocomplete="off">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Role</label>
+                <select class="form-select form-select-sm" id="admin-role">
+                  <option value="user">user</option>
+                  <option value="admin">admin</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Enabled</label>
+                <select class="form-select form-select-sm" id="admin-enabled">
+                  <option value="true">enabled</option>
+                  <option value="false">disabled</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label small mb-1">Temporary password</label>
+                <input class="form-control form-control-sm" id="admin-password" type="password" autocomplete="new-password">
+              </div>
+              <div class="col-12">
+                <label class="form-label small mb-1">Allowed store codes</label>
+                <input class="form-control form-control-sm" id="admin-store-codes" placeholder="1104,5022,6403">
+              </div>
+              <div class="col-12">
+                <label class="form-label small mb-1">Allowed zones</label>
+                <input class="form-control form-control-sm" id="admin-zone-names" placeholder="zone_district_prawet">
+              </div>
+            </div>
 
-        <!-- Section: AI Features -->
-        <div class="admin-section-title">🤖 AI Features</div>
+            <div class="admin-section-title mt-3">Menu Access</div>
+            <div class="row g-2 small" id="admin-menu-checks">
+              <label class="col-6"><input class="form-check-input me-1" type="checkbox" value="dashboard"> Dashboard</label>
+              <label class="col-6"><input class="form-check-input me-1" type="checkbox" value="dispatcher"> Dispatcher</label>
+              <label class="col-6"><input class="form-check-input me-1" type="checkbox" value="analytics"> Analytics</label>
+              <label class="col-6"><input class="form-check-input me-1" type="checkbox" value="aiChat"> AI Chat</label>
+              <label class="col-6"><input class="form-check-input me-1" type="checkbox" value="routeTools"> Route Tools</label>
+              <label class="col-6"><input class="form-check-input me-1" type="checkbox" value="admin"> Admin</label>
+            </div>
 
-        <!-- Toggle: AI Chat Bot -->
-        <div class="admin-perm-row">
-          <div class="admin-perm-info">
-            <div class="admin-perm-name">AI Chat Bot (น้องบอท)</div>
-            <div class="admin-perm-desc">Floating chat widget มุมล่างขวา — ถาม-ตอบข้อมูล Job / Rider / Order</div>
+            <div class="d-flex gap-2 mt-3">
+              <button class="btn btn-danger btn-sm" onclick="saveAdminUser()"><i class="bi bi-save me-1"></i>Save user</button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="resetAdminForm()">New user</button>
+            </div>
           </div>
-          <label class="admin-toggle">
-            <input type="checkbox" id="perm-ai-chat" onchange="applyPermissions()">
-            <span class="admin-slider"></span>
-          </label>
-        </div>
-
-        <!-- Toggle: AI Insight -->
-        <div class="admin-perm-row">
-          <div class="admin-perm-info">
-            <div class="admin-perm-name">AI Insight (Analytics Tab)</div>
-            <div class="admin-perm-desc">Evening Briefing — วิเคราะห์ข้อมูลและคาดการณ์พรุ่งนี้ด้วย AI</div>
+          <div class="col-lg-7">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="admin-section-title mb-0">Users</div>
+              <button class="btn btn-outline-secondary btn-sm" onclick="loadAdminUsers()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+            </div>
+            <div class="scroll-table" style="max-height:520px;">
+              <table class="table table-sm table-hover align-middle">
+                <thead class="table-dark sticky-header">
+                  <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Menus</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-body">
+                  <tr><td colspan="6" class="text-muted">Open the panel to load users.</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-          <label class="admin-toggle">
-            <input type="checkbox" id="perm-ai-insight" onchange="applyPermissions()">
-            <span class="admin-slider"></span>
-          </label>
         </div>
-
-        <hr class="my-3" style="border-color:#e2e8f0;">
-
-        <!-- Section: Dashboard Features -->
-        <div class="admin-section-title">📋 Dashboard Features</div>
-
-        <!-- Toggle: Store Config in Job Row -->
-        <div class="admin-perm-row">
-          <div class="admin-perm-info">
-            <div class="admin-perm-name">Store Config Limits (ใน Job row)</div>
-            <div class="admin-perm-desc">แสดง limit ของ store เมื่อกดเปิด Job row — ช่วย support เข้าใจว่าทำไม Job ถึงแยก</div>
-          </div>
-          <label class="admin-toggle">
-            <input type="checkbox" id="perm-job-config" onchange="applyPermissions()">
-            <span class="admin-slider"></span>
-          </label>
-        </div>
-
       </div>
 
       <div class="modal-footer px-4 py-3" style="background:#f8fafc; border-top:1px solid #e2e8f0;">
-        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Settings บันทึกใน browser — ไม่มีผลต่อ user อื่น</small>
+        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Passwords stay in Keycloak. Menu permissions are stored in the application database.</small>
         <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" data-bs-dismiss="modal">ปิด</button>
       </div>
     </div>
@@ -1486,66 +1549,497 @@ const API_BASE = (() => {
   return (l.protocol === 'http:' || l.protocol === 'https:') ? l.origin : 'http://localhost:3000';
 })();
 
-// ─── PERMISSIONS ──────────────────────────────────────────────────────────────
-// Keys: aiChat | aiInsight | jobConfig
-const PERM_KEYS = ['aiChat', 'aiInsight', 'jobConfig'];
+const originalFetch = window.fetch.bind(window);
+let currentUser = null;
+const Auth = {
+  keycloak: null,
+  accessToken: '',
+  user: null,
+  config: null,
+  initialized: false,
+  can(menu) {
+    return !!this.user && getAllowedMenus(this.user).has(menu);
+  },
+  isAdmin() {
+    return !!this.user?.isAdmin;
+  }
+};
 
-function _loadPerms() {
-  const defaults = { aiChat: false, aiInsight: false, jobConfig: true };
-  try { return { ...defaults, ...JSON.parse(localStorage.getItem('adminPerms') || '{}') }; }
-  catch { return defaults; }
+const MAIN_MENU_ITEMS = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'bi-speedometer2' },
+  { key: 'dispatcher', label: 'Dispatcher', icon: 'bi-headset', badgeId: 'dp-pending-badge' },
+  { key: 'analytics', label: 'Analytics & Report', icon: 'bi-bar-chart-line' }
+];
+
+function getAllowedMenus(user = currentUser) {
+  return new Set((user?.menus || []).map(menu => String(menu).trim()).filter(Boolean));
 }
-function _savePerms(p) {
-  localStorage.setItem('adminPerms', JSON.stringify(p));
+
+function setMenuVisible(el, visible) {
+  if (!el) return;
+  el.classList.toggle('d-none', !visible);
+  el.hidden = !visible;
+  el.style.display = visible ? '' : 'none';
+  el.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  if (!visible) {
+    el.setAttribute('disabled', 'disabled');
+    el.style.pointerEvents = 'none';
+    el.tabIndex = -1;
+  } else {
+    el.removeAttribute('disabled');
+    el.style.pointerEvents = '';
+    el.removeAttribute('tabindex');
+  }
 }
 
-// Sync checkboxes → DOM → navbar button color
-function applyPermissions() {
-  const saved = _loadPerms();
+function renderMainMenu(user = currentUser) {
+  const tabList = document.getElementById('mainTabs');
+  if (!tabList) return;
 
-  // Read checkboxes (if modal is open) and persist
-  PERM_KEYS.forEach(k => {
-    const el = document.getElementById('perm-' + k.replace(/([A-Z])/g, '-$1').toLowerCase());
-    if (el) saved[k] = el.checked;
+  const allowedMenus = getAllowedMenus(user);
+  const visibleMenus = MAIN_MENU_ITEMS.filter(item => allowedMenus.has(item.key));
+  tabList.innerHTML = visibleMenus.map((item, index) => {
+    const badge = item.badgeId
+      ? ` <span id="${item.badgeId}" class="badge bg-danger ms-1" style="display:none;font-size:.65rem;"></span>`
+      : '';
+    return `
+      <li class="nav-item" data-menu="${item.key}">
+        <a class="nav-link ${index === 0 ? 'active' : ''}" href="#" id="tab-${item.key}" onclick="switchTab('${item.key}');return false;">
+          <i class="bi ${item.icon} me-1"></i>${item.label}${badge}
+        </a>
+      </li>`;
+  }).join('');
+}
+
+function setPageVisible(menu, visible) {
+  const page = document.getElementById(`page-${menu}`);
+  if (page) page.style.display = visible ? '' : 'none';
+}
+
+function getMenuPermissionState(user = currentUser) {
+  const allowedMenus = getAllowedMenus(user);
+  const hasUser = !!user;
+  return {
+    allowedMenus,
+    canDashboard: hasUser && allowedMenus.has('dashboard'),
+    canDispatcher: hasUser && allowedMenus.has('dispatcher'),
+    canAnalytics: hasUser && allowedMenus.has('analytics'),
+    canAiChat: hasUser && allowedMenus.has('aiChat'),
+    canRouteTools: hasUser && allowedMenus.has('routeTools'),
+    canAdmin: hasUser && user.isAdmin === true && allowedMenus.has('admin')
+  };
+}
+
+function setBodyMenuPermissionFlags(user = currentUser) {
+  if (!document.body) return;
+  const {
+    canDashboard,
+    canDispatcher,
+    canAnalytics,
+    canAiChat,
+    canRouteTools,
+    canAdmin
+  } = getMenuPermissionState(user);
+  document.body.dataset.menuDashboard = String(canDashboard);
+  document.body.dataset.menuDispatcher = String(canDispatcher);
+  document.body.dataset.menuAnalytics = String(canAnalytics);
+  document.body.dataset.menuAiChat = String(canAiChat);
+  document.body.dataset.menuRouteTools = String(canRouteTools);
+  document.body.dataset.menuAdmin = String(canAdmin);
+}
+
+function findMenuTextElements(labels) {
+  const matches = [];
+  document.querySelectorAll('a, button, [role="button"], .nav-item, .nav-link, .card, .dropdown-item').forEach(el => {
+    if (el.closest('#adminModal')) return;
+    const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!text) return;
+    if (labels.some(label => text === label || text.includes(label))) matches.push(el);
   });
-  _savePerms(saved);
+  return matches;
+}
 
-  // Apply: AI Chat FAB
+function setMenuTextVisible(labels, visible) {
+  findMenuTextElements(labels).forEach(el => setMenuVisible(el, visible));
+}
+
+function enforceExistingMenuDom(user = currentUser) {
+  setBodyMenuPermissionFlags(user);
+  const {
+    allowedMenus,
+    canDashboard,
+    canDispatcher,
+    canAnalytics,
+    canAiChat,
+    canRouteTools,
+    canAdmin
+  } = getMenuPermissionState(user);
+
+  setMenuVisible(document.getElementById('tab-dashboard')?.closest('li'), canDashboard);
+  setMenuVisible(document.getElementById('tab-dispatcher')?.closest('li'), canDispatcher);
+  setMenuVisible(document.getElementById('tab-analytics')?.closest('li'), canAnalytics);
+  setMenuVisible(document.querySelector("[onclick*=\"switchTab('dashboard')\"]")?.closest('li'), canDashboard);
+  setMenuVisible(document.querySelector("[onclick*=\"switchTab('dispatcher')\"]")?.closest('li'), canDispatcher);
+  setMenuVisible(document.querySelector("[onclick*=\"switchTab('analytics')\"]")?.closest('li'), canAnalytics);
+  setMenuVisible(document.getElementById('route-tools-link'), canRouteTools);
+  setMenuVisible(document.getElementById('admin-mode-btn'), canAdmin);
+  setMenuVisible(document.getElementById('ai-fab'), canAiChat);
+  setMenuVisible(document.getElementById('ai-chat-window'), canAiChat);
+
+  setMenuTextVisible(['Dashboard'], canDashboard);
+  setMenuTextVisible(['Dispatcher'], canDispatcher);
+  setMenuTextVisible(['Analytics', 'Analytics & Report'], canAnalytics);
+  setMenuTextVisible(['AI Chat'], canAiChat);
+  setMenuTextVisible(['Route Tools'], canRouteTools);
+  setMenuTextVisible(['Admin', 'Admin Settings'], canAdmin);
+
+  if (!canAiChat && window.aiState) {
+    const aiWindow = document.getElementById('ai-chat-window');
+    if (aiWindow) aiWindow.classList.remove('open');
+    aiState.open = false;
+  }
+
+  if (!canDashboard) setPageVisible('dashboard', false);
+  if (!canDispatcher) setPageVisible('dispatcher', false);
+  if (!canAnalytics) setPageVisible('analytics', false);
+
+  const currentAllowedVisible = ['dashboard', 'dispatcher', 'analytics'].some(menu => {
+    const page = document.getElementById(`page-${menu}`);
+    return page && page.style.display !== 'none' && allowedMenus.has(menu);
+  });
+  const firstAllowed = ['dashboard', 'analytics', 'dispatcher'].find(menu => allowedMenus.has(menu));
+  if (firstAllowed && !currentAllowedVisible) switchTab(firstAllowed);
+}
+
+function applyMenuPermissions(user = currentUser, options = {}) {
+  const shouldLog = options.log !== false && !!user;
+  setBodyMenuPermissionFlags(user);
+  renderMainMenu(user);
+  enforceExistingMenuDom(user);
+
+  if (shouldLog) console.log("APPLY MENU PERMISSIONS", user.username, user.menus);
+}
+
+let menuPermissionObserver = null;
+let menuPermissionObserverTimer = null;
+
+function startMenuPermissionObserver() {
+  if (menuPermissionObserver || !document.body) return;
+  menuPermissionObserver = new MutationObserver(() => {
+    if (!Auth.initialized || !currentUser) return;
+    clearTimeout(menuPermissionObserverTimer);
+    menuPermissionObserverTimer = setTimeout(() => enforceExistingMenuDom(currentUser), 0);
+  });
+  menuPermissionObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+function isProtectedApi(url) {
+  const value = typeof url === 'string' ? url : url?.url || '';
+  if (!value) return false;
+  try {
+    const parsed = new URL(value, window.location.origin);
+    return parsed.origin === window.location.origin && (parsed.pathname.startsWith('/api/') || parsed.pathname === '/auth/me');
+  } catch {
+    return value.startsWith('/api/') || value === '/auth/me' || value.startsWith(`${API_BASE}/api/`) || value === `${API_BASE}/auth/me`;
+  }
+}
+
+async function getKeycloakAccessToken() {
+  if (!Auth.keycloak) return '';
+  await Auth.keycloak.updateToken(30);
+  Auth.accessToken = Auth.keycloak.token || '';
+  return Auth.accessToken;
+}
+
+function mergeAuthHeader(headers, token) {
+  const nextHeaders = new Headers(headers || {});
+  if (token) nextHeaders.set('Authorization', `Bearer ${token}`);
+  return nextHeaders;
+}
+
+window.fetch = async function authenticatedFetch(input, init = {}) {
+  const nextInit = { ...init };
+  if (isProtectedApi(input) && Auth.keycloak) {
+    const token = await getKeycloakAccessToken();
+    const inputHeaders = typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined;
+    nextInit.headers = mergeAuthHeader(init.headers || inputHeaders, token);
+  }
+  const response = await originalFetch(input, nextInit);
+  if (response.status === 401 && Auth.keycloak) {
+    Auth.keycloak.login();
+  }
+  return response;
+};
+
+function showAuthMeDebug(me) {
+  console.log('/api/auth/me result after login:', me);
+  let el = document.getElementById('auth-debug');
+  if (!el) {
+    el = document.createElement('pre');
+    el.id = 'auth-debug';
+    el.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;max-width:420px;max-height:220px;overflow:auto;margin:0;padding:10px 12px;background:#0f172a;color:#d1fae5;border:1px solid #34d399;border-radius:8px;font-size:11px;line-height:1.35;box-shadow:0 8px 24px rgba(15,23,42,.25);';
+    document.body.appendChild(el);
+  }
+  el.textContent = `/api/auth/me OK\nAuthorization: Bearer <access_token> sent\n\n${JSON.stringify(me, null, 2)}`;
+}
+
+function showLoginSuccessToastOnce(user) {
+  const toastEl = document.getElementById('login-success-toast');
+  if (!toastEl || typeof bootstrap === 'undefined') return;
+  const sessionKey = Auth.keycloak?.sessionId || user?.id || user?.username || 'current';
+  const storageKey = `login-success-toast-shown:${sessionKey}`;
+  if (sessionStorage.getItem(storageKey) === '1') return;
+  sessionStorage.setItem(storageKey, '1');
+  bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000, autohide: true }).show();
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function initAuth() {
+  const configRes = await originalFetch(`${API_BASE}/auth/config`);
+  Auth.config = await configRes.json();
+  if (!Auth.config.enabled) {
+    throw new Error('Keycloak is not configured. Set KEYCLOAK_BASE_URL, KEYCLOAK_REALM, and KEYCLOAK_CLIENT_ID in .env.');
+  }
+
+  const keycloakModule = await import('/vendor/keycloak.js');
+  const KeycloakClient = keycloakModule.default;
+  Auth.keycloak = new KeycloakClient({
+    url: Auth.config.url,
+    realm: Auth.config.realm,
+    clientId: Auth.config.clientId
+  });
+  await Auth.keycloak.init({
+    onLoad: 'login-required',
+    pkceMethod: 'S256',
+    checkLoginIframe: false
+  });
+
+  setInterval(() => {
+    Auth.keycloak.updateToken(60).catch(() => Auth.keycloak.login());
+  }, 30000);
+
+  const meRes = await fetch(`${API_BASE}/api/auth/me`);
+  if (!meRes.ok) throw new Error('Unable to load current user profile');
+  const me = await meRes.json();
+  showAuthMeDebug(me);
+  currentUser = me.user || me;
+  window.currentUser = currentUser;
+  console.log("AUTH USER MENUS", currentUser?.menus);
+  Auth.user = currentUser;
+  Auth.initialized = true;
+  applyMenuPermissions(currentUser);
+  startMenuPermissionObserver();
+  applyPermissions();
+  showLoginSuccessToastOnce(currentUser);
+}
+
+function logout() {
+  if (Auth.keycloak) Auth.keycloak.logout({ redirectUri: window.location.origin });
+}
+
+function showAuthError(message) {
+  document.body.innerHTML = `
+    <div class="container py-5">
+      <div class="alert alert-danger shadow-sm">
+        <h5 class="mb-2">Login is unavailable</h5>
+        <div>${escapeHtml(message)}</div>
+      </div>
+    </div>`;
+}
+
+// ─── PERMISSIONS ──────────────────────────────────────────────────────────────
+function applyPermissions() {
+  const user = currentUser;
+  const allowedMenus = getAllowedMenus(user);
+
+  if (!user) {
+    setMenuVisible(document.getElementById('route-tools-link'), false);
+    setMenuVisible(document.getElementById('ai-fab'), false);
+    setMenuVisible(document.getElementById('ai-chat-window'), false);
+    setMenuVisible(document.getElementById('admin-mode-btn'), false);
+    return;
+  }
+
+  document.querySelectorAll('[data-menu]').forEach(el => {
+    const menu = el.getAttribute('data-menu');
+    setMenuVisible(el, allowedMenus.has(menu));
+  });
+
+  const routeTools = document.getElementById('route-tools-link');
+  setMenuVisible(routeTools, allowedMenus.has('routeTools'));
+
+  const authLabel = document.getElementById('auth-user-label');
+  if (authLabel && user) {
+    authLabel.textContent = user.displayName || user.username || '';
+    authLabel.classList.remove('d-none');
+  }
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.classList.toggle('d-none', !user);
+
   const fab = document.getElementById('ai-fab');
   const win = document.getElementById('ai-chat-window');
-  if (fab) fab.style.display = saved.aiChat ? '' : 'none';
-  if (!saved.aiChat && win) { win.classList.remove('open'); if (window.aiState) aiState.open = false; }
+  setMenuVisible(fab, Auth.can('aiChat'));
+  if (!Auth.can('aiChat') && win) { win.classList.remove('open'); if (window.aiState) aiState.open = false; }
 
-  // Apply: AI Insight section
   const insightCard = document.querySelector('#page-analytics .card:has(#an-ai-insight)')
     || document.getElementById('an-ai-insight')?.closest('.card');
-  if (insightCard) insightCard.style.display = saved.aiInsight ? '' : 'none';
+  if (insightCard) insightCard.style.display = Auth.can('analytics') ? '' : 'none';
 
-  // Navbar button: purple if any perm is ON
   const btn = document.getElementById('admin-mode-btn');
-  if (btn) btn.classList.toggle('has-active', PERM_KEYS.some(k => saved[k]));
-}
+  setMenuVisible(btn, Auth.isAdmin() && allowedMenus.has('admin'));
 
-// Called when modal opens — restore checkbox state from localStorage
-function initAdminModal() {
-  const saved = _loadPerms();
-  PERM_KEYS.forEach(k => {
-    const el = document.getElementById('perm-' + k.replace(/([A-Z])/g, '-$1').toLowerCase());
-    if (el) el.checked = !!saved[k];
+  const firstAllowed = ['dashboard', 'dispatcher', 'analytics'].find(menu => Auth.can(menu));
+  const currentVisible = ['dashboard', 'dispatcher', 'analytics'].some(menu => {
+    const page = document.getElementById(`page-${menu}`);
+    return page && page.style.display !== 'none' && Auth.can(menu);
   });
+  if (firstAllowed && !currentVisible) switchTab(firstAllowed);
 }
 
 // Wire modal open event
-document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('adminModal');
-  if (modal) modal.addEventListener('show.bs.modal', initAdminModal);
-  initZoneSelector();
-  fetchTiktokConfig();
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const modal = document.getElementById('adminModal');
+    if (modal) modal.addEventListener('show.bs.modal', loadAdminUsers);
+    await initAuth();
+    initZoneSelector();
+    fetchTiktokConfig();
+  } catch (e) {
+    showAuthError(e.message || 'Unable to initialize login');
+  }
 });
 
 // Compat stub so old code that calls these doesn't break
 function applyAdminMode() { applyPermissions(); }
 function toggleAdminMode() {}
+
+let adminUsers = [];
+
+function adminAlert(message, type = 'info') {
+  const el = document.getElementById('admin-alert');
+  if (!el) return;
+  el.className = `alert alert-${type} py-2`;
+  el.textContent = message;
+}
+
+function getAdminMenuValues() {
+  return Array.from(document.querySelectorAll('#admin-menu-checks input:checked')).map(el => el.value);
+}
+
+function setAdminMenuValues(values = []) {
+  const allowed = new Set(values);
+  document.querySelectorAll('#admin-menu-checks input').forEach(el => { el.checked = allowed.has(el.value); });
+}
+
+function splitAdminCsv(value) {
+  return String(value || '').split(',').map(v => v.trim()).filter(Boolean);
+}
+
+function resetAdminForm() {
+  ['admin-user-id', 'admin-username', 'admin-email', 'admin-first-name', 'admin-last-name', 'admin-password', 'admin-store-codes', 'admin-zone-names'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('admin-role').value = 'user';
+  document.getElementById('admin-enabled').value = 'true';
+  setAdminMenuValues(['dashboard']);
+  adminAlert('Ready to create a new user.', 'secondary');
+}
+
+function editAdminUser(id) {
+  const user = adminUsers.find(u => u.id === id);
+  if (!user) return;
+  document.getElementById('admin-user-id').value = user.id || '';
+  document.getElementById('admin-username').value = user.username || '';
+  document.getElementById('admin-email').value = user.email || '';
+  document.getElementById('admin-first-name').value = user.firstName || '';
+  document.getElementById('admin-last-name').value = user.lastName || '';
+  document.getElementById('admin-password').value = '';
+  document.getElementById('admin-role').value = user.role || 'user';
+  document.getElementById('admin-enabled').value = user.enabled === false ? 'false' : 'true';
+  document.getElementById('admin-store-codes').value = (user.allowedStoreCodes || []).join(',');
+  document.getElementById('admin-zone-names').value = (user.allowedZones || []).join(',');
+  setAdminMenuValues(user.menus || ['dashboard']);
+  adminAlert(`Editing ${user.username}`, 'secondary');
+}
+
+async function loadAdminUsers() {
+  if (!Auth.isAdmin()) return;
+  const tbody = document.getElementById('admin-users-body');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Loading users...</td></tr>';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/users`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Unable to load users');
+    adminUsers = data.data || [];
+    if (!tbody) return;
+    tbody.innerHTML = adminUsers.map(u => `
+      <tr>
+        <td>${escapeHtml(u.username || '')}</td>
+        <td>${escapeHtml(u.email || '')}</td>
+        <td><span class="badge ${u.role === 'admin' ? 'bg-danger' : 'bg-primary'}">${escapeHtml(u.role || 'user')}</span></td>
+        <td><span class="badge ${u.enabled === false ? 'bg-secondary' : 'bg-success'}">${u.enabled === false ? 'disabled' : 'enabled'}</span></td>
+        <td style="max-width:260px;">${escapeHtml((u.menus || []).join(', '))}</td>
+        <td class="text-end"><button class="btn btn-outline-primary btn-sm" onclick="editAdminUser('${u.id}')">Edit</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="text-muted">No users found.</td></tr>';
+    if (!document.getElementById('admin-user-id')?.value) resetAdminForm();
+  } catch (e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-danger">${escapeHtml(e.message)}</td></tr>`;
+    adminAlert(e.message, 'danger');
+  }
+}
+
+async function saveAdminUser() {
+  if (!Auth.isAdmin()) return;
+  const id = document.getElementById('admin-user-id').value;
+  const payload = {
+    username: document.getElementById('admin-username').value.trim(),
+    email: document.getElementById('admin-email').value.trim(),
+    firstName: document.getElementById('admin-first-name').value.trim(),
+    lastName: document.getElementById('admin-last-name').value.trim(),
+    role: document.getElementById('admin-role').value,
+    enabled: document.getElementById('admin-enabled').value === 'true',
+    menus: getAdminMenuValues(),
+    allowedStoreCodes: splitAdminCsv(document.getElementById('admin-store-codes').value),
+    allowedZones: splitAdminCsv(document.getElementById('admin-zone-names').value)
+  };
+  const password = document.getElementById('admin-password').value;
+  if (password) {
+    payload.password = password;
+    payload.temporaryPassword = true;
+  }
+  if (!payload.username && !id) {
+    adminAlert('Username is required for new users.', 'warning');
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/users${id ? `/${encodeURIComponent(id)}` : ''}`, {
+      method: id ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Unable to save user');
+    adminAlert('User saved.', 'success');
+    document.getElementById('admin-password').value = '';
+    await loadAdminUsers();
+  } catch (e) {
+    adminAlert(e.message, 'danger');
+  }
+}
 
 // ─── STORE CONFIG CACHE ───────────────────────────────────────────────────────
 const storeConfigCache = {};
@@ -4835,19 +5329,24 @@ function resetLayout() {
 }
 
 applyLang();
-applyPermissions();
+applyMenuPermissions(null, { log: false });
 
 // ══════════════════════════════════════════════════════════
 // ANALYTICS TAB
 // ══════════════════════════════════════════════════════════
 
 function switchTab(tab) {
-  document.getElementById('page-dashboard').style.display  = tab === 'dashboard'  ? '' : 'none';
-  document.getElementById('page-analytics').style.display  = tab === 'analytics'  ? '' : 'none';
-  document.getElementById('page-dispatcher').style.display = tab === 'dispatcher' ? '' : 'none';
-  document.getElementById('tab-dashboard').classList.toggle('active',  tab === 'dashboard');
-  document.getElementById('tab-analytics').classList.toggle('active',  tab === 'analytics');
-  document.getElementById('tab-dispatcher').classList.toggle('active', tab === 'dispatcher');
+  if (Auth.initialized && !Auth.can(tab)) {
+    const fallback = ['dashboard', 'dispatcher', 'analytics'].find(menu => Auth.can(menu));
+    if (fallback && fallback !== tab) return switchTab(fallback);
+    return;
+  }
+  ['dashboard', 'analytics', 'dispatcher'].forEach(menu => {
+    const page = document.getElementById(`page-${menu}`);
+    if (page) page.style.display = tab === menu ? '' : 'none';
+    const tabEl = document.getElementById(`tab-${menu}`);
+    if (tabEl) tabEl.classList.toggle('active', tab === menu);
+  });
   if (tab === 'analytics') {
     const sc = document.getElementById('storeCode')?.value || '';
     document.getElementById('an-storeCode').value = sc;
@@ -5724,7 +6223,7 @@ const aiState = {
 };
 
 function aiToggle() {
-  if (!_loadPerms().aiChat) return;
+  if (!Auth.can('aiChat')) return;
   aiState.open = !aiState.open;
   document.getElementById('ai-chat-window').classList.toggle('open', aiState.open);
   if (aiState.open) {
@@ -6298,5 +6797,6 @@ function pushActivityLogLocal(item) {
   el.prepend(div);
 }
 </script>
+
 </body>
 </html>

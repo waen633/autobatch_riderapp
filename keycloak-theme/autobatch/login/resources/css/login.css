@@ -1,0 +1,460 @@
+:root {
+  --ab-bg: #f8fafc;
+  --ab-panel: #ffffff;
+  --ab-text: #0f172a;
+  --ab-muted: #64748b;
+  --ab-border: #e2e8f0;
+  --ab-border-strong: #cbd5e1;
+  --ab-green: #3d8f62;
+  --ab-green-dark: #2f7650;
+  --ab-blue: #3b72ff;
+  --ab-red: #e94155;
+  --ab-glass: rgba(255, 255, 255, 0.46);
+  --ab-glass-border: rgba(255, 255, 255, 0.68);
+  --ab-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(720px 420px at 20% 18%, rgba(61, 143, 98, 0.18), transparent 62%),
+    radial-gradient(620px 360px at 78% 72%, rgba(59, 114, 255, 0.12), transparent 64%),
+    linear-gradient(180deg, rgba(255,255,255,0.82) 0, rgba(248,250,252,0.88) 170px, var(--ab-bg) 100%),
+    repeating-linear-gradient(90deg, rgba(226,232,240,0.30) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(0deg, rgba(226,232,240,0.24) 0 1px, transparent 1px 72px);
+  color: var(--ab-text);
+  font-family: Inter, Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.login-pf body {
+  background-color: var(--ab-bg);
+}
+
+.pf-v5-c-login,
+.pf-c-login {
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 42px 18px;
+  background: transparent;
+}
+
+.pf-v5-c-login__container,
+.pf-c-login__container {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.pf-v5-c-login__container::before,
+.pf-c-login__container::before {
+  content: "";
+  position: absolute;
+  inset: -28px -34px auto auto;
+  width: 150px;
+  height: 150px;
+  border-radius: 32px;
+  background: linear-gradient(145deg, rgba(61,143,98,0.22), rgba(255,255,255,0.22));
+  filter: blur(1px);
+  transform: rotate(12deg);
+  z-index: -1;
+}
+
+.pf-v5-c-login__container::after,
+.pf-c-login__container::after {
+  content: "";
+  position: absolute;
+  left: -34px;
+  bottom: -28px;
+  width: 112px;
+  height: 112px;
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(233,65,85,0.14), rgba(255,255,255,0.20));
+  filter: blur(1px);
+  transform: rotate(-10deg);
+  z-index: -1;
+}
+
+#kc-header {
+  width: 100%;
+  margin: 0 auto 20px;
+  text-align: center;
+}
+
+#kc-header-wrapper {
+  position: relative;
+  display: inline-block;
+  color: var(--ab-green);
+  font-size: 0;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+#kc-header-wrapper::before {
+  content: "⚡";
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 14px);
+  color: var(--ab-red);
+  font-size: 24px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+#kc-header-wrapper::after {
+  content: "TikTok MVP";
+  font-size: 28px;
+  line-height: 1;
+}
+
+.pf-v5-c-login__main,
+.pf-c-login__main,
+.login-pf-page .card-pf,
+#kc-content {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.pf-v5-c-login__main,
+.pf-c-login__main {
+  background: var(--ab-glass);
+  border: 1px solid var(--ab-glass-border);
+  border-radius: 18px;
+  box-shadow: var(--ab-shadow);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  overflow: visible;
+}
+
+.pf-v5-c-login__main-header,
+.pf-c-login__main-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 42px 64px 10px;
+  background: transparent;
+  border: 0;
+  text-align: center;
+}
+
+.pf-v5-c-login__main-body,
+.pf-c-login__main-body,
+.login-pf-page .card-pf {
+  margin: 0;
+  padding: 26px 64px 42px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pf-v5-c-login__main-footer,
+.pf-c-login__main-footer {
+  margin: 0;
+  padding: 0 64px 36px;
+  background: transparent;
+}
+
+#kc-page-title {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  color: var(--ab-text);
+  font-size: 31px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.18;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#kc-page-title::after {
+  content: "Sign in to continue to the rider operations dashboard.";
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 10px auto 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+}
+
+#kc-form-login {
+  display: grid;
+  gap: 16px;
+  max-width: 430px;
+  margin: 0 auto;
+  justify-items: stretch;
+}
+
+#kc-form .pf-v5-c-form__group,
+#kc-form .pf-c-form__group {
+  width: 100%;
+}
+
+.pf-v5-c-form__label,
+.pf-c-form__label,
+#kc-form label {
+  margin-bottom: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pf-v5-c-form-control,
+.pf-c-form-control,
+#kc-form input[type="text"],
+#kc-form input[type="email"],
+#kc-form input[type="password"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(148, 163, 184, 0.62);
+  border-radius: 10px;
+  color: var(--ab-text);
+  font-size: 15px;
+  box-shadow: none;
+}
+
+#kc-form .pf-v5-c-input-group,
+#kc-form .pf-c-input-group {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(148, 163, 184, 0.62);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#kc-form .pf-v5-c-input-group .pf-v5-c-form-control,
+#kc-form .pf-c-input-group .pf-c-form-control,
+#kc-form .pf-v5-c-input-group input[type="password"],
+#kc-form .pf-c-input-group input[type="password"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+}
+
+#kc-form .pf-v5-c-input-group .pf-v5-c-button,
+#kc-form .pf-c-input-group .pf-c-button,
+#kc-form .pf-v5-c-input-group button,
+#kc-form .pf-c-input-group button {
+  flex: 0 0 56px;
+  min-width: 56px;
+  min-height: 46px;
+  background: rgba(255, 255, 255, 0.70);
+  border: 0;
+  border-left: 1px solid rgba(148, 163, 184, 0.42);
+  border-radius: 0;
+  color: var(--ab-text);
+  box-shadow: none;
+}
+
+.pf-v5-c-form-control:hover,
+.pf-c-form-control:hover,
+#kc-form input[type="text"]:hover,
+#kc-form input[type="email"]:hover,
+#kc-form input[type="password"]:hover {
+  border-color: #94a3b8;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.pf-v5-c-form-control:focus,
+.pf-c-form-control:focus,
+#kc-form input[type="text"]:focus,
+#kc-form input[type="email"]:focus,
+#kc-form input[type="password"]:focus {
+  border-color: var(--ab-green);
+  outline: 3px solid rgba(61, 143, 98, 0.16);
+  outline-offset: 0;
+}
+
+#kc-form input::placeholder {
+  color: #94a3b8;
+}
+
+#kc-form-options,
+#kc-form-buttons,
+#kc-form-buttons + div {
+  margin-top: 0;
+}
+
+#kc-form-buttons {
+  max-width: 430px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-top: 6px;
+}
+
+#kc-login,
+.pf-v5-c-button.pf-m-primary,
+.pf-c-button.pf-m-primary {
+  width: 100%;
+  min-height: 46px;
+  background: var(--ab-green);
+  border: 1px solid var(--ab-green);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 10px 18px rgba(61, 143, 98, 0.22);
+}
+
+#kc-login:hover,
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-c-button.pf-m-primary:hover {
+  background: var(--ab-green-dark);
+  border-color: var(--ab-green-dark);
+  box-shadow: 0 12px 22px rgba(61, 143, 98, 0.26);
+}
+
+#kc-form-options,
+#kc-registration,
+#kc-info-wrapper {
+  color: var(--ab-muted);
+  font-size: 13px;
+}
+
+#kc-form-options a,
+#kc-registration a,
+#kc-info-wrapper a,
+#kc-reset-password-form a {
+  color: var(--ab-blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+#kc-form-options a:hover,
+#kc-registration a:hover,
+#kc-info-wrapper a:hover,
+#kc-reset-password-form a:hover {
+  text-decoration: underline;
+}
+
+#kc-info {
+  margin: 16px 0 0;
+}
+
+#kc-registration,
+#kc-info,
+#kc-info-wrapper,
+#kc-registration-container,
+.pf-v5-c-login__main-footer,
+.pf-c-login__main-footer {
+  display: none !important;
+}
+
+#kc-info-wrapper {
+  padding: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.pf-v5-c-alert,
+.pf-c-alert {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.pf-v5-c-check__label,
+.pf-c-check__label {
+  color: var(--ab-muted);
+  font-size: 13px;
+}
+
+.ab-login-contact {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  z-index: 10;
+  min-width: 104px;
+  min-height: 40px;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(148, 163, 184, 0.72);
+  border-radius: 10px;
+  color: var(--ab-text);
+  font: 800 14px Inter, Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.10);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  cursor: pointer;
+}
+
+.ab-login-contact:hover {
+  color: var(--ab-green);
+  border-color: rgba(61, 143, 98, 0.72);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+@media (max-width: 640px) {
+  .pf-v5-c-login,
+  .pf-c-login {
+    padding: 24px 14px;
+  }
+
+  .pf-v5-c-login__container::before,
+  .pf-v5-c-login__container::after,
+  .pf-c-login__container::before,
+  .pf-c-login__container::after {
+    display: none;
+  }
+
+  .ab-login-contact {
+    top: 12px;
+    right: 14px;
+    min-width: 92px;
+    min-height: 36px;
+    padding: 0 14px;
+  }
+
+  #kc-header-wrapper::after {
+    font-size: 24px;
+  }
+
+  .pf-v5-c-login__container,
+  .pf-c-login__container,
+  .pf-v5-c-login__main,
+  .pf-c-login__main,
+  .login-pf-page .card-pf,
+  #kc-content {
+    max-width: 100%;
+  }
+
+  .pf-v5-c-login__main-header,
+  .pf-c-login__main-header {
+    padding: 26px 22px 6px;
+  }
+
+  .pf-v5-c-login__main-body,
+  .pf-c-login__main-body,
+  .login-pf-page .card-pf {
+    padding: 20px 22px 26px;
+  }
+
+  .pf-v5-c-login__main-footer,
+  .pf-c-login__main-footer {
+    padding: 0 22px 26px;
+  }
+
+  #kc-page-title {
+    font-size: clamp(28px, 8vw, 34px);
+  }
+}

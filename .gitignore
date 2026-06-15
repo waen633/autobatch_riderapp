@@ -4,6 +4,9 @@ node_modules/
 # Environment variables (contains DB credentials!)
 .env
 
+# Local app data
+data/
+
 # Logs
 *.log
 npm-debug.log*

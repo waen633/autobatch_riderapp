@@ -32,7 +32,7 @@
     .table-dark th { background-color: #f1f5f9 !important; color: #475569 !important; border-bottom: 1px solid #cbd5e1; }
     .table-hover tbody tr:hover { background-color: #f8fafc; }
     .table-striped>tbody>tr:nth-of-type(odd)>* { background-color: #fcfcfd; }
-    .scroll-table { max-height: 360px; overflow-y: auto; scrollbar-width: thin; }
+    .scroll-table { max-height: 100%; overflow-y: auto; scrollbar-width: thin; flex: 1; min-height: 0; }
     .sticky-header th { position: sticky; top: 0; z-index: 1; }
     .btn { border-radius: 6px; font-weight: 500; transition: all 0.2s; }
     .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
@@ -57,7 +57,15 @@
     .perf-card { background: #fff; border-radius: 8px; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; color: #1e293b; }
     .dash-badge { border-radius: 12px; cursor: pointer; }
     .dash-badge:hover { opacity: 0.8; transform: translateY(-1px); }
-    .pagination-bar { font-size: 0.8rem; color: #64748b; }
+    .pagination-bar { font-size: 0.85rem; color: #334155; padding: 0.75rem 0; border-top: 1px solid #e2e8f0; margin-top: 0.5rem; flex-shrink: 0; }
+    .card-body.d-flex.flex-column > .d-flex.gap-2,
+    .card-body.d-flex.flex-column > #loading-pending,
+    .card-body.d-flex.flex-column > #loading-riders,
+    .card-body.d-flex.flex-column > #loading-jobs,
+    .card-body.d-flex.flex-column > [id^="error-"],
+    .card-body.d-flex.flex-column > #jobs-dash { flex-shrink: 0; }
+    .pagination-bar select { min-width: 80px; font-weight: 600; border-color: #cbd5e1; background-color: #f8fafc; }
+    .pagination-bar select:focus { border-color: #4f46e5; background-color: #fff; }
     .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; flex-shrink: 0; margin-top: 4px; }
     .timeline-dot.done { background: #22c55e; }
     .timeline-line { width: 2px; background: #e2e8f0; flex-shrink: 0; margin: 2px auto; }
@@ -100,6 +108,16 @@
       max-height: none !important;
       flex: 1 1 auto;
     }
+
+    /* Rider text labels on live map - TV display optimized */
+    .rider-label-icon {
+      margin-top: -28px !important;
+    }
+    .rider-text-label {
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      letter-spacing: 0.3px;
+    }
+
     .card-fullscreen .card-body {
       display: flex;
       flex-direction: column;
@@ -292,7 +310,7 @@
   /* ── Job Popup ──────────────────────────────────────────────── */
   .job-popup {
     position: fixed; bottom: 16px; right: 16px;
-    width: 390px; max-height: 85vh;
+    width: 480px; max-width: 90vw; max-height: 90vh;
     background: #fff; border-radius: 16px;
     box-shadow: 0 24px 64px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
     z-index: 1060; display: flex; flex-direction: column;
@@ -315,18 +333,23 @@
     display:flex; align-items:center; justify-content:center; font-size:.9rem; transition:background .15s;
   }
   .job-popup-close:hover { background:rgba(255,255,255,.35); }
-  .job-popup-body   { padding:.875rem; flex:1; overflow-y:auto; }
-  .popup-metric-row { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.875rem; }
+  .job-popup-body   { padding:.875rem; flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; width:100%; }
+  .job-popup-body > div { width: 100%; }
+  .scroll-table { width: 100% !important; }
+  .popup-metric-row { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.875rem; flex-shrink:0; }
   .popup-metric-badge {
     display:inline-flex; align-items:center; gap:.3rem;
     padding:.28rem .6rem; border-radius:8px; font-size:.74rem;
     border:1px solid #e2e8f0; background:#f8fafc; color:#334155;
+    white-space:nowrap;
   }
   .popup-metric-badge.accent { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
   .popup-order-chip {
     display:inline-block; font-size:.63rem; font-family:monospace;
-    padding:.15rem .45rem; border-radius:5px; background:#f1f5f9;
-    border:1px solid #e2e8f0; color:#475569; margin:.1rem;
+    padding:.2rem .5rem; border-radius:5px; background:#f1f5f9;
+    border:1px solid #e2e8f0; color:#475569; margin:.15rem;
+    white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
   }
 
   /* ── Store Config Panel ─────────────────────────────────────── */
@@ -551,7 +574,7 @@
             <span class="badge bg-warning text-dark" id="count-pending">–</span>
           </div>
         </div>
-        <div class="card-body p-2">
+        <div class="card-body p-2 d-flex flex-column" style="overflow:hidden;">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-warning btn-sm" onclick="fetchPending(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getPending">Get Pending</span></button>
             <select id="ar-sel-pending" class="form-select form-select-sm" style="width:auto;font-size:.72rem;cursor:pointer;" onchange="setAutoRefresh('pending',+this.value)" title="Auto-refresh Pending">
@@ -588,7 +611,7 @@
             <span class="badge bg-info text-dark" id="count-riders">–</span>
           </div>
         </div>
-        <div class="card-body p-2">
+        <div class="card-body p-2 d-flex flex-column" style="overflow:hidden;">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-sm text-white" style="background:#0077b6;" onclick="fetchRiders(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getRiders">Get Riders</span></button>
             <select id="ar-sel-riders" class="form-select form-select-sm" style="width:auto;font-size:.72rem;cursor:pointer;" onchange="setAutoRefresh('riders',+this.value)" title="Auto-refresh Rider Pool">
@@ -628,7 +651,7 @@
             <span class="badge bg-primary" id="count-jobs">–</span>
           </div>
         </div>
-        <div class="card-body p-2">
+        <div class="card-body p-2 d-flex flex-column" style="overflow:hidden;">
           <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
             <button class="btn btn-primary btn-sm" onclick="fetchJobs(this)"><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="getJobs">Get Jobs</span></button>
             <button class="btn btn-outline-success btn-sm" onclick="exportJobsCSV()"><i class="bi bi-filetype-csv me-1"></i><span data-i18n="exportCsv">Export CSV</span></button>
@@ -2029,15 +2052,25 @@ function setDateRange(days) {
   }
 
   if (typeof fpFrom !== 'undefined' && typeof fpTo !== 'undefined') {
+    // Temporarily allow out-of-range dates to prevent clearing
+    fpFrom.set('minDate', null);
+    fpFrom.set('maxDate', null);
+    fpTo.set('minDate', null);
+    fpTo.set('maxDate', null);
+
     // Set dates without triggering onChange (false = no triggerChange)
     fpFrom.setDate(start, false);
+    fpTo.setDate(end, false);
+
+    // Now re-apply constraints after both dates are set
     fpFrom.set('minDate', null);
     fpFrom.set('maxDate', null);
     const maxTo = new Date(start);
     maxTo.setDate(maxTo.getDate() + 7);
+    fpFrom.set('minDate', null);
+    fpFrom.set('maxDate', null);
     fpTo.set('minDate', start);
     fpTo.set('maxDate', maxTo);
-    fpTo.setDate(end, false);
   } else {
     document.getElementById('fromDate').value = toInputLocal(start);
     document.getElementById('toDate').value = toInputLocal(end);
@@ -2139,11 +2172,14 @@ function renderPagination(tbl, total) {
   const to   = Math.min(s.page*s.pageSize, total);
   const sizes = PAGE_SIZES.map(ps => `<option value="${ps}" ${s.pageSize===ps?'selected':''}>${ps}</option>`).join('');
   el.innerHTML = total===0 ? '' : `
-    <div class="d-flex align-items-center gap-2 flex-wrap mt-1 pagination-bar">
-      <small class="text-muted">${t('showPerPage')}: <select class="form-select form-select-sm d-inline-block" style="width:65px" onchange="setPageSize('${tbl}',+this.value)">${sizes}</select></small>
-      <small class="text-muted">${from}–${to} ${t('of')} ${total}</small>
+    <div class="d-flex align-items-center gap-3 flex-wrap pagination-bar">
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <strong style="color:#0f172a;">${t('showPerPage')}:</strong>
+        <select class="form-select form-select-sm" style="min-width:80px;font-weight:600;" onchange="setPageSize('${tbl}',+this.value)">${sizes}</select>
+      </div>
+      <span style="color:#64748b;border-left:1px solid #cbd5e1;padding-left:0.75rem;">${from}–${to} ${t('of')} ${total}</span>
       <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="setPage('${tbl}',${s.page-1})" ${s.page<=1?'disabled':''}>‹</button>
-      <small>${s.page} / ${totalPages}</small>
+      <small style="min-width:45px;text-align:center;">${s.page} / ${totalPages}</small>
       <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="setPage('${tbl}',${s.page+1})" ${s.page>=totalPages?'disabled':''}>›</button>
     </div>`;
 }
@@ -4112,25 +4148,54 @@ async function fetchLiveMap() {
         .bindPopup(`<b>${s.storeCode}</b><br>${s.name || ''}<br><small>Radius: ${s.radius}m</small>`);
     });
 
-    // Rider markers
+    // Rider markers with text labels (Google Maps style)
     (j.riders || []).forEach(r => {
       if (r.lat == null) return;
       bounds.push([r.lat, r.lng]);
       const sc = getStoreColor(r.storeCode);
       const dc = getStatusDotColor(r);
+
+      // Determine label color & status text based on job status
+      let labelBg = '#64748b'; // default gray for not in pool
+      let statusDisplay = '–';
+      if (r.jobStatus === 'job_picking_up') {
+        labelBg = '#f97316'; // orange
+        statusDisplay = 'Pick';
+      } else if (r.jobStatus === 'job_delivering') {
+        labelBg = '#16a34a'; // green
+        statusDisplay = 'Delivering';
+      } else if (r.inPool) {
+        labelBg = '#0284c7'; // blue
+        statusDisplay = 'In Pool';
+      }
+
       const statusLine = r.jobId
         ? `<br><span style="font-size:.78rem;"><b>Job:</b> <code>${r.jobId}</code><br><b>Status:</b> ${r.jobStatus}</span>`
         : '';
       const poolLine = r.inPool
         ? `<span style="color:#16a34a;font-size:.78rem;">&#x25CF; In Pool${r.eligible ? ' &#x2713; Ready' : ''}</span>`
         : `<span style="color:#94a3b8;font-size:.78rem;">&#x25CB; Not in Pool</span>`;
-      L.marker([r.lat, r.lng], { icon: makeRiderIcon(sc, dc) }).addTo(liveMap)
-        .bindTooltip(`<b>${r.name}</b><br>${r.jobStatus || (r.inPool ? 'In Pool' : 'No Pool')}`, { permanent: false, offset: [0, -16] })
-        .bindPopup(`<div style="min-width:175px;line-height:1.65;">
-          <b>${r.name}</b><br>
-          <span style="font-size:.78rem;">&#x1F4DE; ${r.phone || '&ndash;'}</span><br>
-          ${poolLine}${statusLine}
-        </div>`);
+
+      // Add rider marker
+      const marker = L.marker([r.lat, r.lng], { icon: makeRiderIcon(sc, dc) }).addTo(liveMap);
+
+      // Add text label above marker - name on line 1, status on line 2
+      const labelIcon = L.divIcon({
+        html: `<div class="rider-text-label" style="background:${labelBg};color:#fff;padding:3px 5px;border-radius:3px;font-size:0.65rem;font-weight:600;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.2);border:0.5px solid rgba(255,255,255,0.5);text-align:center;line-height:1.2;cursor:pointer;"><div>${r.name}</div><div style="font-size:0.6rem;opacity:0.9;">${statusDisplay}</div></div>`,
+        iconSize: [130, 28],
+        iconAnchor: [65, 28],
+        className: 'rider-label-icon'
+      });
+      const labelMarker = L.marker([r.lat, r.lng], { icon: labelIcon }).addTo(liveMap);
+      // Click label to show popup (same as clicking rider marker)
+      labelMarker.on('click', () => marker.openPopup());
+
+      // Popup on marker click
+      marker.bindPopup(`<div style="min-width:175px;line-height:1.65;">
+        <b>${r.name}</b><br>
+        <span style="font-size:.78rem;">&#x1F4DE; ${r.phone || '&ndash;'}</span><br>
+        ${poolLine}${statusLine}
+      </div>`);
     });
 
     if (bounds.length) liveMap.fitBounds(bounds, { padding: [40, 40] });

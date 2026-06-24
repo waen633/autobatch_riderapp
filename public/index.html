@@ -1580,7 +1580,9 @@ const COLS = {
   orders: [
     { id:'consignment',       lk:'col_consignment',  sk:'consignment',           r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
     { id:'internalOrderId',   lk:'col_orderId',      sk:'internalOrderId',        r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
-    { id:'storeCode',         lk:'col_store',        sk:'storeCode',             r: d => `${d.storeCode||'–'}<br><small class="text-muted">${d.storeName||''}</small>` },
+    { id:'storeCode',         lk:'col_store',        sk:'storeCode',             r: d => d.storeCode
+        ? `<span class="store-code-link" onclick="event.stopPropagation();fillStoreCode('${d.storeCode}')" title="คลิกเพื่อ fill Store Code" style="cursor:pointer;text-decoration:underline dotted;color:#0ea5e9;">${d.storeCode}</span><br><small class="text-muted">${d.storeName||''}</small>`
+        : '–' },
     { id:'jobId',             lk:'col_jobId',        sk:'jobId',                 r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
     { id:'seeRoute',          lk:'col_location',     sk:null,                    r: d => d.rawResults?.length
         ? `<button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openOrderRoute('${d._id}')"><i class="bi bi-geo-alt me-1"></i>${t('col_location')}</button>`
@@ -1990,6 +1992,15 @@ function orderStatusBadge(s) {
   // label: friendly name ถ้า map ได้ ไม่งั้นใช้ raw status
   const label = name || s;
   return `<span class="badge bg-${cls} status-badge" title="${s}">${label}</span>`;
+}
+
+function fillStoreCode(code) {
+  const el = document.getElementById('storeCode');
+  if (!el) return;
+  el.value = code;
+  el.focus();
+  el.classList.add('flash-animate');
+  setTimeout(() => el.classList.remove('flash-animate'), 600);
 }
 
 function markUpdated() {

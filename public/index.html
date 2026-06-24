@@ -1486,7 +1486,13 @@ const COLS = {
     { id:'consignment', lk:'col_consignment',  sk:'consignment', r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
     { id:'service',     lk:'col_service',      sk:'serviceType', r: d => `<span class="badge bg-secondary status-badge">${d.serviceType||'–'}</span>` },
     { id:'createdAt',   lk:'col_created',      sk:'createdAt',   r: d => `<small>${fmtDt(d.createdAt)}</small>` },
-    { id:'waitDuration',lk:'col_waiting',      sk:'createdAt',   r: d => pendingWaitHtml(d) }
+    { id:'waitDuration',    lk:'col_waiting',       sk:'createdAt',       r: d => pendingWaitHtml(d) },
+    { id:'dispatchType',    label:'Dispatch Type',  sk:'fleetDispatchType',r: d => {
+      const v = d.fleetDispatchType;
+      if (!v) return '<span class="text-muted">–</span>';
+      const cls = v === 'AUTO_BATCHING' ? 'bg-primary' : v === 'MANUAL' ? 'bg-secondary' : 'bg-info text-dark';
+      return `<span class="badge ${cls} status-badge" style="font-size:.7rem">${v}</span>`;
+    }}
   ],
   riders: [
     { id:'queue',       lk:'col_queue',       sk:'queue',                r: d => queueBadge(d) },
@@ -1621,6 +1627,12 @@ const COLS = {
     { id:'riderName',         lk:'col_rider',        sk:'riderName',             r: d => d.riderName
         ? `<div>${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
+    { id:'dispatchType',      label:'Dispatch Type',  sk:'fleetDispatchType',     r: d => {
+      const v = d.fleetDispatchType;
+      if (!v) return '<span class="text-muted">–</span>';
+      const cls = v === 'AUTO_BATCHING' ? 'bg-primary' : v === 'MANUAL' ? 'bg-secondary' : 'bg-info text-dark';
+      return `<span class="badge ${cls} status-badge" style="font-size:.7rem">${v}</span>`;
+    }},
     { id:'createdAt',         lk:'col_created',      sk:'createdAt',             r: d => `<small>${fmtDt(d.createdAt)}</small>` },
     { id:'updatedAt',         lk:'col_updated',      sk:'updatedAt',             r: d => `<small>${fmtDt(d.updatedAt)}</small>` }
   ],
@@ -1653,11 +1665,11 @@ const COLS = {
 };
 
 const DEFAULT_COLS = {
-  pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration'],
+  pending: ['storeCode','orderId','consignment','service','createdAt','waitDuration','dispatchType'],
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
   jobs:    ['jobId','storeCode','rider','assignerType','distance','duration','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
 
-  orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','currentOrderStatus','riderName','createdAt','updatedAt'],
+  orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','dispatchType','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
 };
 
@@ -2123,7 +2135,11 @@ function applyFilters(tbl) {
         });
       }
     } else {
-      data = data.filter(row => JSON.stringify(row).toLowerCase().includes(q));
+      const tokens = q.split(/[\s,]+/).filter(Boolean);
+      data = data.filter(row => {
+        const rowStr = JSON.stringify(row).toLowerCase();
+        return tokens.some(token => rowStr.includes(token));
+      });
     }
   }
   if (tbl==='riders' && state.riders.statusFilter) {

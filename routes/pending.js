@@ -16,7 +16,7 @@ router.get('/pending', async (req, res) => {
       .collection('pendingorders')
       .find(
         { storeCode: codeFilter, deleted: { $ne: true } },
-        { projection: { batchId: 1, orderId: 1, consignment: 1, serviceType: 1, storeCode: 1, createdAt: 1 } }
+        { projection: { batchId: 1, orderId: 1, consignment: 1, serviceType: 1, storeCode: 1, createdAt: 1, 'workflowInput.fleetDispatchType': 1 } }
       )
       .sort({ createdAt: -1 })
       .toArray();
@@ -38,7 +38,11 @@ router.get('/pending', async (req, res) => {
       }
     }
 
-    res.json({ count: docs.length, data: docs, batchTimeMap });
+    const data = docs.map(d => ({
+      ...d,
+      fleetDispatchType: d.workflowInput?.fleetDispatchType || null,
+    }));
+    res.json({ count: data.length, data, batchTimeMap });
   } catch (e) {
     console.error('[/api/pending]', e.message);
     res.status(500).json({ error: e.message });

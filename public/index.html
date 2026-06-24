@@ -51,6 +51,15 @@
     .idle-warn { color: #ea580c; font-weight: 600; }
     .idle-danger { color: #dc2626; font-weight: 700; }
     .status-badge { font-size: 0.7rem; white-space: nowrap; }
+    .store-fill-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 20px; border: 1.5px solid #0ea5e9;
+      background: linear-gradient(135deg,#e0f2fe,#f0f9ff);
+      color: #0369a1; font-size: .78rem; font-weight: 600; cursor: pointer;
+      transition: all .15s ease; white-space: nowrap; line-height: 1.5;
+    }
+    .store-fill-btn:hover { background: #0ea5e9; color: #fff; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(14,165,233,.35); }
+    .store-fill-btn:active { transform: translateY(0); box-shadow: none; }
     .search-box { max-width: 220px; }
     .col-btn { font-size: 0.8rem; padding: 0.2rem 0.5rem; color: #64748b; border-color: #e2e8f0; background: #fff; }
     .col-btn:hover { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
@@ -1581,7 +1590,10 @@ const COLS = {
     { id:'consignment',       lk:'col_consignment',  sk:'consignment',           r: d => `<small class="font-monospace">${d.consignment||'–'}</small>` },
     { id:'internalOrderId',   lk:'col_orderId',      sk:'internalOrderId',        r: d => `<small class="font-monospace">${d.internalOrderId||'–'}</small>` },
     { id:'storeCode',         lk:'col_store',        sk:'storeCode',             r: d => d.storeCode
-        ? `<span class="store-code-link" onclick="event.stopPropagation();fillStoreCode('${d.storeCode}')" title="คลิกเพื่อ fill Store Code" style="cursor:pointer;text-decoration:underline dotted;color:#0ea5e9;">${d.storeCode}</span><br><small class="text-muted">${d.storeName||''}</small>`
+        ? `<button class="store-fill-btn" onclick="event.stopPropagation();fillStoreCode('${d.storeCode}')" title="เปลี่ยน Store Code เป็น ${d.storeCode}">
+             <i class="bi bi-shop"></i> ${d.storeCode}
+           </button>
+           <div class="text-muted" style="font-size:.72rem;margin-top:2px;">${d.storeName||''}</div>`
         : '–' },
     { id:'jobId',             lk:'col_jobId',        sk:'jobId',                 r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
     { id:'seeRoute',          lk:'col_location',     sk:null,                    r: d => d.rawResults?.length

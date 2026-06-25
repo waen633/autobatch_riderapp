@@ -51,6 +51,36 @@
     .idle-warn { color: #ea580c; font-weight: 600; }
     .idle-danger { color: #dc2626; font-weight: 700; }
     .status-badge { font-size: 0.7rem; white-space: nowrap; }
+    /* ── Store Code Input Box ──────────────────────────────────────── */
+    .store-code-wrap { min-width: 160px; max-width: 220px; }
+    .store-code-box {
+      position: relative; display: flex; align-items: flex-start;
+      background: #fff; border: 1.5px solid #cbd5e1; border-radius: 8px;
+      padding: 5px 28px 5px 28px; transition: border-color .15s, box-shadow .15s;
+    }
+    .store-code-box:focus-within {
+      border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,.15);
+    }
+    .store-code-icon {
+      position: absolute; left: 8px; top: 7px;
+      color: #94a3b8; font-size: .85rem; pointer-events: none;
+    }
+    .store-code-ta {
+      flex: 1; border: none; outline: none; resize: none; background: transparent;
+      font-size: .82rem; line-height: 1.5; min-height: 28px; max-height: 120px;
+      overflow-y: auto; font-family: 'SFMono-Regular', Consolas, monospace;
+      color: #0f172a; scrollbar-width: thin;
+    }
+    .store-code-clear {
+      position: absolute; right: 4px; top: 4px;
+      background: none; border: none; color: #94a3b8; cursor: pointer;
+      padding: 1px 3px; border-radius: 4px; font-size: .85rem; line-height:1;
+    }
+    .store-code-clear:hover { background: #fee2e2; color: #ef4444; }
+    @media (max-width: 767px) {
+      .store-code-wrap { min-width: 0; max-width: 100%; width: 100%; }
+    }
+
     .store-fill-btn {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 9px; border-radius: 20px; border: 1.5px solid #0ea5e9;
@@ -445,11 +475,21 @@
   <div class="card mb-3">
     <div class="card-body py-2">
       <div class="row g-2 align-items-end">
-        <div class="col-auto">
-          <label class="form-label mb-1 fw-semibold" data-i18n="storeCode">Store Code</label>
-          <input type="text" class="form-control form-control-sm" id="storeCode" value="1104" placeholder="1104,6304,5022" style="width:160px" list="storeCodeHistory">
-          <datalist id="storeCodeHistory"></datalist>
-          <div class="form-text mt-0" style="font-size:.7rem;" data-i18n="storeCodeHint">หลายสาขาคั่นด้วย ,</div>
+        <div class="col-auto store-code-wrap">
+          <label class="form-label mb-1 fw-semibold d-flex align-items-center gap-2" data-i18n="storeCode">
+            Store Code
+            <span id="store-code-count" class="badge bg-primary" style="display:none!important;font-size:.65rem;"></span>
+          </label>
+          <div class="store-code-box">
+            <i class="bi bi-building store-code-icon"></i>
+            <textarea id="storeCode" class="store-code-ta" rows="1"
+              placeholder="1104, 5022&#10;หรือวางหลายบรรทัด"
+              oninput="normalizeStoreCode(this); updateStoreCodeCount()"
+              onpaste="setTimeout(()=>{normalizeStoreCode(this);updateStoreCodeCount()},0)"
+            >1104</textarea>
+            <button class="store-code-clear" onclick="document.getElementById('storeCode').value='';updateStoreCodeCount();document.getElementById('storeCode').focus()" title="ล้าง"><i class="bi bi-x"></i></button>
+          </div>
+          <div class="form-text mt-1" style="font-size:.68rem;color:#94a3b8;">คั่นด้วย , หรือขึ้นบรรทัดใหม่</div>
         </div>
         <div class="col-auto">
           <label class="form-label mb-1 fw-semibold" data-i18n="fromLabel">From</label>
@@ -2010,9 +2050,11 @@ function fillStoreCode(code) {
   const el = document.getElementById('storeCode');
   if (!el) return;
   el.value = code;
+  el.rows = 1;
+  updateStoreCodeCount();
   el.focus();
-  el.classList.add('flash-animate');
-  setTimeout(() => el.classList.remove('flash-animate'), 600);
+  el.closest('.store-code-box')?.classList.add('flash-animate');
+  setTimeout(() => el.closest('.store-code-box')?.classList.remove('flash-animate'), 600);
 }
 
 function markUpdated() {
@@ -2128,8 +2170,32 @@ function renderInputHistory(key) {
   if (dl) dl.innerHTML = arr.map(v => `<option value="${v}">`).join('');
 }
 
+function normalizeStoreCode(el) {
+  const codes = el.value.split(/[\s,\n\r]+/).map(s => s.trim()).filter(Boolean);
+  const rows = Math.min(Math.max(1, codes.length), 6);
+  el.rows = rows;
+  // don't rewrite while typing single code
+  if (el.value.includes('\n') || (el.value.includes(',') && codes.length > 1)) {
+    el.value = codes.join('\n');
+  }
+}
+
+function updateStoreCodeCount() {
+  const el = document.getElementById('storeCode');
+  const badge = document.getElementById('store-code-count');
+  if (!el || !badge) return;
+  const codes = el.value.split(/[\s,\n\r]+/).map(s => s.trim()).filter(Boolean);
+  if (codes.length > 1) {
+    badge.textContent = codes.length + ' สาขา';
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 function getInputs() {
-  const sc = document.getElementById('storeCode').value.trim();
+  const raw = document.getElementById('storeCode').value;
+  const sc = raw.split(/[\s,\n\r]+/).map(s => s.trim()).filter(Boolean).join(',');
   saveInputHistory('storeCode', sc);
   const from = new Date(document.getElementById('fromDate').value).toISOString();
   const to   = new Date(document.getElementById('toDate').value).toISOString();

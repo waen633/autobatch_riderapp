@@ -535,11 +535,14 @@
               <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#facc15;vertical-align:middle;"></span> <span data-i18n="dot_busy">Busy</span></span>
               <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#94a3b8;vertical-align:middle;"></span> <span data-i18n="dot_noPool">No Pool</span></span>
             </span>
-            <span id="store-legend" class="d-flex gap-2 align-items-center flex-wrap" style="font-size:.71rem;"></span>
+            <span id="store-legend" class="d-flex gap-2 align-items-center flex-wrap" style="font-size:.71rem;max-width:480px;overflow:hidden;"></span>
             <span class="badge bg-success" id="count-map">–</span>
             <button class="btn col-btn" onclick="event.stopPropagation(); toggleFullscreen(this); setTimeout(()=>{ if(liveMap) liveMap.invalidateSize(); }, 50);" title="Fullscreen"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn col-btn" id="map-collapse-btn" onclick="event.stopPropagation(); toggleMapCollapse()" title="Collapse"><i class="bi bi-chevron-up"></i></button>
           </div>
+        </div>
+        <div id="store-legend-expanded" style="display:none;padding:6px 12px 6px;border-bottom:1px solid #e2e8f0;background:#f8fafc;font-size:.7rem;">
+          <div class="d-flex flex-wrap gap-2" id="store-legend-expanded-inner"></div>
         </div>
         <div id="map-card-body" class="flex-grow-1 d-flex flex-column">
           <div class="card-body p-2 d-flex flex-column flex-grow-1">
@@ -2047,14 +2050,36 @@ function orderStatusBadge(s) {
 }
 
 function toggleLegendMore() {
-  const more = document.getElementById('legend-more');
-  const btn  = document.getElementById('legend-toggle');
-  if (!more || !btn) return;
-  const open = more.style.display !== 'none';
-  more.style.display = open ? 'none' : 'flex';
+  const panel = document.getElementById('store-legend-expanded');
+  const btn   = document.getElementById('legend-toggle');
+  if (!panel || !btn) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
   const hidden = Object.keys(_storeColorMap).length - 12;
-  btn.textContent = open ? `+${hidden} เพิ่มเติม` : 'ซ่อน';
+  btn.textContent = open ? `+${hidden} เพิ่มเติม` : 'ซ่อน ▲';
 }
+
+// ── Global fetch lock — ป้องกัน parallel query หนัก ─────────────────────────
+let _activeFetches = 0;
+const _FETCH_BTN_SELECTOR = 'button[onclick*="fetch"]:not([onclick*="event"])';
+
+function _lockFetchBtns() {
+  document.querySelectorAll(_FETCH_BTN_SELECTOR).forEach(b => {
+    if (!b.dataset.lockOrigin) b.dataset.lockOrigin = b.disabled ? '1' : '0';
+    b.disabled = true;
+    b.style.opacity = '0.5';
+    b.title = (b.title||'') + ' [รอ query อื่นเสร็จก่อน]';
+  });
+}
+function _unlockFetchBtns() {
+  document.querySelectorAll(_FETCH_BTN_SELECTOR).forEach(b => {
+    if (b.dataset.lockOrigin !== '1') { b.disabled = false; b.style.opacity = ''; }
+    b.title = b.title.replace(' [รอ query อื่นเสร็จก่อน]','');
+    delete b.dataset.lockOrigin;
+  });
+}
+function _fetchStart() { if (++_activeFetches === 1) _lockFetchBtns(); }
+function _fetchEnd()   { if (--_activeFetches <= 0) { _activeFetches = 0; _unlockFetchBtns(); } }
 
 function fillStoreCode(code) {
   const el = document.getElementById('storeCode');
@@ -3291,7 +3316,7 @@ function applyCooldown(btn) {
 }
 
 async function fetchPending(btn) {
-  applyCooldown(btn);
+  applyCooldown(btn); _fetchStart();
   const { storeCode } = getInputs();
   setLoading('pending', true);
   try {
@@ -3314,11 +3339,11 @@ async function fetchPending(btn) {
     }
 
     renderSection('pending'); markUpdated();
-  } catch(e) { setError('pending', e.message); } finally { setLoading('pending', false); }
+  } catch(e) { setError('pending', e.message); } finally { setLoading('pending', false); _fetchEnd(); }
 }
 
 async function fetchRiders(btn) {
-  applyCooldown(btn);
+  applyCooldown(btn); _fetchStart();
   const { storeCode } = getInputs();
   setLoading('riders', true);
   try {
@@ -3330,11 +3355,11 @@ async function fetchRiders(btn) {
     document.getElementById('ready-count').textContent = readyCount;
     updateRidersFilterOptions();
     renderSection('riders'); markUpdated();
-  } catch(e) { setError('riders', e.message); } finally { setLoading('riders', false); }
+  } catch(e) { setError('riders', e.message); } finally { setLoading('riders', false); _fetchEnd(); }
 }
 
 async function fetchJobs(btn) {
-  applyCooldown(btn);
+  applyCooldown(btn); _fetchStart();
   const { storeCode, from, to } = getInputs();
   setLoading('jobs', true);
   try {
@@ -3345,7 +3370,7 @@ async function fetchJobs(btn) {
     renderJobsDash(); renderSection('jobs');
     if (state.riders.data.length) renderSection('riders');
     markUpdated();
-  } catch(e) { setError('jobs', e.message); } finally { setLoading('jobs', false); }
+  } catch(e) { setError('jobs', e.message); } finally { setLoading('jobs', false); _fetchEnd(); }
 }
 
 
@@ -3422,7 +3447,7 @@ async function checkCLSLog(btn) {
 }
 
 async function fetchOrders(btn) {
-  applyCooldown(btn);
+  applyCooldown(btn); _fetchStart();
   const type = document.querySelector('input[name="orderType"]:checked').value;
   const rawValues = document.getElementById('orderValues').value.trim();
   if (!rawValues) { setError('orders', 'กรุณากรอก values'); return; }
@@ -3462,11 +3487,11 @@ async function fetchOrders(btn) {
     document.getElementById('count-orders').textContent = foundData.length + ' Found / ' + valArr.length + ' Total';
     state.orders.data = fullData; state.orders.page = 1;
     renderSection('orders'); renderRiderPerf(); markUpdated();
-  } catch(e) { setError('orders', e.message); } finally { setLoading('orders', false); }
+  } catch(e) { setError('orders', e.message); } finally { setLoading('orders', false); _fetchEnd(); }
 }
 
 async function fetchBatches(btn) {
-  applyCooldown(btn);
+  applyCooldown(btn); _fetchStart();
   const orderIds = document.getElementById('batchOrderIds').value.trim();
   if (!orderIds) { setError('batches', 'กรุณากรอก Order IDs'); return; }
   setLoading('batches', true);
@@ -3476,7 +3501,7 @@ async function fetchBatches(btn) {
     document.getElementById('count-batches').textContent = j.count;
     state.batches.data = j.data; state.batches.page = 1;
     renderSection('batches'); markUpdated();
-  } catch(e) { setError('batches', e.message); } finally { setLoading('batches', false); }
+  } catch(e) { setError('batches', e.message); } finally { setLoading('batches', false); _fetchEnd(); }
 }
 
 // ─── CHART INSTANCE REGISTRY ─────────────────────────────────────────────────
@@ -3556,7 +3581,7 @@ function setRpView(v) {
 }
 
 async function fetchRiderPerf(btn) {
-  applyCooldown(btn);
+  applyCooldown(btn); _fetchStart();
   const { storeCode, from, to } = getInputs();
   const loadEl = document.getElementById('loading-riderperf');
   const errEl  = document.getElementById('error-riderperf');
@@ -3574,7 +3599,7 @@ async function fetchRiderPerf(btn) {
   } catch(e) {
     errEl.textContent = e.message; errEl.classList.remove('d-none');
   } finally {
-    loadEl.classList.add('d-none');
+    loadEl.classList.add('d-none'); _fetchEnd();
   }
 }
 
@@ -4225,6 +4250,7 @@ function makeStoreIcon(storeColor) {
 }
 
 async function fetchLiveMap() {
+  _fetchStart();
   const { storeCode } = getInputs();
   const loadEl = document.getElementById('loading-map');
   const errEl  = document.getElementById('error-map');
@@ -4328,11 +4354,15 @@ async function fetchLiveMap() {
            </span>`;
         const visible = entries.slice(0, LIMIT).map(dot).join('');
         const hidden  = entries.slice(LIMIT);
+        // populate expanded panel
+        const expandedInner = document.getElementById('store-legend-expanded-inner');
+        const expandedPanel = document.getElementById('store-legend-expanded');
+        if (expandedInner) expandedInner.innerHTML = hidden.map(dot).join('');
+        if (expandedPanel) expandedPanel.style.display = 'none';
         const moreBtn = hidden.length
-          ? `<button id="legend-toggle" onclick="toggleLegendMore()" style="border:none;background:#e2e8f0;border-radius:12px;padding:1px 8px;font-size:.68rem;cursor:pointer;color:#475569;white-space:nowrap;">+${hidden.length} เพิ่มเติม</button>
-             <span id="legend-more" style="display:none;" class="d-flex gap-2 flex-wrap">${hidden.map(dot).join('')}</span>`
+          ? `<button id="legend-toggle" onclick="toggleLegendMore()" style="border:none;background:#e2e8f0;border-radius:12px;padding:1px 8px;font-size:.68rem;cursor:pointer;color:#475569;white-space:nowrap;flex-shrink:0;">+${hidden.length} เพิ่มเติม</button>`
           : '';
-        legendEl.innerHTML = `<b style="color:#475569;white-space:nowrap;">Stores:</b>${visible}${moreBtn}`;
+        legendEl.innerHTML = `<b style="color:#475569;white-space:nowrap;flex-shrink:0;">Stores:</b>${visible}${moreBtn}`;
       }
     }
 
@@ -4342,7 +4372,7 @@ async function fetchLiveMap() {
     errEl.textContent = `⚠ ${e.message}`;
     errEl.classList.remove('d-none');
   } finally {
-    loadEl.classList.add('d-none');
+    loadEl.classList.add('d-none'); _fetchEnd();
   }
 }
 

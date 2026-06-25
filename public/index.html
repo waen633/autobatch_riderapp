@@ -2046,6 +2046,16 @@ function orderStatusBadge(s) {
   return `<span class="badge bg-${cls} status-badge" title="${s}">${label}</span>`;
 }
 
+function toggleLegendMore() {
+  const more = document.getElementById('legend-more');
+  const btn  = document.getElementById('legend-toggle');
+  if (!more || !btn) return;
+  const open = more.style.display !== 'none';
+  more.style.display = open ? 'none' : 'flex';
+  const hidden = Object.keys(_storeColorMap).length - 12;
+  btn.textContent = open ? `+${hidden} เพิ่มเติม` : 'ซ่อน';
+}
+
 function fillStoreCode(code) {
   const el = document.getElementById('storeCode');
   if (!el) return;
@@ -4309,11 +4319,21 @@ async function fetchLiveMap() {
     const legendEl = document.getElementById('store-legend');
     if (legendEl) {
       const entries = Object.entries(_storeColorMap);
-      legendEl.innerHTML = entries.length
-        ? '<b style="color:#475569;">Stores:</b> ' + entries.map(([code, color]) =>
-            `<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${color};vertical-align:middle;margin-right:2px;border:1px solid rgba(0,0,0,0.15);"></span>${code}</span>`
-          ).join('')
-        : '';
+      if (!entries.length) { legendEl.innerHTML = ''; }
+      else {
+        const LIMIT = 12;
+        const dot = ([code, color]) =>
+          `<span style="display:inline-flex;align-items:center;gap:2px;white-space:nowrap;">
+            <span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${color};border:1px solid rgba(0,0,0,0.15);flex-shrink:0;"></span>${code}
+           </span>`;
+        const visible = entries.slice(0, LIMIT).map(dot).join('');
+        const hidden  = entries.slice(LIMIT);
+        const moreBtn = hidden.length
+          ? `<button id="legend-toggle" onclick="toggleLegendMore()" style="border:none;background:#e2e8f0;border-radius:12px;padding:1px 8px;font-size:.68rem;cursor:pointer;color:#475569;white-space:nowrap;">+${hidden.length} เพิ่มเติม</button>
+             <span id="legend-more" style="display:none;" class="d-flex gap-2 flex-wrap">${hidden.map(dot).join('')}</span>`
+          : '';
+        legendEl.innerHTML = `<b style="color:#475569;white-space:nowrap;">Stores:</b>${visible}${moreBtn}`;
+      }
     }
 
     document.getElementById('count-map').textContent = j.riders?.length ?? 0;

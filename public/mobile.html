@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Store Mobile — Autobatch Dashboard</title>
+<style>
+  :root{
+    --bg:#eef1f7; --surface:#ffffff; --surface-2:#f4f6fb; --border:#e1e6f0;
+    --text:#1c2333; --text-muted:#5c6580; --text-faint:#98a1ba;
+    --accent:#4f46e5; --accent-2:#7c3aed; --accent-soft:#eef0ff;
+    --success:#15803d; --success-soft:#dcfce7;
+    --warning:#b45309; --warning-soft:#fef3c7;
+    --danger:#b91c1c; --danger-soft:#fee2e2;
+    --info:#1d4ed8; --info-soft:#dbeafe;
+    --shadow-card:0 1px 2px rgba(20,25,45,.05), 0 6px 20px rgba(20,25,45,.06);
+    --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Leelawadee UI","Noto Sans Thai",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0c1018; --surface:#141a29; --surface-2:#1a2136; --border:#28304a;
+      --text:#e7eaf3; --text-muted:#98a2c2; --text-faint:#5d668a;
+      --accent:#8b85f7; --accent-2:#b09bf7; --accent-soft:#221f3f;
+      --success:#4ade80; --success-soft:#132a1d;
+      --warning:#fbbf24; --warning-soft:#332309;
+      --danger:#f87171; --danger-soft:#361515;
+      --info:#60a5fa; --info-soft:#122540;
+      --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{ height:100%; margin:0; }
+  body{ font-family:var(--font-ui); color:var(--text); background:var(--bg); overscroll-behavior-y:none; }
+  button{ font-family:inherit; }
+  code{ font-family:ui-monospace,"Cascadia Mono",monospace; }
+  button:focus-visible, .navbtn:focus-visible, .ridercard:focus-visible, .daybar:focus-visible, .hourbar:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px;
+  }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+  .hidden{ display:none !important; }
+
+  /* ---------- Store gate ---------- */
+  .gate{
+    height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:2rem; gap:1rem; text-align:center;
+  }
+  .gate h1{ font-size:1.1rem; font-weight:700; margin:0; }
+  .gate p{ font-size:.82rem; color:var(--text-muted); margin:0; max-width:32ch; }
+  .gate input{
+    width:220px; max-width:80vw; text-align:center; font-size:1.1rem; font-weight:700; letter-spacing:.05em;
+    padding:.7rem; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text);
+  }
+  .gate button.go{
+    padding:.7rem 1.6rem; border-radius:12px; border:none; background:var(--accent); color:#fff;
+    font-weight:700; font-size:.9rem; cursor:pointer;
+  }
+  .gate .err{ color:var(--danger); font-size:.78rem; min-height:1em; }
+
+  /* ---------- App shell ---------- */
+  #app{ height:100dvh; display:flex; flex-direction:column; }
+  .topbar{
+    flex:0 0 auto; padding:calc(env(safe-area-inset-top,0px) + 14px) 18px 12px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; position:relative;
+  }
+  .topbar-row{ display:flex; align-items:center; gap:.6rem; }
+  .backbtn{
+    display:none; align-items:center; justify-content:center; width:30px; height:30px;
+    border-radius:50%; background:rgba(255,255,255,.16); border:none; color:#fff; cursor:pointer; flex:0 0 auto;
+  }
+  .backbtn.show{ display:flex; }
+  .topbar-titles{ flex:1; min-width:0; }
+  .topbar-store{ font-size:.68rem; opacity:.8; letter-spacing:.02em; display:flex; align-items:center; gap:.4rem; }
+  .topbar-store button{ background:rgba(255,255,255,.18); border:none; color:#fff; font-size:.62rem; padding:.1rem .45rem; border-radius:8px; cursor:pointer; }
+  .topbar-title{ font-size:1.1rem; font-weight:700; letter-spacing:-.01em; }
+  .topbar-clock{ font-size:.68rem; opacity:.8; font-variant-numeric:tabular-nums; flex:0 0 auto; text-align:right; }
+  .chipbar{ display:flex; gap:.4rem; margin-top:.7rem; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; }
+  .chipbar::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex:0 0 auto; font-size:.7rem; font-weight:600; padding:.32rem .7rem; border-radius:20px;
+    background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.22); white-space:nowrap;
+  }
+
+  .content{ flex:1 1 auto; overflow-y:auto; padding:14px 14px calc(90px + env(safe-area-inset-bottom,0px)); position:relative; -webkit-overflow-scrolling:touch; }
+  #tab-jobs, #tab-riders, #tab-pending, #tab-report, #tab-riderdetail{ will-change:transform; }
+  .pull-indicator{
+    position:absolute; top:14px; left:50%; width:34px; height:34px; z-index:6;
+    display:flex; align-items:center; justify-content:center; border-radius:50%;
+    background:var(--surface); box-shadow:var(--shadow-card); color:var(--text-faint);
+    transform:translate(-50%,-50px);
+  }
+  .pull-indicator.ready{ color:var(--accent); }
+  .pull-indicator svg{ width:18px; height:18px; }
+  .pull-indicator.spinning svg{ animation:pr-spin .7s linear infinite; }
+  @keyframes pr-spin{ to{ transform:rotate(360deg); } }
+  .toast{
+    position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom,0px)); z-index:50; white-space:nowrap;
+    background:rgba(20,22,32,.94); color:#fff; font-size:.72rem; font-weight:600;
+    padding:.5rem .9rem; border-radius:20px; opacity:0; pointer-events:none;
+    transform:translate(-50%,10px); transition:opacity .18s, transform .18s;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  .section-label{
+    font-size:.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-faint); margin:.9rem 2px .45rem; display:flex; justify-content:space-between; align-items:baseline;
+  }
+  .section-label:first-child{ margin-top:0; }
+  .section-label span{ text-transform:none; font-weight:500; letter-spacing:0; font-size:.66rem; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-card); margin-bottom:.55rem; overflow:hidden; }
+  .loading, .empty-state{ text-align:center; padding:2.2rem 1rem; color:var(--text-muted); }
+  .loading .big, .empty-state .big{ font-size:1.6rem; margin-bottom:.4rem; }
+  .empty-state .cap{ font-size:.78rem; font-weight:600; }
+  .empty-state .sub{ font-size:.68rem; color:var(--text-faint); margin-top:.2rem; }
+  .spin{ display:inline-block; width:22px; height:22px; border:2.5px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:pr-spin .7s linear infinite; }
+
+  /* job card */
+  .job-card-head{ padding:.75rem .85rem; cursor:pointer; }
+  .job-top{ display:flex; align-items:flex-start; gap:.5rem; }
+  .job-id{ font-size:.63rem; color:var(--text-faint); font-family:ui-monospace,"Cascadia Mono",monospace; }
+  .job-rider{ font-size:.86rem; font-weight:700; margin-top:.15rem; }
+  .job-meta-row{ display:flex; justify-content:space-between; align-items:center; margin-top:.35rem; }
+  .job-meta{ font-size:.68rem; color:var(--text-muted); }
+  .job-created{ font-size:.63rem; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+  .pill{ font-size:.62rem; font-weight:700; padding:.22rem .55rem; border-radius:20px; white-space:nowrap; flex:0 0 auto; }
+  .pill-info{ background:var(--info-soft); color:var(--info); }
+  .pill-success{ background:var(--success-soft); color:var(--success); }
+  .pill-warning{ background:var(--warning-soft); color:var(--warning); }
+  .pill-danger{ background:var(--danger-soft); color:var(--danger); }
+  .expand-row{ display:flex; align-items:center; justify-content:center; gap:.3rem; font-size:.64rem; color:var(--accent); font-weight:700; padding:.4rem 0 0; }
+  .expand-row svg{ width:12px; height:12px; transition:transform .15s; }
+  .job-card.open .expand-row svg{ transform:rotate(180deg); }
+  .job-detail{ display:none; border-top:1px dashed var(--border); background:var(--surface-2); padding:.7rem .85rem .8rem; }
+  .job-card.open .job-detail{ display:block; }
+  .batch-row{ display:flex; align-items:center; gap:.4rem; font-size:.66rem; color:var(--text-muted); margin-bottom:.55rem; }
+  .batch-row .batch-icon{ color:var(--accent-2); flex:0 0 auto; }
+  .batch-row code{ color:var(--text); font-weight:600; }
+  .order-row{ display:flex; justify-content:space-between; align-items:center; padding:.4rem 0; border-top:1px solid var(--border); }
+  .order-row:first-of-type{ border-top:none; }
+  .order-cons{ font-size:.74rem; font-weight:700; font-family:ui-monospace,monospace; }
+  .order-internal{ font-size:.6rem; color:var(--text-faint); margin-top:.1rem; }
+  .order-tail{ text-align:right; flex:0 0 auto; }
+  .order-time{ font-size:.63rem; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+
+  /* rider row */
+  .rider-row{ display:flex; align-items:center; gap:.65rem; padding:.65rem .8rem; }
+  .avatar{
+    width:38px; height:38px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    font-size:.72rem; font-weight:700; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2)); position:relative;
+  }
+  .dot{ position:absolute; right:-1px; bottom:-1px; width:10px; height:10px; border-radius:50%; border:2px solid var(--surface); }
+  .dot-ready{ background:var(--success); } .dot-busy{ background:var(--warning); }
+  .dot-off{ background:var(--text-faint); } .dot-break{ background:var(--danger); }
+  .rider-name{ font-size:.85rem; font-weight:700; }
+  .rider-sub{ font-size:.68rem; color:var(--text-muted); margin-top:.1rem; }
+  .rider-tail{ text-align:right; font-size:.66rem; color:var(--text-faint); flex:0 0 auto; }
+
+  /* pending */
+  .pend-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; padding:.75rem .85rem; }
+  .pend-order{ font-size:.83rem; font-weight:700; }
+  .pend-cons{ font-size:.65rem; color:var(--text-faint); font-family:ui-monospace,monospace; margin-top:.1rem; }
+  .wait{ font-size:.68rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .wait-ok{ color:var(--success); } .wait-warn{ color:var(--warning); } .wait-late{ color:var(--danger); }
+
+  /* report */
+  .stat-strip{ display:flex; gap:.5rem; margin-bottom:.2rem; }
+  .stat-tile{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:.6rem .5rem; text-align:center; box-shadow:var(--shadow-card); }
+  .stat-num{ font-size:1.05rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat-cap{ font-size:.6rem; color:var(--text-muted); margin-top:.1rem; }
+  .ridercard{ display:flex; align-items:center; gap:.65rem; width:100%; text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-card); padding:.65rem .8rem; margin-bottom:.5rem; cursor:pointer; }
+  .ridercard .chev{ color:var(--text-faint); flex:0 0 auto; }
+  .score{ font-size:.92rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .score-good{ color:var(--success); } .score-mid{ color:var(--warning); } .score-low{ color:var(--danger); }
+
+  .detail-head{ display:flex; align-items:center; gap:.75rem; }
+  .detail-avatar{ width:52px; height:52px; font-size:.9rem; }
+  .detail-name{ font-size:.95rem; font-weight:700; }
+  .detail-code{ font-size:.68rem; color:var(--text-muted); margin-top:.1rem; }
+  .range-row{ display:flex; gap:.5rem; align-items:center; margin:0 0 .5rem; }
+  .rangebtn{ font-size:.7rem; font-weight:700; padding:.4rem .6rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; flex:0 0 auto; }
+  .rangebtn:disabled{ opacity:.35; cursor:default; }
+
+  .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-card); padding:.8rem; }
+  .chart-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:.6rem; }
+  .chart-title{ font-size:.72rem; font-weight:700; color:var(--text-muted); }
+  .chart-legend{ display:flex; gap:.6rem; font-size:.62rem; color:var(--text-faint); }
+  .legend-dot{ display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:.3rem; }
+  .bars{ display:flex; align-items:flex-end; gap:3px; height:64px; border-bottom:1px solid var(--border); padding-bottom:2px; }
+  .daybar{ flex:1; display:flex; flex-direction:column-reverse; height:100%; border:none; padding:0; background:none; cursor:pointer; position:relative; }
+  .daybar .fill{ width:100%; border-radius:2px 2px 0 0; background:var(--warning); opacity:.55; transition:opacity .12s; }
+  .daybar:hover .fill, .daybar:focus-visible .fill{ opacity:.8; }
+  .daybar.selected .fill{ opacity:1; background:var(--accent); }
+  .daybar.today::after{ content:""; position:absolute; left:50%; bottom:-7px; width:4px; height:4px; border-radius:50%; background:var(--text-faint); transform:translateX(-50%); }
+  .daybar.today.selected::after{ background:var(--accent); }
+  .bars-caption{ display:flex; justify-content:space-between; font-size:.58rem; color:var(--text-faint); margin-top:.35rem; }
+
+  .hour-panel{ margin-top:.7rem; padding-top:.7rem; border-top:1px dashed var(--border); }
+  .hour-panel-head{ font-size:.68rem; font-weight:700; color:var(--text); margin-bottom:.5rem; }
+  .hour-panel-head .d{ color:var(--accent); }
+  .hour-note{ font-size:.68rem; color:var(--text-faint); background:var(--surface-2); border-radius:10px; padding:.55rem .65rem; line-height:1.5; }
+  .hour-note code{ font-size:.64rem; }
+  .hbars{ display:flex; align-items:flex-end; gap:2px; height:56px; }
+  .hourbar{ flex:1; display:flex; flex-direction:column-reverse; height:100%; border:none; padding:0; background:var(--surface-2); border-radius:2px 2px 0 0; cursor:pointer; min-width:0; }
+  .hourbar.empty{ cursor:default; }
+  .hourbar .seg-late{ background:var(--warning); }
+  .hourbar .seg-ok{ background:var(--accent); }
+  .hourbar.selected{ box-shadow:0 0 0 2px var(--accent) inset; }
+  .hbars-caption{ display:flex; justify-content:space-between; font-size:.56rem; color:var(--text-faint); margin-top:.3rem; }
+  .hour-detail{ margin-top:.55rem; }
+  .hour-detail-head{ font-size:.66rem; font-weight:700; color:var(--text-muted); margin-bottom:.35rem; }
+  .rider-chip-row{ display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.4rem; }
+  .rider-chip{ font-size:.62rem; padding:.2rem .5rem; border-radius:14px; background:var(--surface-2); color:var(--text-muted); border:1px solid var(--border); }
+  .rider-chip b{ color:var(--danger); font-weight:700; }
+  .history-item{ display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid var(--border); }
+  .history-item:last-child{ border-bottom:none; }
+  .history-id{ font-size:.72rem; font-weight:600; }
+  .history-date{ font-size:.62rem; color:var(--text-faint); font-variant-numeric:tabular-nums; margin-top:.1rem; }
+
+  .bottomnav{
+    flex:0 0 auto; display:flex; background:var(--surface); border-top:1px solid var(--border);
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));
+  }
+  .navbtn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:.2rem; background:none; border:none;
+    color:var(--text-faint); font-size:.62rem; font-weight:600; padding:.3rem 0; cursor:pointer; border-radius:10px;
+  }
+  .navbtn svg{ width:21px; height:21px; }
+  .navbtn.active{ color:var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="storeGate" class="gate">
+  <h1>เลือกสาขา</h1>
+  <p>ใส่รหัสสาขา (Store Code) เพื่อเข้าดูงาน ไรเดอร์ และรายงานของสาขาคุณ</p>
+  <input id="gateInput" inputmode="numeric" placeholder="เช่น 5177" maxlength="10">
+  <div class="err" id="gateErr"></div>
+  <button class="go" onclick="submitGate()">เข้าดูข้อมูล</button>
+</div>
+
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="topbar-row">
+      <button class="backbtn" id="backBtn" onclick="goBack()" aria-label="กลับ">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="topbar-titles">
+        <div class="topbar-store">สาขา <span id="topStore"></span><button onclick="changeStore()">เปลี่ยนสาขา</button></div>
+        <div class="topbar-title" id="topTitle">งานวันนี้</div>
+      </div>
+      <div class="topbar-clock" id="clock"></div>
+    </div>
+    <div class="chipbar" id="chipbar"></div>
+  </div>
+
+  <div class="content">
+    <div id="tab-jobs"></div>
+    <div id="tab-riders" class="hidden"></div>
+    <div id="tab-pending" class="hidden"></div>
+    <div id="tab-report" class="hidden"></div>
+    <div id="tab-riderdetail" class="hidden"></div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="navbtn active" data-tab="jobs" onclick="switchTab('jobs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 11l2 2 4-4"/></svg>
+      งาน
+    </button>
+    <button class="navbtn" data-tab="riders" onclick="switchTab('riders')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15.7 14.2c2.6.4 4.3 2.3 4.3 5.3"/></svg>
+      ไรเดอร์
+    </button>
+    <button class="navbtn" data-tab="pending" onclick="switchTab('pending')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M6 2c0 5 12 5 12 10s-12 5-12 10M18 2c0 5-12 5-12 10s12 5 12 10"/></svg>
+      รอสร้าง
+    </button>
+    <button class="navbtn" data-tab="report" onclick="switchTab('report')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/><path d="M2 20h20"/></svg>
+      รายงาน
+    </button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Helpers — BKK time math (mirrors server dayRange() convention)
+   ============================================================ */
+function pad(n){ return String(n).padStart(2,'0'); }
+function bkkNow(){ return new Date(Date.now() + 7*3600*1000); } // read with getUTC* as BKK wall time
+function todayYmd(){ const n = bkkNow(); return `${n.getUTCFullYear()}-${pad(n.getUTCMonth()+1)}-${pad(n.getUTCDate())}`; }
+function ymdOffset(days){ const n = new Date(bkkNow().getTime() + days*86400000); return `${n.getUTCFullYear()}-${pad(n.getUTCMonth()+1)}-${pad(n.getUTCDate())}`; }
+function bkk(iso, withSec){
+  if (!iso) return '–';
+  const d = new Date(new Date(iso).getTime() + 7*3600*1000);
+  const hh = pad(d.getUTCHours()), mm = pad(d.getUTCMinutes());
+  if (!withSec) return `${hh}:${mm}`;
+  return `${hh}:${mm}:${pad(d.getUTCSeconds())}`;
+}
+const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const MONTH_TH_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function dateLabelTh(ymd){ const [y,m,d] = ymd.split('-').map(Number); return `${d} ${MONTH_TH[m-1]}`; }
+function monthKey(offset){
+  const n = bkkNow(); let y = n.getUTCFullYear(), m = n.getUTCMonth() + offset;
+  while (m < 0){ m += 12; y--; } while (m > 11){ m -= 12; y++; }
+  return `${y}-${pad(m+1)}`;
+}
+function monthRangeISO(key){
+  const [y,m] = key.split('-').map(Number);
+  const from = `${y}-${pad(m)}-01T00:00:00+07:00`;
+  let to;
+  if (key === monthKey(0)){
+    to = `${todayYmd()}T23:59:59+07:00`;
+  } else {
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    to = `${y}-${pad(m)}-${pad(lastDay)}T23:59:59+07:00`;
+  }
+  return { from, to };
+}
+function monthLabel(key){
+  const [y,m] = key.split('-').map(Number);
+  const suffix = key === monthKey(0) ? ' (ถึงวันนี้)' : '';
+  return `${MONTH_TH_FULL[m-1]} ${y}${suffix}`;
+}
+function initialsOf(name){
+  let s = (name || '').trim(), changed = true;
+  while (changed){
+    const s2 = s.replace(/^\(LT\)\s*/,'').replace(/^\[.*?\]\s*/,'').replace(/^\d+\s*/,'');
+    changed = s2 !== s; s = s2;
+  }
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (!parts.length) return '??';
+  return ((parts[0][0]||'') + (parts[1] ? parts[1][0] : (parts[0][1]||''))).toUpperCase();
+}
+function cleanName(name){ return (name||'').replace(/^\(LT\)\s*/,'').replace(/^\[.*?\]\s*/,'').trim(); }
+
+async function fetchJSON(url){
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+const STATUS_LABEL = {
+  job_created:['สร้างแล้ว','info'], job_assigned:['มอบหมายแล้ว','info'], job_accepted:['รับงานแล้ว','info'],
+  job_picking_up:['กำลังไปรับ','warning'], job_picked_up:['รับของแล้ว','warning'], job_delivering:['กำลังส่ง','warning'],
+  job_completed:['ส่งสำเร็จ ✓','success'], job_cancelled:['ยกเลิก','danger'],
+  DELIVERED:['ส่งสำเร็จ','success'], ORDER_CANCELLED:['ออเดอร์ยกเลิก','danger']
+};
+function statusPill(status){
+  const [label, tone] = STATUS_LABEL[status] || [status || '–', 'info'];
+  return `<span class="pill pill-${tone}">${label}</span>`;
+}
+function loadingHtml(){ return `<div class="loading"><div class="spin" style="margin:0 auto .6rem;"></div>กำลังโหลด…</div>`; }
+function errorHtml(msg){ return `<div class="empty-state"><div class="big">⚠</div><div class="cap">โหลดข้อมูลไม่สำเร็จ</div><div class="sub">${msg||''}</div></div>`; }
+
+/* ============================================================
+   State + store gate
+   ============================================================ */
+let state = { store: '', tab: 'jobs', loaded: {}, selectedDay: null, selectedHour: null, month: null, riderId: null };
+
+function initGate(){
+  const qp = new URLSearchParams(location.search).get('store');
+  const saved = localStorage.getItem('mobileStoreCode');
+  const store = (qp || saved || '').trim();
+  if (store){ boot(store); } else { document.getElementById('gateInput').focus(); }
+}
+function submitGate(){
+  const v = document.getElementById('gateInput').value.trim();
+  if (!v){ document.getElementById('gateErr').textContent = 'กรุณาใส่รหัสสาขา'; return; }
+  boot(v);
+}
+document.getElementById('gateInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitGate(); });
+function changeStore(){
+  localStorage.removeItem('mobileStoreCode');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('storeGate').classList.remove('hidden');
+  document.getElementById('gateInput').value = '';
+  document.getElementById('gateInput').focus();
+}
+function boot(store){
+  state.store = store;
+  localStorage.setItem('mobileStoreCode', store);
+  document.getElementById('storeGate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topStore').textContent = store;
+  renderClock();
+  switchTab('jobs');
+}
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+function clearAllPullTransforms(){
+  ['jobs','riders','pending','report','riderdetail'].forEach(t=>{
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.transform = '';
+  });
+  const p = document.querySelector('.pull-indicator');
+  if (p){ p.style.transform = ''; p.classList.remove('ready','spinning'); }
+}
+function switchTab(tab){
+  clearAllPullTransforms();
+  state.tab = tab;
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  ['jobs','riders','pending','report','riderdetail'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
+  });
+  document.getElementById('backBtn').classList.remove('show');
+  document.getElementById('chipbar').style.display = tab==='jobs' ? 'flex' : 'none';
+  const titles = {jobs:'งานวันนี้', riders:'Rider Pool', pending:'รอสร้าง Job', report:'รายงานไรเดอร์'};
+  document.getElementById('topTitle').textContent = titles[tab];
+  if (!state.loaded[tab]) loadTab(tab);
+}
+function loadTab(tab){
+  if (tab==='jobs') loadJobs();
+  else if (tab==='riders') loadRiders();
+  else if (tab==='pending') loadPending();
+  else if (tab==='report') loadReport();
+}
+function goBack(){ switchTab('report'); }
+
+/* ============================================================
+   JOBS TAB
+   ============================================================ */
+async function loadJobs(){
+  const el = document.getElementById('tab-jobs');
+  el.innerHTML = loadingHtml();
+  try{
+    const from = `${todayYmd()}T00:00:00+07:00`, to = `${todayYmd()}T23:59:59+07:00`;
+    const res = await fetchJSON(`/api/jobs?storeCode=${state.store}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    state.jobs = res.data || [];
+    state.loaded.jobs = true;
+    renderJobs();
+  } catch(e){ el.innerHTML = errorHtml(e.message); }
+}
+function renderJobs(){
+  const jobs = state.jobs || [];
+  const doneCount = jobs.filter(j=>j.status==='job_completed').length;
+  const activeCount = jobs.filter(j=>['job_assigned','job_accepted','job_picking_up','job_picked_up','job_delivering'].includes(j.status)).length;
+  const chip = document.getElementById('chipbar');
+  chip.innerHTML = `<span class="chip">วันนี้ ${jobs.length} งาน</span><span class="chip">กำลังส่ง ${activeCount}</span><span class="chip">สำเร็จ ${doneCount}</span>`;
+  chip.style.display = 'flex';
+  const wrap = document.getElementById('tab-jobs');
+  if (!jobs.length){ wrap.innerHTML = `<div class="empty-state"><div class="big">📭</div><div class="cap">ยังไม่มีงานวันนี้</div></div>`; return; }
+  wrap.innerHTML = `<div class="section-label">งานวันนี้ <span>${jobs.length} งาน · ล่าสุดก่อน</span></div>` +
+    jobs.map((j,i)=>jobCardHtml(j,i)).join('');
+}
+function jobCardHtml(j, i){
+  return `
+  <div class="card job-card" id="job-${i}">
+    <div class="job-card-head" onclick="toggleJob(${i})">
+      <div class="job-top">
+        <div style="flex:1;min-width:0;">
+          <div class="job-id">${j.jobId}</div>
+          <div class="job-rider">${j.riderName ? cleanName(j.riderName) : '(ยังไม่มีไรเดอร์)'}</div>
+        </div>
+        ${statusPill(j.status)}
+      </div>
+      <div class="job-meta-row">
+        <span class="job-meta">${j.orderCount} ออเดอร์</span>
+        <span class="job-created">สร้าง Job ${bkk(j.createdAt, true)}</span>
+      </div>
+      <div class="expand-row">ดูออเดอร์ &amp; รอบ batch <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+    </div>
+    <div class="job-detail" id="job-detail-${i}"></div>
+  </div>`;
+}
+async function toggleJob(i){
+  const card = document.getElementById('job-'+i);
+  const isOpening = !card.classList.contains('open');
+  card.classList.toggle('open');
+  if (!isOpening) return;
+  const detail = document.getElementById('job-detail-'+i);
+  const j = state.jobs[i];
+  if (j._detail){ detail.innerHTML = jobDetailHtml(j._detail); return; }
+  detail.innerHTML = `<div class="loading" style="padding:1rem;"><div class="spin" style="margin:0 auto;"></div></div>`;
+  try{
+    const ids = j.orderIds || [];
+    if (!ids.length){ detail.innerHTML = `<div class="hour-note">งานนี้ไม่มีออเดอร์ผูกอยู่</div>`; return; }
+    const [ordersRes, batchRes] = await Promise.all([
+      fetchJSON(`/api/orders?type=orderid&values=${ids.join(',')}`),
+      fetchJSON(`/api/batches?orderIds=${ids[0]}`)
+    ]);
+    const detailData = { orders: ordersRes.data || [], batch: (batchRes.data||[])[0] || null };
+    j._detail = detailData;
+    detail.innerHTML = jobDetailHtml(detailData);
+  } catch(e){ detail.innerHTML = errorHtml(e.message); }
+}
+function jobDetailHtml(d){
+  const batchHtml = d.batch ? `
+    <div class="batch-row">
+      <svg class="batch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Batch <code>${d.batch.batchId}</code> · สร้างเมื่อ ${bkk(d.batch.createdAt, true)} · รวม ${d.batch.orderCount} ออเดอร์ในรอบนี้
+    </div>` : `<div class="hour-note" style="margin-bottom:.5rem;">ไม่พบข้อมูล batch ของงานนี้</div>`;
+  const orderRows = (d.orders||[]).map(o => `
+    <div class="order-row">
+      <div>
+        <div class="order-cons">${o.consignment || o.internalOrderId}</div>
+        <div class="order-internal">${o.internalOrderId}</div>
+      </div>
+      <div class="order-tail">
+        ${statusPill(o.currentOrderStatus)}
+        <div class="order-time">สร้าง ${bkk(o.createdAt)}</div>
+      </div>
+    </div>`).join('');
+  return batchHtml + orderRows;
+}
+
+/* ============================================================
+   RIDERS TAB
+   ============================================================ */
+async function loadRiders(){
+  const el = document.getElementById('tab-riders');
+  el.innerHTML = loadingHtml();
+  try{
+    const res = await fetchJSON(`/api/riders?storeCode=${state.store}`);
+    state.riders = res.data || res.riders || res || [];
+    state.loaded.riders = true;
+    renderRiders();
+  } catch(e){ el.innerHTML = errorHtml(e.message); }
+}
+function riderState(r){
+  if (r.job_on_hand_id) return 'busy';
+  if (r.not_on_break === false) return 'break';
+  if (!r.staff_online) return 'off';
+  return 'ready';
+}
+function renderRiders(){
+  const riders = state.riders || [];
+  const groups = { ready:[], busy:[], other:[] };
+  riders.forEach(r => { const s = riderState(r); (s==='ready'?groups.ready:s==='busy'?groups.busy:groups.other).push(r); });
+  const dotClass = { ready:'dot-ready', busy:'dot-busy', break:'dot-break', off:'dot-off' };
+  const row = r => { const s = riderState(r); return `
+    <div class="card"><div class="rider-row">
+      <div class="avatar">${initialsOf(r.name)}<span class="dot ${dotClass[s]}"></span></div>
+      <div style="flex:1;min-width:0;">
+        <div class="rider-name">${cleanName(r.name)}</div>
+        <div class="rider-sub">${s==='busy' ? 'กำลังทำงาน ' + (r.job_on_hand_id||'') : s==='ready' ? 'พร้อมรับงาน' : s==='break' ? 'พักอยู่' : 'ออฟไลน์'}</div>
+      </div>
+      <div class="rider-tail">${s==='busy' ? '1 งาน' : '0 งาน'}</div>
+    </div></div>`; };
+  document.getElementById('tab-riders').innerHTML = `
+    <div class="stat-strip" style="margin-bottom:.7rem;">
+      <div class="stat-tile"><div class="stat-num" style="color:var(--success);">${groups.ready.length}</div><div class="stat-cap">พร้อมงาน</div></div>
+      <div class="stat-tile"><div class="stat-num" style="color:var(--warning);">${groups.busy.length}</div><div class="stat-cap">มีงานอยู่</div></div>
+      <div class="stat-tile"><div class="stat-num" style="color:var(--text-faint);">${riders.length}</div><div class="stat-cap">ในสาขา</div></div>
+    </div>
+    <div class="section-label">พร้อมรับงาน</div>${groups.ready.map(row).join('') || '<div class="card"><div class="rider-row"><span class="rider-sub">ไม่มี</span></div></div>'}
+    <div class="section-label">กำลังทำงาน</div>${groups.busy.map(row).join('') || '<div class="card"><div class="rider-row"><span class="rider-sub">ไม่มี</span></div></div>'}
+    <div class="section-label">พัก / ออฟไลน์</div>${groups.other.map(row).join('') || '<div class="card"><div class="rider-row"><span class="rider-sub">ไม่มี</span></div></div>'}
+  `;
+}
+
+/* ============================================================
+   PENDING TAB
+   ============================================================ */
+async function loadPending(){
+  const el = document.getElementById('tab-pending');
+  el.innerHTML = loadingHtml();
+  try{
+    const res = await fetchJSON(`/api/pending?storeCode=${state.store}`);
+    state.pending = res.data || [];
+    state.loaded.pending = true;
+    renderPending();
+  } catch(e){ el.innerHTML = errorHtml(e.message); }
+}
+function renderPending(){
+  const items = state.pending || [];
+  const wrap = document.getElementById('tab-pending');
+  if (!items.length){
+    wrap.innerHTML = `<div class="empty-state"><div class="big">✓</div><div class="cap">ไม่มีออเดอร์รอสร้าง Job</div></div>`;
+    return;
+  }
+  const now = Date.now();
+  wrap.innerHTML = `<div class="section-label">รอสร้าง Job <span>${items.length} ออเดอร์</span></div>` +
+    items.map(o => {
+      const waitMin = o.createdAt ? Math.round((now - new Date(o.createdAt).getTime())/60000) : null;
+      const waitCls = waitMin==null ? '' : waitMin>=45 ? 'wait-late' : waitMin>=20 ? 'wait-warn' : 'wait-ok';
+      const waitTxt = waitMin==null ? '–' : waitMin>=60 ? `รอ ${Math.floor(waitMin/60)} ชม. ${waitMin%60} นาที` : `รอ ${waitMin} นาที`;
+      return `
+      <div class="card"><div class="pend-row">
+        <div><div class="pend-order">${o.orderId||''}</div><div class="pend-cons">${o.consignment||''}</div></div>
+        <span class="pill pill-info">${o.serviceType||o.fleetDispatchType||'-'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0 .85rem .7rem;">
+        <span style="font-size:.68rem;color:var(--text-muted);">สร้างเมื่อ ${bkk(o.createdAt)}</span>
+        <span class="wait ${waitCls}">${waitTxt}</span>
+      </div></div>`;
+    }).join('');
+}
+
+/* ============================================================
+   REPORT TAB — monthly performance list + SLA daily/hourly
+   ============================================================ */
+async function loadReport(){
+  const el = document.getElementById('tab-report');
+  el.innerHTML = loadingHtml();
+  state.month = monthKey(0);
+  try{
+    const [perf, daily] = await Promise.all([ fetchReportMonth(state.month), fetchDailySLA() ]);
+    state.report = perf;
+    state.dailySLA = daily;
+    state.selectedDay = daily.length - 1;
+    state.selectedHour = null;
+    state.hourlyCache = {};
+    state.loaded.report = true;
+    renderReport();
+  } catch(e){ el.innerHTML = errorHtml(e.message); }
+}
+async function fetchReportMonth(key){
+  const { from, to } = monthRangeISO(key);
+  const res = await fetchJSON(`/api/rider-performance?storeCode=${state.store}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+  return res.data || [];
+}
+async function fetchDailySLA(){
+  const res = await fetchJSON(`/api/analytics/delivery-speed?storeCode=${state.store}&days=14`);
+  return (res.data || []).filter(d => !d.predicted);
+}
+function tierOf(rate){ return rate==null ? 'mid' : rate>=90 ? 'good' : rate>=75 ? 'mid' : 'low'; }
+function renderReport(){
+  const report = state.report || [];
+  const wrap = document.getElementById('tab-report');
+  wrap.innerHTML = `
+    <div class="section-label">ประสิทธิภาพไรเดอร์ <span>${monthLabel(state.month)}</span></div>
+    ${report.length ? report.map((r,idx) => `
+      <button class="ridercard" onclick="openRider(${idx})">
+        <div class="avatar">${initialsOf(r.riderName)}</div>
+        <div style="flex:1;min-width:0;text-align:left;">
+          <div class="rider-name">${cleanName(r.riderName)}</div>
+          <div class="rider-sub">${r.total} งาน · ยกเลิก ${r.cancelled} (${r.cancelRate}%)</div>
+        </div>
+        <div class="score score-${tierOf(r.acceptRate)}">${r.acceptRate}%</div>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg>
+      </button>`).join('') : '<div class="empty-state"><div class="cap">ไม่มีข้อมูลไรเดอร์เดือนนี้</div></div>'}
+
+    <div class="section-label" style="margin-top:.9rem;">SLA รายวัน <span>14 วันล่าสุด</span></div>
+    <div class="chart-card">
+      <div class="chart-head"><span class="chart-title">จำนวนงานล่าช้าเกิน SLA ต่อวัน</span></div>
+      <div class="bars" id="dayBars"></div>
+      <div class="bars-caption"><span>${state.dailySLA.length ? dateLabelTh(state.dailySLA[0].date) : ''}</span><span>วันนี้</span></div>
+      <div class="hour-panel" id="hourPanel"></div>
+    </div>
+  `;
+  renderDayBars();
+}
+function renderDayBars(){
+  const d = state.dailySLA;
+  const wrap = document.getElementById('dayBars');
+  const max = Math.max(...d.map(x=>x.slaBreachCount||0), 1);
+  wrap.innerHTML = d.map((day,i) => {
+    const h = Math.round(((day.slaBreachCount||0)/max)*100);
+    const isToday = i === d.length - 1;
+    const sel = i === state.selectedDay ? ' selected' : '';
+    return `<button class="daybar${isToday?' today':''}${sel}" onclick="selectDay(${i})" title="${day.date} · ล่าช้า ${day.slaBreachCount} งาน"><div class="fill" style="height:${h}%"></div></button>`;
+  }).join('');
+  renderHourPanel();
+}
+function selectDay(i){ state.selectedDay = i; state.selectedHour = null; renderDayBars(); }
+async function renderHourPanel(){
+  const day = state.dailySLA[state.selectedDay];
+  const panel = document.getElementById('hourPanel');
+  if (!day){ panel.innerHTML=''; return; }
+  panel.innerHTML = `<div class="hour-panel-head">SLA รายชั่วโมง · <span class="d">${dateLabelTh(day.date)}</span></div><div class="loading" style="padding:1rem;"><div class="spin" style="margin:0 auto;"></div></div>`;
+  try{
+    let hourly = state.hourlyCache[day.date];
+    if (!hourly){
+      const res = await fetchJSON(`/api/analytics/delivery-speed?storeCode=${state.store}&mode=hourly&date=${day.date}`);
+      hourly = res.data || [];
+      state.hourlyCache[day.date] = hourly;
+    }
+    state.hourlyToday = hourly;
+    const max = Math.max(...hourly.map(h=>h.jobCount), 1);
+    const bars = hourly.map(h => {
+      const okH = Math.round(((h.jobCount - h.slaBreachCount)/max)*100);
+      const lateH = Math.round((h.slaBreachCount/max)*100);
+      const empty = h.jobCount === 0;
+      const sel = state.selectedHour === h.hour ? ' selected' : '';
+      return `<button class="hourbar${empty?' empty':''}${sel}" ${empty?'disabled':''} onclick="selectHour(${h.hour})" title="${h.hour}:00 · ${h.jobCount} งาน · ล่าช้า ${h.slaBreachCount}"><div class="seg-late" style="height:${lateH}%"></div><div class="seg-ok" style="height:${okH}%"></div></button>`;
+    }).join('');
+    panel.innerHTML = `
+      <div class="hour-panel-head">SLA รายชั่วโมง · <span class="d">${dateLabelTh(day.date)}</span></div>
+      <div class="chart-legend" style="margin-bottom:.4rem;"><span><span class="legend-dot" style="background:var(--accent);"></span>ตรงเวลา</span><span><span class="legend-dot" style="background:var(--warning);"></span>ล่าช้า</span></div>
+      <div class="hbars">${bars}</div>
+      <div class="hbars-caption"><span>00:00</span><span>12:00</span><span>23:00</span></div>
+      <div class="hour-detail" id="hourDetail"></div>
+    `;
+    renderHourDetail(day.date);
+  } catch(e){ panel.innerHTML = errorHtml(e.message); }
+}
+function selectHour(h){ state.selectedHour = h; renderHourDetail(state.dailySLA[state.selectedDay].date); document.querySelectorAll('.hourbar').forEach(b=>b.classList.remove('selected')); renderHourPanel(); }
+async function renderHourDetail(date){
+  const box = document.getElementById('hourDetail');
+  if (!box || state.selectedHour === null){ if (box) box.innerHTML=''; return; }
+  const h = (state.hourlyToday||[]).find(x=>x.hour===state.selectedHour);
+  if (!h || h.jobCount===0){ box.innerHTML = `<div class="hour-note">ไม่มีงานในชั่วโมงนี้</div>`; return; }
+  const riderChips = (h.riders||[]).map(r => `<span class="rider-chip">${cleanName(r.name)}${r.slaBreaches>0?` · <b>ล่าช้า ${r.slaBreaches}</b>`:''}</span>`).join('');
+  box.innerHTML = `<div class="hour-detail-head">${state.selectedHour}:00–${state.selectedHour}:59 · ${h.jobCount} งาน · ล่าช้า ${h.slaBreachCount}</div><div class="rider-chip-row">${riderChips}</div><div class="loading" style="padding:.5rem;"><div class="spin" style="width:16px;height:16px;margin:0 auto;"></div></div>`;
+  try{
+    const from = `${date}T${pad(state.selectedHour)}:00:00+07:00`, to = `${date}T${pad(state.selectedHour)}:59:59+07:00`;
+    const res = await fetchJSON(`/api/jobs?storeCode=${state.store}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    const jobs = res.data || [];
+    const jobsHtml = jobs.length ? jobs.map(j => `
+      <div class="history-item"><div><div class="history-id">${j.jobId}</div><div class="history-date">${bkk(j.createdAt)} · ${j.riderName?cleanName(j.riderName):'–'} · ${j.orderCount} ออเดอร์</div></div>${statusPill(j.status)}</div>`).join('')
+      : '<div class="hour-note">ไม่พบรายการงาน</div>';
+    box.innerHTML = `<div class="hour-detail-head">${state.selectedHour}:00–${state.selectedHour}:59 · ${h.jobCount} งาน · ล่าช้า ${h.slaBreachCount}</div><div class="rider-chip-row">${riderChips}</div>${jobsHtml}`;
+  } catch(e){ box.innerHTML = `<div class="hour-detail-head">${state.selectedHour}:00–${state.selectedHour}:59</div><div class="rider-chip-row">${riderChips}</div>` + errorHtml(e.message); }
+}
+
+/* ============================================================
+   RIDER DETAIL — monthly perf (toggle) + 7-day job/SLA history
+   ============================================================ */
+function toggleMonth(dir){
+  const next = dir < 0 ? monthKey(-1) : monthKey(0);
+  if (state.month === next) return;
+  state.month = next;
+  renderRiderDetail(true);
+}
+async function openRider(idx){
+  clearAllPullTransforms();
+  state.tab = 'riderdetail'; state.riderIdx = idx; state.month = monthKey(0);
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='report'));
+  ['jobs','riders','pending','report'].forEach(t=> document.getElementById('tab-'+t).classList.add('hidden'));
+  document.getElementById('tab-riderdetail').classList.remove('hidden');
+  document.getElementById('backBtn').classList.add('show');
+  document.getElementById('chipbar').style.display = 'none';
+  document.getElementById('topTitle').textContent = 'รายละเอียดไรเดอร์';
+  await renderRiderDetail(true);
+}
+async function renderRiderDetail(reload){
+  const r = state.report[state.riderIdx];
+  const wrap = document.getElementById('tab-riderdetail');
+  if (reload){
+    wrap.innerHTML = riderDetailShell(r) + loadingHtml();
+  }
+  let monthPerf = r; // current month already loaded via report list
+  if (state.month !== monthKey(0)){
+    const list = await fetchReportMonth(state.month);
+    monthPerf = list.find(x => x.riderId === r.riderId) || { total:0, completed:0, cancelled:0, acceptRate:null };
+  }
+  let sla7d = state.sla7dCache && state.sla7dCache[r.riderId];
+  if (!sla7d){
+    sla7d = await fetchRider7Day(r.riderId);
+    state.sla7dCache = state.sla7dCache || {};
+    state.sla7dCache[r.riderId] = sla7d;
+  }
+  const monthIdxIsPrev = state.month !== monthKey(0);
+  wrap.innerHTML = riderDetailShell(r) + `
+    <div class="stat-strip">
+      <div class="stat-tile"><div class="stat-num">${monthPerf.total}</div><div class="stat-cap">งานทั้งเดือน</div></div>
+      <div class="stat-tile"><div class="stat-num" style="color:var(--success);">${monthPerf.acceptRate!==null?monthPerf.acceptRate+'%':'–'}</div><div class="stat-cap">รับงานสำเร็จ</div></div>
+      <div class="stat-tile"><div class="stat-num" style="color:var(--danger);">${monthPerf.cancelled}</div><div class="stat-cap">ยกเลิก</div></div>
+    </div>
+
+    <div class="section-label" style="margin-top:1rem;">งานย้อนหลัง 7 วัน + SLA ส่งของ</div>
+    <div class="stat-strip">
+      <div class="stat-tile"><div class="stat-num">${sla7d.total}</div><div class="stat-cap">งาน 7 วัน</div></div>
+      <div class="stat-tile"><div class="stat-num" style="color:var(--success);">${sla7d.onTimeRate!==null?sla7d.onTimeRate+'%':'–'}</div><div class="stat-cap">ส่งตรง Delivery SLA</div></div>
+      <div class="stat-tile"><div class="stat-num" style="color:var(--warning);">${sla7d.lateDeliveries}</div><div class="stat-cap">ส่งล่าช้า</div></div>
+    </div>
+    <div class="card" style="padding:.2rem .85rem;margin-top:.5rem;">
+      ${sla7d.recent.length ? sla7d.recent.map(j => `
+        <div class="history-item">
+          <div><div class="history-id">${j.jobId}</div><div class="history-date">${bkk(j.createdAt,true)} · ${j.orderCount} ออเดอร์</div></div>
+          <div style="text-align:right;">
+            ${statusPill(j.status)}
+            ${j.late===true ? '<div class="job-created" style="color:var(--warning);margin-top:.2rem;">⚠ ล่าช้ากว่า SLA</div>' : j.late===false ? '<div class="job-created" style="color:var(--success);margin-top:.2rem;">✓ ตรงเวลา</div>' : ''}
+          </div>
+        </div>`).join('') : '<div class="history-item"><span class="rider-sub">ไม่มีงานใน 7 วันล่าสุด</span></div>'}
+    </div>
+  `;
+  // re-bind month toggle buttons (rebuilt DOM)
+  document.getElementById('monthPrevBtn').onclick = () => toggleMonth(-1);
+  document.getElementById('monthNextBtn').onclick = () => toggleMonth(1);
+  document.getElementById('monthPrevBtn').disabled = state.month === monthKey(-1);
+  document.getElementById('monthNextBtn').disabled = state.month === monthKey(0);
+}
+function riderDetailShell(r){
+  return `
+    <div class="detail-head">
+      <div class="avatar detail-avatar">${initialsOf(r.riderName)}</div>
+      <div><div class="detail-name">${cleanName(r.riderName)}</div><div class="detail-code">สาขา ${state.store}</div></div>
+    </div>
+    <div class="section-label" style="margin-top:.9rem;">ประสิทธิภาพรายเดือน</div>
+    <div class="range-row">
+      <button class="rangebtn" id="monthPrevBtn">‹ เดือนก่อน</button>
+      <div style="flex:1;text-align:center;font-size:.78rem;font-weight:700;">${monthLabel(state.month)}</div>
+      <button class="rangebtn" id="monthNextBtn">เดือนนี้ ›</button>
+    </div>`;
+}
+async function fetchRider7Day(riderId){
+  const from = `${ymdOffset(-6)}T00:00:00+07:00`, to = `${todayYmd()}T23:59:59+07:00`;
+  const res = await fetchJSON(`/api/jobs?storeCode=${state.store}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+  const list = (res.data || []).filter(j => j.riderId === riderId);
+  const total = list.length;
+  const withSLA = list.filter(j => j.deliverySLA && j.status === 'job_completed');
+  const late = withSLA.filter(j => new Date(j.updatedAt) > new Date(j.deliverySLA)).length;
+  const onTimeRate = withSLA.length ? Math.round((1 - late/withSLA.length)*1000)/10 : null;
+  const recent = list.slice(0,8).map(j => ({
+    jobId:j.jobId, createdAt:j.createdAt, status:j.status, orderCount:j.orderCount,
+    late: j.deliverySLA && j.status==='job_completed' ? new Date(j.updatedAt) > new Date(j.deliverySLA) : null
+  }));
+  return { total, lateDeliveries: late, onTimeRate, recent };
+}
+
+/* ============================================================
+   Clock / toast
+   ============================================================ */
+function renderClock(){
+  const el = document.getElementById('clock');
+  const n = bkkNow();
+  if (el) el.textContent = `${pad(n.getUTCHours())}:${pad(n.getUTCMinutes())}`;
+}
+setInterval(renderClock, 30000);
+
+function showToast(msg){
+  let t = document.getElementById('toast');
+  if (!t){ t = document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+/* ============================================================
+   Pull-to-refresh — scoped to whichever tab element is visible
+   ============================================================ */
+function refreshCurrentTab(){ state.loaded[state.tab] = false; loadTab(state.tab); }
+
+(function initPullToRefresh(){
+  const content = document.querySelector('.content');
+  const pullEl = document.createElement('div');
+  pullEl.className = 'pull-indicator';
+  pullEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>';
+  content.appendChild(pullEl);
+
+  const THRESHOLD = 60, MAX_PULL = 90;
+  let startY = 0, pulling = false, dragY = 0, refreshing = false, activeTab = null;
+
+  function setPull(px){
+    if (activeTab) activeTab.style.transform = px ? `translateY(${px}px)` : '';
+    pullEl.style.transform = `translate(-50%, ${px - 50}px)`;
+    pullEl.classList.toggle('ready', px >= THRESHOLD);
+    const icon = pullEl.querySelector('svg');
+    if (icon) icon.style.transform = `rotate(${Math.min(180, (px/THRESHOLD)*180)}deg)`;
+  }
+  function reset(){ setPull(0); }
+  function doRefresh(){
+    refreshing = true; setPull(50); pullEl.classList.add('spinning');
+    const tabAtStart = state.tab;
+    Promise.resolve().then(() => {
+      if (state.tab === tabAtStart) refreshCurrentTab();
+    }).finally(() => {
+      renderClock(); showToast('อัปเดตข้อมูลแล้ว');
+      pullEl.classList.remove('spinning'); reset(); refreshing = false;
+    });
+  }
+  content.addEventListener('pointerdown', e => {
+    if (refreshing || content.scrollTop > 0) return;
+    activeTab = document.getElementById('tab-' + state.tab);
+    startY = e.clientY; pulling = true; dragY = 0;
+  });
+  content.addEventListener('pointermove', e => {
+    if (!pulling || refreshing) return;
+    const dy = e.clientY - startY;
+    if (dy <= 0 || content.scrollTop > 0){ pulling = false; reset(); return; }
+    dragY = Math.min(MAX_PULL, dy * 0.5);
+    setPull(dragY);
+    e.preventDefault();
+  }, { passive:false });
+  content.addEventListener('pointerup', () => {
+    if (!pulling || refreshing) return;
+    pulling = false;
+    if (dragY >= THRESHOLD) doRefresh(); else reset();
+  });
+  content.addEventListener('pointercancel', () => { pulling = false; if (!refreshing) reset(); });
+})();
+
+initGate();
+</script>
+</body>
+</html>

@@ -1435,20 +1435,28 @@ function toggleFullscreen(btn) {
     btn.classList.add('btn-danger', 'text-white');
     btn.classList.remove('col-btn');
     document.body.style.overflow = 'hidden';
-    
-    // Close on outside click
+
+    // Close on outside click — ignore clicks inside modals/popups that render
+    // outside .card (e.g. #colModal, .job-popup), otherwise dismissing those
+    // also force-closes fullscreen and leaves body.style.overflow stuck (the
+    // modal restores its own cached 'hidden' value after we've reset it).
     const closeHandler = (e) => {
+      if (e.target.closest('.modal, .modal-backdrop, .job-popup')) return;
       if (card.classList.contains('card-fullscreen') && !card.contains(e.target)) {
         toggleFullscreen(btn);
-        document.removeEventListener('click', closeHandler);
       }
     };
+    card._fsCloseHandler = closeHandler;
     setTimeout(() => document.addEventListener('click', closeHandler), 10);
   } else {
     icon.classList.replace('bi-x-lg', 'bi-arrows-fullscreen');
     btn.classList.add('col-btn');
     btn.classList.remove('btn-danger', 'text-white');
     document.body.style.overflow = '';
+    if (card._fsCloseHandler) {
+      document.removeEventListener('click', card._fsCloseHandler);
+      card._fsCloseHandler = null;
+    }
   }
 }
 

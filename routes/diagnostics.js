@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { ObjectId } = require('mongodb');
-const { getClsClient, getClsTopicId } = require('../lib/cls');
+const { getClsClient, getClsTopicId, searchLogAll } = require('../lib/cls');
 const { getClient } = require('../lib/db');
 
 const router = Router();
@@ -20,13 +20,14 @@ router.get('/job-diagnostics', async (req, res) => {
     ]);
 
     // ดึง no_available_riders_for_chunk และ assigned events พร้อมกัน
-    const [roundResult, assignedResult] = await Promise.all([
-      clsClient.SearchLog({
+    // roundResults ใช้ searchLogAll เพราะบาง job มี round เกิน 500 (Limit เดียวไม่พอ)
+    const [roundResults, assignedResult] = await Promise.all([
+      searchLogAll(clsClient, {
         TopicId: topicId,
         From: now - hoursMs,
         To: now,
         Query: `event:"auto_assign_job" AND jobId:"${jobId}" AND action:"no_available_riders_for_chunk"`,
-        Limit: 500,
+        Limit: 1000,
         Sort: 'asc',
         SyntaxRule: 1,
       }),
@@ -43,7 +44,7 @@ router.get('/job-diagnostics', async (req, res) => {
 
     // --- parse rounds ---
     const rounds = [];
-    for (const record of (roundResult.Results || [])) {
+    for (const record of roundResults) {
       let fields = {};
       try { fields = JSON.parse(record.LogJson || '{}'); } catch {}
       let msg = {};

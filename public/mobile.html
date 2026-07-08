@@ -579,6 +579,7 @@ async function loadPending(){
   try{
     const res = await fetchJSON(`/api/pending?storeCode=${state.store}`);
     state.pending = res.data || [];
+    state.batchTimeMap = res.batchTimeMap || {};
     state.loaded.pending = true;
     renderPending();
   } catch(e){ el.innerHTML = errorHtml(e.message); }
@@ -586,25 +587,30 @@ async function loadPending(){
 function renderPending(){
   const items = state.pending || [];
   const wrap = document.getElementById('tab-pending');
+  const batchTime = state.batchTimeMap && state.batchTimeMap[state.store] !== undefined ? state.batchTimeMap[state.store] : null;
+  const batchLine = batchTime !== null ? `<div class="hour-note" style="margin-bottom:.7rem;">🔖 รอบ Batch สาขา ${state.store}: ทุก <b>${batchTime} นาที</b></div>` : '';
   if (!items.length){
-    wrap.innerHTML = `<div class="empty-state"><div class="big">✓</div><div class="cap">ไม่มีออเดอร์รอสร้าง Job</div></div>`;
+    wrap.innerHTML = batchLine + `<div class="empty-state"><div class="big">✓</div><div class="cap">ไม่มีออเดอร์รอสร้าง Job</div></div>`;
     return;
   }
   const now = Date.now();
-  wrap.innerHTML = `<div class="section-label">รอสร้าง Job <span>${items.length} ออเดอร์</span></div>` +
+  wrap.innerHTML = batchLine + `<div class="section-label">รอสร้าง Job <span>${items.length} ออเดอร์</span></div>` +
     items.map(o => {
       const waitMin = o.createdAt ? Math.round((now - new Date(o.createdAt).getTime())/60000) : null;
       const waitCls = waitMin==null ? '' : waitMin>=45 ? 'wait-late' : waitMin>=20 ? 'wait-warn' : 'wait-ok';
       const waitTxt = waitMin==null ? '–' : waitMin>=60 ? `รอ ${Math.floor(waitMin/60)} ชม. ${waitMin%60} นาที` : `รอ ${waitMin} นาที`;
+      const overBatch = batchTime !== null && waitMin !== null && waitMin > (batchTime + 5);
       return `
       <div class="card"><div class="pend-row">
         <div><div class="pend-order">${o.orderId||''}</div><div class="pend-cons">${o.consignment||''}</div></div>
         <span class="pill pill-info">${o.serviceType||o.fleetDispatchType||'-'}</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:0 .85rem .7rem;">
-        <span style="font-size:.68rem;color:var(--text-muted);">สร้างเมื่อ ${bkk(o.createdAt)}</span>
+        <span style="font-size:.68rem;color:var(--text-muted);">สร้างเมื่อ ${bkk(o.createdAt)}${batchTime!==null?` · รอบ Batch ${batchTime}m`:''}</span>
         <span class="wait ${waitCls}">${waitTxt}</span>
-      </div></div>`;
+      </div>
+      ${overBatch ? `<div style="padding:0 .85rem .7rem;"><span class="pill pill-danger">⚠ เกินรอบ Batch แล้ว</span></div>` : ''}
+      </div>`;
     }).join('');
 }
 

@@ -5579,6 +5579,20 @@ async function aiSend() {
     document.getElementById('ai-send-btn').disabled = false;
   }
 }
+
+// Forced-desktop-on-phone escape hatch: show a small "back to mobile" button
+// when this page was reached via ?desktop=1 on a narrow viewport.
+(function(){
+  if (new URLSearchParams(location.search).get('desktop') !== '1') return;
+  if (window.innerWidth >= 768) return;
+  const btn = document.createElement('a');
+  btn.href = '/mobile.html';
+  btn.textContent = '📱 กลับมือถือ';
+  btn.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:99999;background:#1e1b4b;color:#fff;'
+    + 'font-size:.78rem;font-weight:600;padding:.5rem .9rem;border-radius:20px;text-decoration:none;'
+    + 'box-shadow:0 4px 16px rgba(0,0,0,.3);';
+  document.body.appendChild(btn);
+})();
 </script>
 </body>
 </html>

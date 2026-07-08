@@ -180,6 +180,20 @@
   .rangebtn{ font-size:.7rem; font-weight:700; padding:.4rem .6rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; flex:0 0 auto; }
   .rangebtn:disabled{ opacity:.35; cursor:default; }
 
+  /* order search */
+  .type-toggle{ display:flex; gap:.4rem; margin-bottom:.6rem; }
+  .type-toggle button{ flex:1; font-size:.74rem; font-weight:700; padding:.5rem 0; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; }
+  .type-toggle button.active{ background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+  .search-bar{ display:flex; gap:.5rem; margin-bottom:.7rem; }
+  .search-bar input{ flex:1; min-width:0; font-size:.85rem; padding:.6rem .7rem; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); }
+  .search-bar button{ flex:0 0 auto; padding:.6rem 1.1rem; border-radius:12px; border:none; background:var(--accent); color:#fff; font-weight:700; font-size:.82rem; cursor:pointer; }
+  .order-card{ padding:.75rem .85rem; }
+  .order-card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+  .order-card .cons{ font-size:.85rem; font-weight:700; font-family:ui-monospace,monospace; }
+  .order-card .internal{ font-size:.62rem; color:var(--text-faint); margin-top:.1rem; font-family:ui-monospace,monospace; }
+  .order-card .meta{ font-size:.68rem; color:var(--text-muted); margin-top:.5rem; display:flex; flex-direction:column; gap:.2rem; }
+  .order-card .meta code{ font-size:.66rem; }
+
   .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-card); padding:.8rem; }
   .chart-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:.6rem; }
   .chart-title{ font-size:.72rem; font-weight:700; color:var(--text-muted); }
@@ -245,7 +259,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <div class="topbar-titles">
-        <div class="topbar-store">สาขา <span id="topStore"></span><button onclick="changeStore()">เปลี่ยนสาขา</button></div>
+        <div class="topbar-store">สาขา <span id="topStore"></span><button onclick="changeStore()">เปลี่ยนสาขา</button><button onclick="location.href='/?desktop=1'">🖥 เว็บปกติ</button></div>
         <div class="topbar-title" id="topTitle">งานวันนี้</div>
       </div>
       <div class="topbar-clock" id="clock"></div>
@@ -259,6 +273,7 @@
     <div id="tab-pending" class="hidden"></div>
     <div id="tab-report" class="hidden"></div>
     <div id="tab-riderdetail" class="hidden"></div>
+    <div id="tab-search" class="hidden"></div>
   </div>
 
   <div class="bottomnav">
@@ -277,6 +292,10 @@
     <button class="navbtn" data-tab="report" onclick="switchTab('report')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/><path d="M2 20h20"/></svg>
       รายงาน
+    </button>
+    <button class="navbtn" data-tab="search" onclick="switchTab('search')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      ค้นหา
     </button>
   </div>
 </div>
@@ -390,7 +409,7 @@ function boot(store){
    Tabs
    ============================================================ */
 function clearAllPullTransforms(){
-  ['jobs','riders','pending','report','riderdetail'].forEach(t=>{
+  ['jobs','riders','pending','report','riderdetail','search'].forEach(t=>{
     const el = document.getElementById('tab-'+t);
     if (el) el.style.transform = '';
   });
@@ -401,12 +420,12 @@ function switchTab(tab){
   clearAllPullTransforms();
   state.tab = tab;
   document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-  ['jobs','riders','pending','report','riderdetail'].forEach(t=>{
+  ['jobs','riders','pending','report','riderdetail','search'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   document.getElementById('backBtn').classList.remove('show');
   document.getElementById('chipbar').style.display = tab==='jobs' ? 'flex' : 'none';
-  const titles = {jobs:'งานวันนี้', riders:'Rider Pool', pending:'รอสร้าง Job', report:'รายงานไรเดอร์'};
+  const titles = {jobs:'งานวันนี้', riders:'Rider Pool', pending:'รอสร้าง Job', report:'รายงานไรเดอร์', search:'ค้นหา Order'};
   document.getElementById('topTitle').textContent = titles[tab];
   if (!state.loaded[tab]) loadTab(tab);
 }
@@ -415,6 +434,7 @@ function loadTab(tab){
   else if (tab==='riders') loadRiders();
   else if (tab==='pending') loadPending();
   else if (tab==='report') loadReport();
+  else if (tab==='search') renderSearchTab();
 }
 function goBack(){ switchTab('report'); }
 
@@ -586,6 +606,77 @@ function renderPending(){
         <span class="wait ${waitCls}">${waitTxt}</span>
       </div></div>`;
     }).join('');
+}
+
+/* ============================================================
+   SEARCH TAB — query orders by consignment / order ID
+   ============================================================ */
+function renderSearchTab(){
+  state.loaded.search = true;
+  state.searchType = state.searchType || 'consignment';
+  const wrap = document.getElementById('tab-search');
+  wrap.innerHTML = `
+    <div class="section-label">ค้นหา Order <span>Consignment / Order ID</span></div>
+    <div class="type-toggle">
+      <button id="searchTypeConsignment" onclick="setSearchType('consignment')">Consignment</button>
+      <button id="searchTypeOrderId" onclick="setSearchType('orderid')">Order ID</button>
+    </div>
+    <div class="search-bar">
+      <input id="searchInput" placeholder="เช่น CPTH9018287808 (คั่นด้วย , หรือขึ้นบรรทัดใหม่ได้)">
+      <button onclick="runOrderSearch()">ค้นหา</button>
+    </div>
+    <div id="searchResults"></div>
+  `;
+  document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key==='Enter') runOrderSearch(); });
+  setSearchType(state.searchType);
+}
+function setSearchType(t){
+  state.searchType = t;
+  document.getElementById('searchTypeConsignment').classList.toggle('active', t==='consignment');
+  document.getElementById('searchTypeOrderId').classList.toggle('active', t==='orderid');
+}
+async function runOrderSearch(){
+  const raw = document.getElementById('searchInput').value.trim();
+  const results = document.getElementById('searchResults');
+  if (!raw){ results.innerHTML = `<div class="hour-note">กรุณากรอกค่าที่ต้องการค้นหา</div>`; return; }
+  let valArr = raw.split(/[\s,]+/).filter(Boolean);
+  if (valArr.length > 50){ showToast('ค้นหาได้สูงสุด 50 รายการ (ใช้ 50 รายการแรก)'); valArr = valArr.slice(0,50); }
+  results.innerHTML = loadingHtml();
+  try{
+    const type = state.searchType;
+    const res = await fetchJSON(`/api/orders?type=${type}&values=${encodeURIComponent(valArr.join(','))}`);
+    const found = res.data || [];
+    const full = valArr.map(val => found.find(d =>
+      (d.consignment && d.consignment.toLowerCase()===val.toLowerCase()) ||
+      (d.internalOrderId && d.internalOrderId.toLowerCase()===val.toLowerCase())
+    ) || { consignment: type==='consignment'?val:null, internalOrderId: type==='orderid'?val:null, isNotFound:true });
+    renderSearchResults(full);
+  } catch(e){ results.innerHTML = errorHtml(e.message); }
+}
+function renderSearchResults(list){
+  const results = document.getElementById('searchResults');
+  const foundCount = list.filter(o=>!o.isNotFound).length;
+  results.innerHTML = `<div class="section-label">ผลการค้นหา <span>พบ ${foundCount} จาก ${list.length}</span></div>` +
+    list.map(orderCardHtml).join('');
+}
+function orderCardHtml(o){
+  if (o.isNotFound){
+    return `<div class="card order-card" style="opacity:.6;">
+      <div class="order-card-top"><div class="cons">${o.consignment||o.internalOrderId}</div><span class="pill pill-danger">ไม่พบข้อมูล</span></div>
+    </div>`;
+  }
+  return `<div class="card order-card">
+    <div class="order-card-top">
+      <div><div class="cons">${o.consignment||'–'}</div><div class="internal">${o.internalOrderId||''}</div></div>
+      ${statusPill(o.currentOrderStatus)}
+    </div>
+    <div class="meta">
+      <span>สาขา ${o.storeCode||'–'}${o.storeName?' · '+o.storeName:''}</span>
+      ${o.jobId ? `<span>Job: <code>${o.jobId}</code></span>` : ''}
+      ${o.riderName ? `<span>ไรเดอร์: ${cleanName(o.riderName)}</span>` : ''}
+      <span>สร้างเมื่อ ${bkk(o.createdAt, true)}</span>
+    </div>
+  </div>`;
 }
 
 /* ============================================================

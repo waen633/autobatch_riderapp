@@ -26,31 +26,70 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack.min.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body { background: #f8fafc; font-family: 'Inter', 'Prompt', sans-serif; font-size: 13.5px; color: #1e293b; }
-    .card { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; }
-    .card-header { background: #ffffff !important; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0 !important; font-size: 1rem; font-weight: 600; padding: 0.8rem 1.25rem !important; color: #0f172a; }
-    .card-pending { border-top: 3px solid #f59e0b; }
-    .card-riders { border-top: 3px solid #0284c7; }
-    .card-jobs { border-top: 3px solid #4f46e5; }
-    .card-stuck { border-top: 3px solid #ef4444; }
-    .card-orders { border-top: 3px solid #8b5cf6; }
-    .card-batches { border-top: 3px solid #f97316; }
-    .table { color: #334155; margin-bottom: 0; }
-    .table-sm td, .table-sm th { padding: 0.5rem 0.75rem; vertical-align: middle; border-bottom: 1px solid #e2e8f0; }
-    .table-dark { background-color: #f1f5f9; color: #475569; font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    .table-dark th { background-color: #f1f5f9 !important; color: #475569 !important; border-bottom: 1px solid #cbd5e1; }
-    .table-hover tbody tr:hover { background-color: #f8fafc; }
+    /* ── Design Tokens (Cool Slate + Indigo) ───────────────────────
+       Neutral values match the hex already used throughout the file,
+       so existing hardcoded colors stay visually consistent with
+       elements migrated to var() here. */
+    :root {
+      /* neutrals */
+      --slate-50:#f8fafc; --slate-100:#f1f5f9; --slate-200:#e2e8f0; --slate-300:#cbd5e1;
+      --slate-400:#94a3b8; --slate-500:#64748b; --slate-600:#475569; --slate-700:#334155;
+      --slate-800:#1e293b; --slate-900:#0f172a;
+      /* brand (indigo) */
+      --brand-50:#eef2ff; --brand-100:#e0e7ff; --brand-500:#6366f1; --brand-600:#4f46e5; --brand-700:#4338ca;
+      /* status */
+      --success-600:#16a34a; --success-bg:#dcfce7; --success-text:#166534;
+      --warning-600:#d97706; --warning-bg:#fef3c7; --warning-text:#92400e;
+      --danger-600:#dc2626;  --danger-bg:#fee2e2;  --danger-text:#991b1b;
+      --info-600:#0284c7;    --info-bg:#e0f2fe;    --info-text:#0369a1;
+      /* category accents (top-border per card, kept semantic) */
+      --accent-pending:#f59e0b; --accent-riders:#0284c7; --accent-jobs:#4f46e5;
+      --accent-stuck:#ef4444; --accent-orders:#8b5cf6; --accent-batches:#f97316;
+      /* surfaces */
+      --bg-page:#f8fafc; --bg-surface:#ffffff; --border-default:#e2e8f0;
+      --text-primary:#1e293b; --text-heading:#0f172a; --text-muted:#64748b;
+      /* spacing (4px grid) */
+      --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
+      /* radius scale */
+      --radius-sm:6px; --radius-md:8px; --radius-lg:12px; --radius-xl:16px; --radius-pill:999px;
+      /* shadows (slate-tinted, softer than pure black) */
+      --shadow-sm:0 1px 2px rgba(15,23,42,.05);
+      --shadow-md:0 4px 6px -1px rgba(15,23,42,.06),0 2px 4px -1px rgba(15,23,42,.04);
+      --shadow-lg:0 12px 32px rgba(15,23,42,.14);
+      /* motion */
+      --ease:cubic-bezier(.4,0,.2,1);
+      --transition-fast:120ms var(--ease);
+      --transition-base:200ms var(--ease);
+      /* keep Bootstrap components (btn-primary, focus rings, accordion...) on-brand */
+      --bs-primary:var(--brand-600);
+      --bs-primary-rgb:79,70,229;
+    }
+    body { background: var(--bg-page); font-family: 'Inter', 'Prompt', sans-serif; font-size: 14px; line-height: 1.5; color: var(--text-primary); }
+    .card { box-shadow: var(--shadow-md); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
+    .card-header { background: var(--bg-surface) !important; border-bottom: 1px solid var(--border-default); border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; font-size: 1rem; font-weight: 600; padding: 0.8rem 1.25rem !important; color: var(--text-heading); }
+    .card-pending { border-top: 3px solid var(--accent-pending); }
+    .card-riders { border-top: 3px solid var(--accent-riders); }
+    .card-jobs { border-top: 3px solid var(--accent-jobs); }
+    .card-stuck { border-top: 3px solid var(--accent-stuck); }
+    .card-orders { border-top: 3px solid var(--accent-orders); }
+    .card-batches { border-top: 3px solid var(--accent-batches); }
+    .table { color: var(--text-primary); margin-bottom: 0; }
+    .table-sm td, .table-sm th { padding: 0.5rem 0.75rem; vertical-align: middle; border-bottom: 1px solid var(--border-default); }
+    .table-dark { background-color: var(--slate-100); color: var(--slate-600); font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .table-dark th { background-color: var(--slate-100) !important; color: var(--slate-600) !important; border-bottom: 1px solid var(--slate-300); }
+    .table-hover tbody tr:hover { background-color: var(--bg-page); }
     .table-striped>tbody>tr:nth-of-type(odd)>* { background-color: #fcfcfd; }
     .scroll-table { max-height: 100%; overflow-y: auto; scrollbar-width: thin; flex: 1; min-height: 0; }
     .sticky-header th { position: sticky; top: 0; z-index: 1; }
-    .btn { border-radius: 6px; font-weight: 500; transition: all 0.2s; }
+    .btn { border-radius: var(--radius-sm); font-weight: 500; transition: all var(--transition-fast); }
     .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
-    .form-control, .form-select { border-radius: 6px; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; font-size: 0.85rem; box-shadow: none; background-color: #ffffff; color: #1e293b; }
-    .form-control:focus, .form-select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
-    .badge { padding: 0.4em 0.6em; border-radius: 6px; font-weight: 600; }
-    .navbar-custom { background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-bottom: 1px solid #e2e8f0; }
-    .navbar-brand-text { color: #16a34a; font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px; }
-    .text-muted { color: #64748b !important; }
+    .form-control, .form-select { border-radius: var(--radius-sm); border: 1px solid var(--slate-300); padding: 0.4rem 0.8rem; font-size: 0.85rem; box-shadow: none; background-color: var(--bg-surface); color: var(--text-primary); transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
+    .form-control:focus, .form-select:focus { border-color: var(--brand-600); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+    .badge { padding: 0.4em 0.6em; border-radius: var(--radius-sm); font-weight: 600; }
+    .navbar-custom { background: var(--bg-surface); box-shadow: var(--shadow-sm); border-bottom: 1px solid var(--border-default); }
+    .navbar-brand-text { color: var(--success-600); font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px; }
+    .text-muted { color: var(--text-muted) !important; }
+    :focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
     .not-in-pool-row td { color: #94a3b8; background-color: #f8fafc; }
     .not-in-pool-row .badge, .not-in-pool-row .btn { opacity: 0.85; pointer-events: auto !important; }
     .not-in-pool-row .badge:hover, .not-in-pool-row .btn:hover { opacity: 1; }
@@ -220,7 +259,7 @@
 
     /* ── Mobile / Tablet Responsive ─────────────────────────────── */
     @media (max-width: 767px) {
-      body { font-size: 12.5px; }
+      body { font-size: 13px; }
 
       /* Navbar: stack on very small */
       .navbar-custom .container-fluid { flex-wrap: wrap; gap: .4rem; }
@@ -447,6 +486,31 @@
   }
   .cfg-info-chip .chip-label { color:#94a3b8; font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
   .cfg-info-chip .chip-val   { font-weight:700; color:#0f172a; }
+
+  /* ── Tab Nav (modern underline switcher, replaces boxy Bootstrap default) ── */
+  #mainTabs.nav-tabs { border-bottom: 1px solid var(--border-default); gap: .25rem; }
+  #mainTabs.nav-tabs .nav-link {
+    border: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    color: var(--text-muted); font-weight: 500; padding: .55rem 1rem;
+    position: relative; transition: color var(--transition-fast), background var(--transition-fast);
+  }
+  #mainTabs.nav-tabs .nav-link::after {
+    content: ''; position: absolute; left: .5rem; right: .5rem; bottom: -1px; height: 2px;
+    background: var(--brand-600); border-radius: 2px 2px 0 0;
+    transform: scaleX(0); transition: transform var(--transition-base);
+  }
+  #mainTabs.nav-tabs .nav-link:hover { color: var(--text-heading); background: var(--slate-50); }
+  #mainTabs.nav-tabs .nav-link.active {
+    color: var(--brand-600); font-weight: 600; background: transparent; border: none;
+  }
+  #mainTabs.nav-tabs .nav-link.active::after { transform: scaleX(1); }
+
+  /* ── Collapse / expand motion ──────────────────────────────────── */
+  .expand-row { animation: rowExpandIn var(--transition-base); }
+  @keyframes rowExpandIn { from { opacity: 0; } to { opacity: 1; } }
+  #map-card-body { animation: mapCollapseIn var(--transition-base); }
+  @keyframes mapCollapseIn { from { opacity: .4; } to { opacity: 1; } }
+  #map-collapse-btn i { transition: transform var(--transition-base); }
   </style>
 </head>
 <body>
@@ -741,7 +805,7 @@
               <option value="job_cancelled">job_cancelled</option>
               <option value="job_failed">job_failed</option>
             </select>
-            <input type="search" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" oninput="debounceSearch('jobs', this.value)">
+            <input type="search" id="jobs-search-box" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" title="พิมพ์ Job ID หรือ Order ID แล้วกด Enter หรือกด ดึง Jobs เพื่อค้นหาทุกสาขา (ไม่ต้องใส่ Store Code)" oninput="debounceSearch('jobs', this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();searchJobGlobal(this.value);}">
           </div>
           <div id="loading-jobs" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-jobs" class="alert alert-danger py-1 d-none small mb-2"></div>
@@ -1585,7 +1649,11 @@ const COLS = {
   ],
   jobs: [
     { id:'jobId',       lk:'col_jobId',       sk:'jobId',       r: d => `<small class="font-monospace">${d.jobId||'–'}</small>` },
-    { id:'storeCode',   lk:'col_store',       sk:'storeCode',   r: d => d.storeCode||'–' },
+    { id:'storeCode',   lk:'col_store',       sk:'storeCode',   r: d => d.storeCode
+        ? `<button class="store-fill-btn" onclick="event.stopPropagation();fillStoreCode('${d.storeCode}')" title="เปลี่ยน Store Code เป็น ${d.storeCode}">
+             <i class="bi bi-shop"></i> ${d.storeCode}
+           </button>`
+        : '–' },
     { id:'rider',       lk:'col_rider',       sk:'riderName',   r: d => d.riderName
         ? `<div class="lh-sm">${d.riderName}</div><small class="text-muted font-monospace">${d.riderId||''}</small>`
         : '–' },
@@ -2397,12 +2465,10 @@ function renderSection(tbl) {
     else if (tbl==='stuck') cls = 'table-danger';
     else if (tbl==='jobs' && row.assignerType === 'dispatcher') cls = 'table-warning';
     const isJobs = tbl === 'jobs';
-    const rowClick = isJobs ? `onclick="toggleRow(this,'${tbl}',${idx})"` : '';
-    const rowStyle = isJobs ? ' style="cursor:pointer;"' : '';
     const btnIcon  = isJobs ? 'bi-layers' : 'bi-code-square';
     const btnTitle = isJobs ? 'Job Detail' : 'Raw Data';
     const btnCls   = isJobs ? 'btn-outline-primary' : 'btn-outline-secondary';
-    return `<tr class="${cls}"${rowStyle} ${rowClick}>${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}<td class="text-end"><button class="btn btn-sm ${btnCls} py-0 px-1" onclick="event.stopPropagation(); toggleRow(this.closest('tr'),'${tbl}',${idx})" title="${btnTitle}"><i class="bi ${btnIcon}"></i></button></td></tr>`;
+    return `<tr class="${cls}">${colDefs.map(c=>`<td>${c.r(row)}</td>`).join('')}<td class="text-end"><button class="btn btn-sm ${btnCls} py-0 px-1" onclick="event.stopPropagation(); toggleRow(this.closest('tr'),'${tbl}',${idx})" title="${btnTitle}"><i class="bi ${btnIcon}"></i></button></td></tr>`;
   }).join('');
 
   // Trigger visual flash to indicate data update
@@ -3376,6 +3442,9 @@ async function fetchRiders(btn) {
 }
 
 async function fetchJobs(btn) {
+  const searchVal = document.getElementById('jobs-search-box')?.value?.trim();
+  if (searchVal) { applyCooldown(btn); return searchJobGlobal(searchVal); }
+
   applyCooldown(btn); _fetchStart();
   const { storeCode, from, to } = getInputs();
   setLoading('jobs', true);
@@ -3386,6 +3455,21 @@ async function fetchJobs(btn) {
     state.jobs.data = j.data; state.jobs.page = 1;
     renderJobsDash(); renderSection('jobs');
     if (state.riders.data.length) renderSection('riders');
+    markUpdated();
+  } catch(e) { setError('jobs', e.message); } finally { setLoading('jobs', false); _fetchEnd(); }
+}
+
+async function searchJobGlobal(value) {
+  const jobId = (value||'').trim();
+  if (!jobId) return;
+  _fetchStart();
+  setLoading('jobs', true);
+  try {
+    const r = await fetch(`${API_BASE}/api/jobs?jobId=${encodeURIComponent(jobId)}`);
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    document.getElementById('count-jobs').textContent = j.count;
+    state.jobs.data = j.data; state.jobs.page = 1;
+    renderJobsDash(); renderSection('jobs');
     markUpdated();
   } catch(e) { setError('jobs', e.message); } finally { setLoading('jobs', false); _fetchEnd(); }
 }
@@ -5165,8 +5249,10 @@ async function sendAIFollowup() {
     box-shadow:0 8px 40px rgba(0,0,0,0.18);
     display:none; flex-direction:column; overflow:hidden;
     border:1px solid #e2e8f0;
+    transition: width .25s cubic-bezier(.4,0,.2,1), height .25s cubic-bezier(.4,0,.2,1);
   }
-  #ai-chat-window.open { display:flex; }
+  #ai-chat-window.open { display:flex; animation: aiWindowIn .18s cubic-bezier(.34,1.46,.64,1); }
+  @keyframes aiWindowIn { from { opacity:0; transform:scale(.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
 
   /* Header */
   .ai-chat-header {

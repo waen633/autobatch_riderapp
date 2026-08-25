@@ -1203,6 +1203,19 @@
   </div>
 </div>
 
+<!-- ORDER ITEMS MODAL -->
+<div class="modal fade" id="itemsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="border-bottom: 1px solid var(--border-color);">
+        <h6 class="modal-title" id="itemsModalTitle"><i class="bi bi-basket3 me-2 text-primary"></i>รายการสินค้า</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-2" id="itemsModalBody" style="background:#ffffff;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- AUTO-ASSIGN DIAGNOSTIC MODAL -->
 <div class="modal fade" id="diagnosticModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
@@ -1414,7 +1427,7 @@ const i18n = {
     col_jobId: 'Job ID', col_rider: 'ไรเดอร์', col_count: '#', col_orderIds: 'Order IDs',
     col_seeRoute: 'ดูเส้นทาง', col_pickupSLA: 'SLA รับของ', col_deliverySLA: 'SLA ส่ง',
     col_updated: 'อัปเดต', col_location: 'ตำแหน่ง', col_payment: 'การชำระ',
-    col_itemsConfirm: 'ยืนยัน Items', col_batchId: 'Batch ID',
+    col_itemsConfirm: 'ยืนยัน Items', col_items: 'รายการสินค้า', col_batchId: 'Batch ID',
     col_roStatus: 'RO Status', col_roStart: 'RO เริ่ม', col_roEnd: 'RO สิ้นสุด',
     col_distance: 'ระยะทาง', col_duration: 'ระยะเวลา',
     col_assigner: 'ผู้จ่ายงาน',
@@ -1471,7 +1484,7 @@ const i18n = {
     col_jobId: 'Job ID', col_rider: 'Rider', col_count: '#', col_orderIds: 'Order IDs',
     col_seeRoute: 'See Route', col_pickupSLA: 'PickUp SLA', col_deliverySLA: 'Delivery SLA',
     col_updated: 'Updated', col_location: 'Location', col_payment: 'Payment',
-    col_itemsConfirm: 'Items Confirm', col_batchId: 'Batch ID',
+    col_itemsConfirm: 'Items Confirm', col_items: 'Items', col_batchId: 'Batch ID',
     col_roStatus: 'RO Status', col_roStart: 'RO Start', col_roEnd: 'RO End',
     col_distance: 'Distance', col_duration: 'Duration',
     col_assigner: 'Assigner',
@@ -1727,6 +1740,9 @@ const COLS = {
     { id:'seeRoute',          lk:'col_location',     sk:null,                    r: d => d.rawResults?.length
         ? `<button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();openOrderRoute('${d._id}')"><i class="bi bi-geo-alt me-1"></i>${t('col_location')}</button>`
         : '–' },
+    { id:'items',             lk:'col_items',        sk:null,                    r: d => d.items?.length
+        ? `<button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.78rem;" onclick="event.stopPropagation();showOrderItems('${d._id}')" title="${t('col_items')}"><i class="bi bi-basket3 me-1"></i>${d.items.length}</button>`
+        : '<span class="text-muted">–</span>' },
     { id:'payment',           lk:'col_payment',      sk:'paymentMethod',         r: d => {
       const parts = [];
       if (d.paymentMethod) parts.push(`<span class="badge bg-secondary status-badge">${d.paymentMethod}</span>`);
@@ -1811,7 +1827,7 @@ const DEFAULT_COLS = {
   riders:  ['queue','storeCode','name','userId','idle_time','join_pool_at','ready','flags','job_on_hand','map'],
   jobs:    ['jobId','storeCode','rider','assignerType','distance','duration','orderCount','orderIds','seeRoute','pickUpSLA','deliverySLA','status','createdAt','updatedAt'],
 
-  orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','itemsConfirm','payment','dispatchType','currentOrderStatus','riderName','createdAt','updatedAt'],
+  orders:  ['consignment','internalOrderId','storeCode','jobId','seeRoute','items','itemsConfirm','payment','dispatchType','currentOrderStatus','riderName','createdAt','updatedAt'],
   batches: ['batchId','orderCount','orderIds','status','roStatus','roStartTime','roEndTime','createdAt']
 };
 
@@ -2849,6 +2865,52 @@ function renderRiderPerf() {
 }
 
 // ─── STATUS TIMELINE MODAL ───────────────────────────────────────────────────
+function showOrderItems(oid) {
+  const d = state.orders.data.find(o => o._id === oid);
+  if (!d) return;
+  const items = d.items || [];
+
+  document.getElementById('itemsModalTitle').innerHTML =
+    `<i class="bi bi-basket3 me-2 text-primary"></i>รายการสินค้า <small class="text-muted font-monospace ms-1">${d.consignment || d.internalOrderId || ''}</small>`;
+
+  if (!items.length) {
+    document.getElementById('itemsModalBody').innerHTML = `<div class="text-center text-muted py-4">ไม่พบรายการสินค้า</div>`;
+  } else {
+    let total = 0;
+    const rowsHtml = items.map(p => {
+      const isPromo = p.type === 'PROMOCODE';
+      total += p.paymentAmount || 0;
+      const img = p.imageUrl
+        ? `<img src="${p.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">`
+        : `<div style="width:40px;height:40px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;"><i class="bi bi-basket3 text-muted"></i></div>`;
+      return `<tr>
+        <td style="width:48px;">${img}</td>
+        <td>
+          <div class="fw-semibold" style="font-size:.85rem;">${escapeHtml(p.name || '–')}</div>
+          <small class="text-muted">${escapeHtml(p.description || '')}${p.productId ? ` · <span class="font-monospace">${p.productId}</span>` : ''}</small>
+          ${isPromo ? `<span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">โปรโมชั่น</span>` : ''}
+        </td>
+        <td class="text-center" style="white-space:nowrap;">${p.quantity ?? '–'} ${p.unit || ''}</td>
+        <td class="text-end fw-semibold" style="white-space:nowrap;color:${(p.paymentAmount||0) < 0 ? '#dc2626' : 'inherit'};">฿${(p.paymentAmount ?? 0).toLocaleString()}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('itemsModalBody').innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th></th><th>สินค้า</th><th class="text-center">จำนวน</th><th class="text-end">ราคา</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+          <tfoot><tr class="table-light">
+            <td colspan="3" class="text-end fw-bold">รวม (${items.length} รายการ)</td>
+            <td class="text-end fw-bold">฿${total.toLocaleString()}</td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+  }
+
+  new bootstrap.Modal(document.getElementById('itemsModal')).show();
+}
+
 function showTimeline(oid) {
   _tlOid  = oid;
   _tlMode = 'raw';

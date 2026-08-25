@@ -54,6 +54,18 @@ router.get('/orders', async (req, res) => {
     const data = docs.map(d => {
       const pickupTask = (d.workflowInput?.tasks || []).find(t => t.direction === 'PICKUP');
       const deliveryTask = (d.workflowInput?.tasks || []).find(t => t.direction === 'DELIVERY');
+      const items = (pickupTask?.information?.parcels || []).map(p => ({
+        productId: p.productId || null,
+        name: p.name || null,
+        description: p.description || null,
+        imageUrl: p.imageUrl || null,
+        type: p.type || null,
+        quantity: p.quantity ?? null,
+        unit: p.unit || null,
+        weight: p.weight ?? null,
+        price: p.price ?? null,
+        paymentAmount: p.payment?.amount ?? null
+      }));
       const rawResults = [];
       if (pickupTask?.lat && pickupTask?.lng && deliveryTask?.lat && deliveryTask?.lng) {
         const consignmentLabel = d.workflowInput?.metadata?.consignment || 'Order';
@@ -88,6 +100,7 @@ router.get('/orders', async (req, res) => {
         createdAt: d.createdAt || null,
         updatedAt: d.updatedAt || null,
         statusHistory: (d.orderStatuses || []).map(s => ({ status: s.status, updatedAt: s.updatedAt, taskId: s.metadata?.taskId || null })),
+        items,
         rawResults
       };
     });

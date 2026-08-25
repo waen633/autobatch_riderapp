@@ -805,7 +805,7 @@
               <option value="job_cancelled">job_cancelled</option>
               <option value="job_failed">job_failed</option>
             </select>
-            <input type="search" id="jobs-search-box" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" title="พิมพ์ Job ID หรือ Order ID แล้วกด Enter หรือกด ดึง Jobs เพื่อค้นหาทุกสาขา (ไม่ต้องใส่ Store Code)" oninput="debounceSearch('jobs', this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();searchJobGlobal(this.value);}">
+            <input type="search" id="jobs-search-box" class="form-control form-control-sm search-box" data-i18n-ph="search" placeholder="ค้นหา…" title="พิมพ์ Job ID หรือ Order ID (คั่นด้วย , หรือเว้นวรรค ได้หลายค่า) แล้วกด Enter หรือกด ดึง Jobs เพื่อค้นหาทุกสาขา (ไม่ต้องใส่ Store Code)" oninput="debounceSearch('jobs', this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();searchJobGlobal(this.value);}">
           </div>
           <div id="loading-jobs" class="d-none text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted" data-i18n="loading">Loading…</span></div>
           <div id="error-jobs" class="alert alert-danger py-1 d-none small mb-2"></div>

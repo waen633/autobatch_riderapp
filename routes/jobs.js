@@ -75,12 +75,16 @@ router.get('/jobs', async (req, res) => {
     const storeCodes = splitCodes(req.query.storeCode);
     const c = await getClient();
 
-    // Global job search by jobId หรือ orderId — ไม่ต้องระบุ storeCode/from/to
+    // Global job search by jobId หรือ orderId (รองรับหลายค่า คั่นด้วย comma/space) — ไม่ต้องระบุ storeCode/from/to
     if (jobId && jobId.trim() && !storeCodes.length) {
-      const re = { $regex: escapeRegex(jobId.trim()), $options: 'i' };
+      const tokens = [...new Set(jobId.split(/[\s,]+/).map(v => v.trim()).filter(Boolean))].slice(0, 50);
+      const orConds = tokens.flatMap(tok => {
+        const re = { $regex: escapeRegex(tok), $options: 'i' };
+        return [{ jobId: re }, { orderIds: re }];
+      });
       const docs = await c.db('4pl-oms').collection('autobatchingjobs')
         .find(
-          { $or: [{ jobId: re }, { orderIds: re }] },
+          { $or: orConds },
           { projection: JOB_PROJECTION }
         )
         .sort({ createdAt: -1 })
